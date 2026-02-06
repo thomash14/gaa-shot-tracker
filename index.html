@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>GAA Shot Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="app-header">
+            <h1>⚽ GAA Shot Tracker</h1>
+            <div class="user-header" id="userHeader" style="display: none;">
+                <button class="profile-avatar" onclick="toggleProfileMenu()" id="profileAvatar">
+                    <span id="avatarInitials">TH</span>
+                    <span class="sync-dot" id="syncDot"></span>
+                </button>
+                <span class="user-email" id="userEmail" style="display:none;"></span>
+                <span class="sync-status synced" id="syncStatus" style="display:none;">✓ Synced</span>
+            </div>
+        </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">Loading...</div>
+    </div>
+    <div class="auth-container" id="authContainer" style="display: none;">
+        <h2>Welcome to GAA Shot Tracker</h2>
+        <div class="auth-error" id="authError"></div>
+        <div class="auth-success" id="authSuccess"></div>
+        <div class="auth-tabs">
+            <button class="auth-tab active" onclick="showAuthTab('login')">Log In</button>
+            <button class="auth-tab" onclick="showAuthTab('signup')">Sign Up</button>
+        </div>
+        <div class="auth-form active" id="loginForm">
+            <div class="auth-input-group">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" placeholder="your@email.com">
+            </div>
+            <div class="auth-input-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" placeholder="Your password">
+            </div>
+            <button class="auth-btn" onclick="handleLogin()">Log In</button>
+        </div>
+        <div class="auth-form" id="signupForm">
+            <div class="auth-input-group">
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" placeholder="your@email.com">
+            </div>
+            <div class="auth-input-group">
+                <label for="signupPassword">Password</label>
+                <input type="password" id="signupPassword" placeholder="Min 6 characters">
+            </div>
+            <div class="auth-input-group">
+                <label for="signupPasswordConfirm">Confirm Password</label>
+                <input type="password" id="signupPasswordConfirm" placeholder="Confirm password">
+            </div>
+            <div style="border-top: 1px solid #e0e0e0; margin: 20px 0; padding-top: 20px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Player Information</p>
+            </div>
+            <div class="auth-input-group">
+                <label for="signupName">Name</label>
+                <input type="text" id="signupName" placeholder="Your name">
+            </div>
+            <div class="auth-input-group">
+                <label for="signupDOB">Date of Birth</label>
+                <input type="date" id="signupDOB">
+            </div>
+            <div class="auth-input-group">
+                <label for="signupCounty">County</label>
+                <select id="signupCounty" onchange="updateClubDropdown()">
+                    <option value="">Select your county...</option>
+                    <option value="Antrim">Antrim</option>
+                    <option value="Armagh">Armagh</option>
+                    <option value="Carlow">Carlow</option>
+                    <option value="Cavan">Cavan</option>
+                    <option value="Clare">Clare</option>
+                    <option value="Cork">Cork</option>
+                    <option value="Derry">Derry</option>
+                    <option value="Donegal">Donegal</option>
+                    <option value="Down">Down</option>
+                    <option value="Dublin">Dublin</option>
+                    <option value="Fermanagh">Fermanagh</option>
+                    <option value="Galway">Galway</option>
+                    <option value="Kerry">Kerry</option>
+                    <option value="Kildare">Kildare</option>
+                    <option value="Kilkenny">Kilkenny</option>
+                    <option value="Laois">Laois</option>
+                    <option value="Leitrim">Leitrim</option>
+                    <option value="Limerick">Limerick</option>
+                    <option value="Longford">Longford</option>
+                    <option value="Louth">Louth</option>
+                    <option value="Mayo">Mayo</option>
+                    <option value="Meath">Meath</option>
+                    <option value="Monaghan">Monaghan</option>
+                    <option value="Offaly">Offaly</option>
+                    <option value="Roscommon">Roscommon</option>
+                    <option value="Sligo">Sligo</option>
+                    <option value="Tipperary">Tipperary</option>
+                    <option value="Tyrone">Tyrone</option>
+                    <option value="Waterford">Waterford</option>
+                    <option value="Westmeath">Westmeath</option>
+                    <option value="Wexford">Wexford</option>
+                    <option value="Wicklow">Wicklow</option>
+                </select>
+            </div>
+            <div class="auth-input-group">
+                <label for="signupClub">Club</label>
+                <select id="signupClub">
+                    <option value="">Select county first...</option>
+                </select>
+            </div>
+            <div class="auth-input-group">
+                <label for="signupPrimaryPosition">Role / Position</label>
+                <select id="signupPrimaryPosition" onchange="handlePositionChange()">
+                    <option value="">Select role/position...</option>
+                    <option value="Coach/Manager">Coach / Manager</option>
+                    <option value="Goalkeeper">Goalkeeper</option>
+                    <option value="Full Back Line">Full Back Line</option>
+                    <option value="Wing Back">Wing Back</option>
+                    <option value="Centre Back">Centre Back</option>
+                    <option value="Midfield">Midfield</option>
+                    <option value="Wing Forward">Wing Forward</option>
+                    <option value="Centre Forward">Centre Forward</option>
+                    <option value="Full Forward Line">Full Forward Line</option>
+                </select>
+            </div>
+            <div class="auth-input-group" id="secondaryPositionGroup">
+                <label for="signupSecondaryPosition">Secondary Position</label>
+                <select id="signupSecondaryPosition">
+                    <option value="">Select position...</option>
+                    <option value="None">None</option>
+                    <option value="Goalkeeper">Goalkeeper</option>
+                    <option value="Full Back Line">Full Back Line</option>
+                    <option value="Wing Back">Wing Back</option>
+                    <option value="Centre Back">Centre Back</option>
+                    <option value="Midfield">Midfield</option>
+                    <option value="Wing Forward">Wing Forward</option>
+                    <option value="Centre Forward">Centre Forward</option>
+                    <option value="Full Forward Line">Full Forward Line</option>
+                </select>
+            </div>
+            <div class="auth-input-group">
+                <label for="signupPreferredFoot">Preferred Foot</label>
+                <select id="signupPreferredFoot">
+                    <option value="">Select preferred foot...</option>
+                    <option value="Right">Right</option>
+                    <option value="Left">Left</option>
+                </select>
+            </div>
+            <button class="auth-btn" onclick="handleSignup()">Create Account</button>
+        </div>
+        <div class="auth-divider">or</div>
+        <button class="google-btn" onclick="handleGoogleLogin()">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
+        </button>
+    </div>
+    <div class="app-content" id="appContent">
+        <div class="profile-menu-overlay" id="profileMenuOverlay" onclick="closeProfileMenu()">
+            <div class="profile-menu" onclick="event.stopPropagation()">
+                <div class="profile-menu-header">
+                    <div class="avatar-large">👤</div>
+                    <div class="user-name" id="profileMenuName">User Name</div>
+                    <div class="user-email" id="profileMenuEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="690c04080005290c11080419050c470a0604">[email&#160;protected]</a></div>
+                    <span class="sync-badge synced" id="profileSyncBadge">✓ Synced</span>
+                </div>
+                <div class="profile-menu-items">
+                    <button class="profile-menu-item" onclick="showProfileModal(); closeProfileMenu();">
+                        <span class="menu-icon">👤</span>
+                        <span>My Profile</span>
+                    </button>
+                    <button class="profile-menu-item" onclick="switchSection('team'); closeProfileMenu();">
+                        <span class="menu-icon">👥</span>
+                        <span>My Team</span>
+                    </button>
+                    <button class="profile-menu-item" onclick="switchSection('analytics'); closeProfileMenu();">
+                        <span class="menu-icon">📈</span>
+                        <span>My Stats</span>
+                    </button>
+                    <div class="profile-menu-divider"></div>
+                    <button class="profile-menu-item" onclick="switchSection('sessions'); closeProfileMenu();">
+                        <span class="menu-icon">📋</span>
+                        <span>Session History</span>
+                    </button>
+                    <div class="profile-menu-divider"></div>
+                    <button class="profile-menu-item danger" onclick="handleLogout(); closeProfileMenu();">
+                        <span class="menu-icon">🚪</span>
+                        <span>Log Out</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="migration-banner" id="migrationBanner">
+            <h3>📦 Existing Data Found</h3>
+            <p>We found shot data on this device. Import to your cloud account?</p>
+            <button onclick="migrateLocalData()">Import Data</button>
+            <button class="skip" onclick="skipMigration()">Skip</button>
+        </div>
+        <div class="main-layout" id="mainLayout">
+            <div class="sidebar" id="sidebar">
+                <nav class="sidebar-nav">
+                    <button class="sidebar-item active" onclick="switchSection('home')" id="navHome">
+                        <span class="sidebar-icon">🏠</span>
+                        <span class="sidebar-text">Home</span>
+                    </button>
+                    <button class="sidebar-item" onclick="switchSection('track-practice')" id="navTrackPractice">
+                        <span class="sidebar-icon">🏋️</span>
+                        <span class="sidebar-text"><span class="hide-mobile">Track - </span>Practice</span>
+                    </button>
+                    <button class="sidebar-item" onclick="switchSection('track-match')" id="navTrackMatch">
+                        <span class="sidebar-icon">⚽</span>
+                        <span class="sidebar-text"><span class="hide-mobile">Track - </span>Match</span>
+                    </button>
+                    <button class="sidebar-item" onclick="switchSection('sessions')" id="navSessions">
+                        <span class="sidebar-icon">📋</span>
+                        <span class="sidebar-text">Sessions</span>
+                    </button>
+                    <button class="sidebar-item" onclick="switchSection('analytics')" id="navAnalytics">
+                        <span class="sidebar-icon">📈</span>
+                        <span class="sidebar-text">Stats</span>
+                    </button>
+                    <button class="sidebar-item" onclick="switchSection('team')" id="navTeam">
+                        <span class="sidebar-icon">👥</span>
+                        <span class="sidebar-text">Team</span>
+                    </button>
+                </nav>
+            </div>
+            <div class="content-area">
+                <div id="home-section" class="section-content active">
+                    <div class="controls">
+                        <h2 style="color: #2a5298; margin-bottom: 20px;">📊 Dashboard</h2>
+                        <div id="assignedDrillsSection" class="recent-session-card" style="display: none; margin-bottom: 20px; border-left: 4px solid #4CAF50;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h3 style="color: #2a5298; margin: 0;">🎯 Ready to Practice</h3>
+                                <span id="assignedDrillsCount" style="background: #4CAF50; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">0 to do</span>
+                            </div>
+                            <div id="assignedDrillsList">
+                            </div>
+                        </div>
+                        <div class="recent-session-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3 style="color: #2a5298; margin: 0;">Recent Sessions</h3>
+                                <div class="carousel-indicators" id="carouselIndicators"></div>
+                            </div>
+                            <div class="tabs" style="margin-bottom: 15px;">
+                                <button class="tab active" onclick="switchDashboardType('practice')" id="dashboardPracticeTab">🏋️ Practice</button>
+                                <button class="tab" onclick="switchDashboardType('match')" id="dashboardMatchTab">⚽ Match</button>
+                            </div>
+                            <div class="session-carousel-container">
+                                <button class="carousel-btn carousel-prev" onclick="changeCarouselSession(-1)" id="carouselPrev">‹</button>
+                                <div class="session-carousel-content">
+                                    <div id="recentSessionInfo" style="margin-bottom: 15px;">
+                                        <div id="recentSessionScoreStats" style="display: none; display: flex; gap: 15px; margin-bottom: 15px;">
+                                            <div style="flex: 1; background: #f0f4f8; padding: 12px 15px; border-radius: 8px;">
+                                                <p id="recentSessionTitle" style="font-size: 16px; font-weight: 600; color: #2a5298; margin: 0 0 5px 0;">No sessions yet</p>
+                                                <p id="recentSessionDate" style="font-size: 13px; color: #666; margin: 0;"></p>
+                                            </div>
+                                            <div style="flex: 1; background: #f0f4f8; padding: 12px 15px; border-radius: 8px;">
+                                                <div id="recentSessionScore" style="font-size: 22px; font-weight: bold; color: #2a5298; margin-bottom: 5px;"></div>
+                                                <div style="font-size: 12px; color: #666;">
+                                                    <div id="recentSessionConversion" style="margin-bottom: 3px;"></div>
+                                                    <div id="recentSessionFoot"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="recentSessionNoStats" style="display: block;">
+                                            <p id="recentSessionTitleNoStats" style="font-size: 18px; font-weight: 600; color: #2a5298; margin: 0 0 5px 0;">No sessions yet</p>
+                                            <p id="recentSessionDateNoStats" style="font-size: 13px; color: #666; margin-bottom: 10px;"></p>
+                                        </div>
+                                        <div id="recentSessionBreakdown" style="display: none;"></div>
+                                    </div>
+                                    <div class="pitch-wrapper" id="dashboardPitchWrapper" style="max-width: 500px; margin: 0 auto;">
+                                        <svg id="dashboardPitch" viewBox="0 0 500 725" xmlns="http://www.w3.org/2000/svg">
+                                        </svg>
+                                    </div>
+                                    <div id="recentSessionStats" style="text-align: center; margin-top: 15px;">
+                                        <span style="margin-right: 20px;">⚪ Scored</span>
+                                        <span>🔴 Missed</span>
+                                    </div>
+                                </div>
+                                <button class="carousel-btn carousel-next" onclick="changeCarouselSession(1)" id="carouselNext">›</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+                            <button class="btn-primary" onclick="switchSection('track-practice')">🏋️ Start Practice</button>
+                            <button class="btn-secondary" onclick="switchSection('track-match')">⚽ Track Match</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tabs" style="display: none;">
+                    <button class="tab active" onclick="switchTab('track')" id="trackTab">📍 Track Shots</button>
+                    <button class="tab" onclick="switchTab('sessions')" id="sessionsTab">📊 Sessions</button>
+                    <button class="tab" onclick="switchTab('analytics')" id="analyticsTab">📈 Analytics</button>
+                    <button class="tab" onclick="switchTab('team')" id="teamTab">👥 Team</button>
+                </div>
+        <div id="track-tab" class="tab-content active">
+            <div class="instructions">
+                <h3>How to use:</h3>
+                <ul>
+                    <li>Start a new session or continue current one</li>
+                    <li><strong>Single Shot Mode:</strong> Click pitch, then mark scored/missed</li>
+                    <li><strong>Batch Mode:</strong> Click pitch, enter total shots and scores from that spot</li>
+                    <li>View your stats in real-time</li>
+                </ul>
+            </div>
+            <div id="practiceTemplatesSection" class="stat-card" style="margin-bottom: 20px; padding: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: #2a5298; margin: 0;">📋 Practice Drills</h3>
+                    <button class="btn-secondary" onclick="toggleTemplatesView()" id="toggleTemplatesBtn" style="font-size: 12px; padding: 5px 10px;">Show Drills</button>
+                </div>
+                <div id="templatesContainer" style="display: none;">
+                    <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Select a drill to see shooting spots on the pitch. Click each spot to enter your score!</p>
+                    <div id="templatesList" style="display: grid; gap: 10px;"></div>
+                </div>
+            </div>
+            <input type="hidden" id="sessionType" value="practice">
+            <div style="display: none;">
+                <input type="radio" id="half1st" name="matchHalf" value="1st" checked>
+                <input type="radio" id="half2nd" name="matchHalf" value="2nd">
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <label id="matchTypeLabel" style="display: none;">Match Type:</label>
+                    <select id="matchType" style="display: none;">
+                        <option value="league">League</option>
+                        <option value="championship">Championship</option>
+                        <option value="challenge">Challenge</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+                    <input type="text" id="customMatchType" placeholder="Enter custom match type" style="display: none;">
+                    <label id="sessionNameLabel">Session Name:</label>
+                    <input type="text" id="sessionName" placeholder="e.g., Training - Monday Evening">
+                    <label>Date:</label>
+                    <input type="date" id="sessionDate">
+                </div>
+                <div class="control-group">
+                    <button class="btn-primary" onclick="startNewSession()">Start New Session</button>
+                    <button class="btn-secondary" onclick="endSession()" id="logSessionBtn">📋 Log Practice</button>
+                    <button class="btn-secondary" onclick="openSaveDrillModal()" id="saveDrillBtn" style="display: none; background: #9C27B0; color: white;">💾 Save as Drill</button>
+                    <button class="btn-danger" onclick="deleteCurrentSession()" style="background: #f44336;">Delete Session</button>
+                </div>
+            </div>
+            <div id="currentSessionBanner" style="display: none;">
+                <div class="current-session-info">
+                    <div>
+                        <strong id="currentSessionName">Current Session</strong>
+                        <div style="font-size: 0.9em; opacity: 0.9;" id="currentSessionDetails"></div>
+                    </div>
+                    <div>
+                        <span id="currentSessionCount">0 shots</span>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: 1fr;">
+                <div class="stat-card">
+                    <div class="stat-label">Conversion</div>
+                    <div style="font-size: 14px; margin-top: 8px; text-align: left; padding: 0 10px;">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Total</span><span><span id="scoredShots" style="color: #4CAF50;">0</span>/<span id="totalShotsConv">0</span> (<span id="successRate">0%</span>)</span></div>
+                    </div>
+                    <div style="border-top: 1px solid #ddd; margin: 8px 10px 0 10px; padding-top: 8px; font-size: 12px; color: #666; display: flex; gap: 20px;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between;"><span>In-Play</span><span id="inPlayConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Dead Balls</span><span id="deadBallConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #eee;"><span>Right Foot</span><span id="rightFootConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Left Foot</span><span id="leftFootConv">0/0 (0%)</span></div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between;"><span>1 Pointer</span><span id="onePointerConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between;"><span>2 Pointer</span><span id="twoPointerConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Goal</span><span id="goalConv">0/0 (0%)</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pitch-container">
+                <div id="pitchTogglesRow1" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <div id="pitchTrackingModeToggle" class="compact-toggle-card" style="display: none;">
+                        <div class="toggle-label">Tracking Mode</div>
+                        <div class="toggle-options">
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchModeSingle" name="trackingMode" value="single" checked>
+                                <span>Single Shot</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchModeBatch" name="trackingMode" value="batch">
+                                <span>Batch Entry</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="compact-toggle-card">
+                        <div class="toggle-label">Kicking Foot</div>
+                        <div class="toggle-options">
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchFootRight" name="kickingFoot" value="right" checked>
+                                <span>Right</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchFootLeft" name="kickingFoot" value="left">
+                                <span>Left</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="compact-toggle-card">
+                        <div class="toggle-label">Shot</div>
+                        <div class="toggle-options">
+                            <label class="toggle-option">
+                                <input type="radio" id="shotTypeInPlay" name="shotCategory" value="in-play" checked onchange="updateShotTypeOptions()">
+                                <span>In-play</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" id="shotTypeFreeKick" name="shotCategory" value="free-kick" onchange="updateShotTypeOptions()">
+                                <span>Free-Kick</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" id="shotType45" name="shotCategory" value="45" onchange="updateShotTypeOptions()">
+                                <span>45</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="shotTypeDropdownContainer" class="compact-toggle-card">
+                        <div class="toggle-label">Shot Type</div>
+                        <div class="toggle-options">
+                            <select id="shotTypeDropdown" style="padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 12px;">
+                                <option value="not-defined">Not Defined</option>
+                                <option value="on-the-run">On the run</option>
+                                <option value="on-the-turn">On the turn</option>
+                                <option value="standing">Standing</option>
+                                <option value="off-a-dummy">Off a Dummy</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="pitchShotForToggle" class="compact-toggle-card" style="display: none;">
+                        <div class="toggle-label">Shot For</div>
+                        <div class="toggle-options">
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchShotForPoint" name="shotFor" value="point" checked>
+                                <span>Point</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" id="pitchShotForGoal" name="shotFor" value="goal">
+                                <span>Goal</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div id="pitchTogglesRow2" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <button class="btn-success" onclick="markLastShot('scored')" id="scoredBtn" disabled style="padding: 5px 15px; font-size: 12px;">✓ Scored</button>
+                    <button class="btn-danger" onclick="markLastShot('missed')" id="missedBtn" disabled style="padding: 5px 15px; font-size: 12px;">✗ Missed</button>
+                    <button class="btn-secondary" onclick="undoLastShot()" style="padding: 5px 15px; font-size: 12px;">↶ Undo</button>
+                </div>
+                <div class="pitch-wrapper" id="pitchWrapper">
+                    <svg id="pitch" viewBox="0 0 500 725" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="500" height="725" fill="#5a9d6f"/>
+                        <!-- Calculate positions based on 145m length:
+                             Pitch dimensions: 90m wide x 145m long
+                             Scale: 400 pixels width = 90m, so 1m ≈ 4.44 pixels
+                             Height: 145m × 4.44 = 644 pixels
+                             Start at y=40 to leave margin -->
+                        <rect x="25" y="40" width="400" height="644" fill="none" stroke="white" stroke-width="1.5"/>
+                        <line x1="25" y1="362" x2="425" y2="362" stroke="white" stroke-width="2.5" stroke-dasharray="10,5"/>
+                        <line x1="25" y1="98" x2="425" y2="98" stroke="white" stroke-width="1"/>
+                        <text x="435" y="103" fill="white" font-size="16" font-weight="bold">13m</text>
+                        <rect x="175" y="40" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="129" x2="425" y2="129" stroke="white" stroke-width="1"/>
+                        <text x="435" y="134" fill="white" font-size="16" font-weight="bold">20m</text>
+                        <path d="M 71 129 A 178 178 0 0 0 379 129" fill="none" stroke="white" stroke-width="1"/>
+                        <path d="M 167 129 A 58 58 0 0 0 283 129" fill="none" stroke="white" stroke-width="1"/>
+                        <circle cx="225" cy="89" r="3" fill="white"/>
+                        <line x1="25" y1="240" x2="425" y2="240" stroke="white" stroke-width="1"/>
+                        <text x="435" y="245" fill="white" font-size="16" font-weight="bold">45m</text>
+                        <line x1="25" y1="329" x2="425" y2="329" stroke="white" stroke-width="1"/>
+                        <text x="435" y="334" fill="white" font-size="16" font-weight="bold">65m</text>
+                        <line x1="25" y1="395" x2="425" y2="395" stroke="white" stroke-width="1"/>
+                        <text x="435" y="400" fill="white" font-size="16" font-weight="bold">65m</text>
+                        <line x1="25" y1="484" x2="425" y2="484" stroke="white" stroke-width="1"/>
+                        <text x="435" y="489" fill="white" font-size="16" font-weight="bold">45m</text>
+                        <path d="M 167 595 A 58 58 0 0 1 283 595" fill="none" stroke="white" stroke-width="1"/>
+                        <path d="M 71 595 A 178 178 0 0 1 379 595" fill="none" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="595" x2="425" y2="595" stroke="white" stroke-width="1"/>
+                        <text x="435" y="600" fill="white" font-size="16" font-weight="bold">20m</text>
+                        <line x1="25" y1="626" x2="425" y2="626" stroke="white" stroke-width="1"/>
+                        <text x="435" y="631" fill="white" font-size="16" font-weight="bold">13m</text>
+                        <rect x="175" y="626" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                        <circle cx="225" cy="635" r="3" fill="white"/>
+                        <line x1="195" y1="40" x2="255" y2="40" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="195" y1="684" x2="255" y2="684" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                        <circle cx="195" cy="40" r="3" fill="white"/>
+                        <circle cx="255" cy="40" r="3" fill="white"/>
+                        <circle cx="195" cy="684" r="3" fill="white"/>
+                        <circle cx="255" cy="684" r="3" fill="white"/>
+                    </svg>
+                    <div id="topHalfOverlay" class="half-indicator-overlay">
+                        <div style="font-size: 10px; margin-bottom: 6px; font-weight: bold;">Scoring Half:</div>
+                        <div class="half-toggle-group">
+                            <div class="half-radio-option">
+                                <input type="radio" name="topHalf" id="topHalf1st" onclick="selectHalfFromPitch('1st')">
+                                <label for="topHalf1st" onclick="selectHalfFromPitch('1st')">1st Half</label>
+                            </div>
+                            <div class="half-radio-option">
+                                <input type="radio" name="topHalf" id="topHalf2nd" onclick="selectHalfFromPitch('2nd')">
+                                <label for="topHalf2nd" onclick="selectHalfFromPitch('2nd')">2nd Half</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="bottomHalfOverlay" class="half-indicator-overlay">
+                        <div style="font-size: 10px; margin-bottom: 6px; font-weight: bold;">Scoring Half:</div>
+                        <div class="half-toggle-group">
+                            <div class="half-radio-option">
+                                <input type="radio" name="bottomHalf" id="bottomHalf1st" onclick="selectHalfFromPitch('2nd')">
+                                <label for="bottomHalf1st" onclick="selectHalfFromPitch('2nd')">1st Half</label>
+                            </div>
+                            <div class="half-radio-option">
+                                <input type="radio" name="bottomHalf" id="bottomHalf2nd" onclick="selectHalfFromPitch('1st')">
+                                <label for="bottomHalf2nd" onclick="selectHalfFromPitch('1st')">2nd Half</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="sessions-tab" class="tab-content">
+            <div class="sessions-list">
+                <h2 style="margin-bottom: 20px; color: #2a5298;">Session History</h2>
+                <div id="sessionsList"></div>
+            </div>
+        </div>
+        <div id="analytics-tab" class="tab-content">
+            <div class="tabs" style="margin-bottom: 20px;">
+                <button class="tab active" onclick="switchAnalyticsType('practice')" id="analyticsPracticeSubTab">🏋️ Practice</button>
+                <button class="tab" onclick="switchAnalyticsType('match')" id="analyticsMatchSubTab">⚽ Match</button>
+            </div>
+            <div class="stat-card" style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center; font-size: 11px;">
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;" id="dateRangeLabel">Date/Game Range:</label>
+                        <select id="dateRangeFilter" onchange="handleDateRangeChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 130px;">
+                            <option value="all">All Time</option>
+                            <option value="customSessions">Custom Game Range...</option>
+                            <option value="today">Today</option>
+                            <option value="last7">Last 7 Days</option>
+                            <option value="last30">Last 30 Days</option>
+                            <option value="thisMonth">This Month</option>
+                            <option value="lastMonth">Last Month</option>
+                            <option value="thisYear">This Year</option>
+                            <option value="custom">Custom Date Range...</option>
+                        </select>
+                    </div>
+                    <div id="customSessionContainer" style="display: none; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;" id="lastGamesLabel">Last</label>
+                        <select id="sessionCountFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 45px;">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                            <option value="16">16</option>
+                            <option value="17">17</option>
+                            <option value="18">18</option>
+                            <option value="19">19</option>
+                            <option value="20">20</option>
+                        </select>
+                        <label style="font-weight: 600; margin-left: 4px;" id="gamesLabel">Games</label>
+                    </div>
+                    <div id="customDateContainer" style="display: none; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">From:</label>
+                        <input type="date" id="dateFrom" onchange="applyAnalyticsFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
+                        <label style="font-weight: 600; margin: 0 4px;">To:</label>
+                        <input type="date" id="dateTo" onchange="applyAnalyticsFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
+                    </div>
+                    <div id="matchTypeFilterContainer" style="display: none; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Match Type:</label>
+                        <select id="matchTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 90px;">
+                            <option value="all">All</option>
+                            <option value="league">League</option>
+                            <option value="championship">Championship</option>
+                            <option value="challenge">Challenge</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Shot:</label>
+                        <select id="shotCategoryFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
+                            <option value="all">All</option>
+                            <option value="in-play">In-Play</option>
+                            <option value="free-kick">Free-Kick</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
+                    <div id="shotTypeFilterContainer" style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Shot Type:</label>
+                        <select id="shotTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 100px;">
+                            <option value="all">All</option>
+                            <option value="not-defined">Not Defined</option>
+                            <option value="on-the-run">On the run</option>
+                            <option value="on-the-turn">On the turn</option>
+                            <option value="standing">Standing</option>
+                            <option value="off-a-dummy">Off a Dummy</option>
+                            <option value="off-the-hands">Off The Hands</option>
+                            <option value="off-the-ground">Off The Ground</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Foot:</label>
+                        <select id="footFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 60px;">
+                            <option value="all">All</option>
+                            <option value="right">Right</option>
+                            <option value="left">Left</option>
+                        </select>
+                    </div>
+                    <div id="halfFilterContainer" style="display: none; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Half:</label>
+                        <select id="halfFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
+                            <option value="all">All</option>
+                            <option value="1st">1st Half</option>
+                            <option value="2nd">2nd Half</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div style="flex: 0 0 auto; min-width: 120px; background: #f8f9fa; border-radius: 10px; padding: 15px; text-align: center;">
+                        <div style="font-size: 14px; color: #666; text-transform: uppercase;" id="sessionsLabel">Sessions</div>
+                        <div style="font-size: 32px; font-weight: bold; color: #2a5298;" id="totalSessions">0</div>
+                    </div>
+                    <div style="flex: 1; min-width: 350px; background: #f8f9fa; border-radius: 10px; padding: 15px;">
+                        <div style="font-size: 14px; color: #666; text-transform: uppercase; text-align: center; margin-bottom: 10px;">Conversion</div>
+                        <div style="font-size: 14px; text-align: left; padding: 0 10px;">
+                            <div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Total</span><span style="color: #4CAF50;" id="analyticsConversionTotal">0/0 (0%)</span></div>
+                        </div>
+                        <div style="border-top: 1px solid #ddd; margin: 8px 10px 0 10px; padding-top: 8px; font-size: 12px; color: #666; display: flex; gap: 20px;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between;"><span>In-Play</span><span id="analyticsInPlayConv">0/0 (0%)</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Dead Balls</span><span id="analyticsDeadBallConv">0/0 (0%)</span></div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between;"><span>1 Pointer</span><span id="analyticsOnePointerConv">0/0 (0%)</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>2 Pointer</span><span id="analyticsTwoPointerConv">0/0 (0%)</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Goal</span><span id="analyticsGoalConv">0/0 (0%)</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="color: #2a5298; margin: 0;">Shot Map</h2>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="showZoneOverlay" onchange="toggleZoneOverlay()" style="width: 18px; height: 18px;">
+                        <span style="font-size: 14px;">Show Zones 1</span>
+                    </label>
+                </div>
+                <div class="pitch-wrapper" id="analyticsPitchWrapper" style="max-width: 600px; margin: 0 auto;">
+                    <svg id="analyticsPitch" viewBox="0 0 500 725" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="500" height="725" fill="#5a9d6f"/>
+                        <rect x="25" y="40" width="400" height="644" fill="none" stroke="white" stroke-width="1.5"/>
+                        <line x1="25" y1="362" x2="425" y2="362" stroke="white" stroke-width="2.5" stroke-dasharray="10,5"/>
+                        <line x1="25" y1="98" x2="425" y2="98" stroke="white" stroke-width="1"/>
+                        <rect x="175" y="40" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="129" x2="425" y2="129" stroke="white" stroke-width="1"/>
+                        <path d="M 71 129 A 178 178 0 0 0 379 129" fill="none" stroke="white" stroke-width="1"/>
+                        <path d="M 167 129 A 58 58 0 0 0 283 129" fill="none" stroke="white" stroke-width="1"/>
+                        <circle cx="225" cy="89" r="3" fill="white"/>
+                        <line x1="25" y1="240" x2="425" y2="240" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="329" x2="425" y2="329" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="395" x2="425" y2="395" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="484" x2="425" y2="484" stroke="white" stroke-width="1"/>
+                        <path d="M 167 595 A 58 58 0 0 1 283 595" fill="none" stroke="white" stroke-width="1"/>
+                        <path d="M 71 595 A 178 178 0 0 1 379 595" fill="none" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="595" x2="425" y2="595" stroke="white" stroke-width="1"/>
+                        <line x1="25" y1="626" x2="425" y2="626" stroke="white" stroke-width="1"/>
+                        <rect x="175" y="626" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                        <circle cx="225" cy="635" r="3" fill="white"/>
+                        <line x1="195" y1="40" x2="255" y2="40" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                        <line x1="195" y1="684" x2="255" y2="684" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                        <circle cx="195" cy="40" r="3" fill="white"/>
+                        <circle cx="255" cy="40" r="3" fill="white"/>
+                        <circle cx="195" cy="684" r="3" fill="white"/>
+                        <circle cx="255" cy="684" r="3" fill="white"/>
+                        <!-- Key coordinates:
+                             Goal line: y=40
+                             13m line: y=98
+                             20m line: y=129  
+                             45m line: y=240
+                             Left sideline: x=25
+                             Right sideline: x=425
+                             13m from left sideline: x=115
+                             13m from right sideline: x=335
+                             Goal center: (225, 40)
+                             40m arc radius: 178px (bottom at y=218, intersects 20m line at x=71 and x=379)
+                             35m arc radius: 156px (bottom at y=196, intersects 20m line at x=97 and x=353)
+                        -->
+                        <g id="zoneOverlays" style="display: none;">
+                            <rect x="25" y="240" width="400" height="122" fill="#9E9E9E" opacity="0.4" stroke="#000" stroke-width="1"/>
+                            <text x="225" y="305" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">1</text>
+                            <rect x="25" y="40" width="90" height="89" fill="#4CAF50" opacity="0.4" stroke="#000" stroke-width="1"/>
+                            <text x="70" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">7</text>
+                            <rect x="115" y="40" width="220" height="89" fill="#8BC34A" opacity="0.4" stroke="#000" stroke-width="1"/>
+                            <text x="225" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">8</text>
+                            <rect x="335" y="40" width="90" height="89" fill="#4CAF50" opacity="0.4" stroke="#000" stroke-width="1"/>
+                            <text x="380" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">9</text>
+                            <path d="M 97 129 L 97 129 A 156 156 0 0 0 353 129 L 353 129 Z" fill="#CDDC39" opacity="0.4" stroke="#000" stroke-width="1"/>
+                            <text x="225" y="165" text-anchor="middle" fill="black" font-size="20" font-weight="bold">6</text>
+                            <!-- Start at left 40m intersection (71,129), follow 40m arc outward to right (379,129), 
+                                 then follow 35m arc back inward to left (97,129), close -->
+                            <path d="M 71 129 A 178 178 0 0 0 379 129 L 353 129 A 156 156 0 0 1 97 129 Z" fill="#FF9800" opacity="0.5" stroke="#000" stroke-width="1"/>
+                            <text x="225" y="210" text-anchor="middle" fill="white" font-size="14" font-weight="bold">5</text>
+                            <path d="M 25 129 L 46 129 A 200 200 0 0 0 225 240 L 25 240 Z" fill="#1565C0" opacity="0.5" stroke="#000" stroke-width="1"/>
+                            <text x="50" y="200" text-anchor="middle" fill="white" font-size="14" font-weight="bold" stroke="#333" stroke-width="0.5">2</text>
+                            <!-- Start at left 40m intersection (71,129), follow 40m arc to right (379,129), 
+                                 line to 45m arc (404,129), follow 45m arc back to left (46,129), close -->
+                            <path d="M 71 129 A 178 178 0 0 0 379 129 L 404 129 A 200 200 0 0 1 46 129 Z" fill="#7B1FA2" opacity="0.5" stroke="#000" stroke-width="1"/>
+                            <text x="225" y="230" text-anchor="middle" fill="white" font-size="16" font-weight="bold" stroke="#333" stroke-width="0.5">3</text>
+                            <path d="M 225 240 A 200 200 0 0 0 404 129 L 425 129 L 425 240 Z" fill="#1565C0" opacity="0.5" stroke="#000" stroke-width="1"/>
+                            <text x="400" y="200" text-anchor="middle" fill="white" font-size="14" font-weight="bold" stroke="#333" stroke-width="0.5">4</text>
+                        </g>
+                    </svg>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <span style="margin-right: 20px;">⚪ Scored</span>
+                    <span>🔴 Missed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <h2 style="color: #2a5298; margin-bottom: 20px;">Performance by Zone</h2>
+                <div class="zone-stats" id="zoneStats"></div>
+            </div>
+        </div>
+        <div id="team-tab" class="tab-content">
+        <div class="controls">
+            <h2 style="color: #2a5298; margin-bottom: 20px;">👥 My Team</h2>
+            <div id="noTeamSection">
+                <p id="noTeamMessage" style="color: #666; margin-bottom: 20px;">You're not part of a team yet. Join an existing team or create one as a coach.</p>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 30px;">
+                    <button class="btn-primary" onclick="showJoinTeamModal()" id="joinTeamBtn">🎫 Join Team</button>
+                    <button class="btn-secondary" onclick="showCreateTeamModal()" id="createTeamBtn">➕ Create Team</button>
+                </div>
+            </div>
+            <div id="teamInfoSection" style="display: none;">
+                <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 id="teamClubName" style="margin-bottom: 5px;">Club Name</h3>
+                    <p id="teamDetails" style="opacity: 0.9; margin-bottom: 10px;">U-14 • 2026 Season</p>
+                    <p id="teamRole" style="font-size: 14px; opacity: 0.8;">👤 Player</p>
+                </div>
+                <div id="privacyToggleSection" style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>📊 Share Practice Data with Coach</strong>
+                            <p style="font-size: 13px; color: #666; margin-top: 5px;">When on, your coach can see your practice progress</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="shareWithCoachToggle" onchange="toggleShareWithCoach()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div id="inviteCodeSection" style="display: none; background: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <strong>🎫 Team Invite Code</strong>
+                    <p style="font-size: 13px; color: #666; margin-top: 5px;">Share this code with players to join your team</p>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <code id="teamInviteCode" style="font-size: 24px; font-weight: bold; background: white; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">------</code>
+                        <button class="btn-secondary" onclick="copyInviteCode()" style="padding: 10px;">📋 Copy</button>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3 style="color: #2a5298; margin-bottom: 15px;">Team Members</h3>
+                    <div id="teamMembersList"></div>
+                </div>
+                <div id="teamDrillsSection" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="color: #2a5298; margin: 0;">📋 Weekly Drills</h3>
+                        <button class="btn-primary" onclick="openAssignDrillModal()" style="padding: 8px 16px; font-size: 13px;">+ Assign Drill</button>
+                    </div>
+                    <div id="assignedDrillsList"></div>
+                </div>
+                <div id="playerDrillsSection" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <h3 style="color: #2a5298; margin-bottom: 15px;">🎯 My Practice Drills</h3>
+                    <div id="playerAssignedDrillsList"></div>
+                </div>
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <button class="btn-danger" onclick="leaveTeam()" style="width: auto;">Leave Team</button>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div> <!-- Close content-area -->
+        </div> <!-- Close main-layout -->
+    </div> <!-- Close app-content -->
+    <div id="joinTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">🎫 Join a Team</div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666;">Enter the 6-character invite code from your coach:</p>
+                <div class="auth-input-group">
+                    <input type="text" id="inviteCodeInput" placeholder="e.g. ABC123" maxlength="6" style="text-transform: uppercase; font-size: 20px; text-align: center; letter-spacing: 3px;">
+                </div>
+                <div id="joinTeamPreview" style="display: none; background: #e8f5e9; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                    <strong id="previewClubName">Club Name</strong>
+                    <p id="previewTeamDetails" style="color: #666; margin-top: 5px;">Team details</p>
+                </div>
+                <div id="joinTeamError" style="display: none; color: #c62828; margin-top: 10px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeJoinTeamModal()">Cancel</button>
+                <button class="btn-primary" id="joinTeamBtn" onclick="joinTeam()">Join Team</button>
+            </div>
+        </div>
+    </div>
+    <div id="createTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">➕ Create a Team</div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666;">Create a team to assign drills and track player progress.</p>
+                <div class="auth-input-group">
+                    <label for="createTeamCounty">County</label>
+                    <select id="createTeamCounty" onchange="updateCreateTeamClubs()">
+                        <option value="">Select county...</option>
+                    </select>
+                </div>
+                <div class="auth-input-group">
+                    <label for="createTeamClub">Club</label>
+                    <select id="createTeamClub">
+                        <option value="">Select county first...</option>
+                    </select>
+                </div>
+                <div class="auth-input-group">
+                    <label for="createTeamAgeGroup">Age Group</label>
+                    <select id="createTeamAgeGroup">
+                        <option value="">Select age group...</option>
+                        <option value="U-12">U-12</option>
+                        <option value="U-13">U-13</option>
+                        <option value="U-14">U-14</option>
+                        <option value="U-15">U-15</option>
+                        <option value="U-16">U-16</option>
+                        <option value="U-17">U-17</option>
+                        <option value="U-18">U-18</option>
+                        <option value="U-19">U-19</option>
+                        <option value="U-20">U-20</option>
+                        <option value="U-21">U-21</option>
+                        <option value="Minor">Minor</option>
+                        <option value="Junior">Junior</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Senior">Senior</option>
+                    </select>
+                </div>
+                <div class="auth-input-group">
+                    <label for="createTeamName">Team Name (optional)</label>
+                    <input type="text" id="createTeamName" placeholder="e.g. Boys A, Girls B">
+                </div>
+                <div id="createTeamError" style="display: none; color: #c62828; margin-top: 10px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeCreateTeamModal()">Cancel</button>
+                <button class="btn-primary" onclick="createTeam()">Create Team</button>
+            </div>
+        </div>
+    </div>
+    <div id="assignDrillModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">📋 Assign Drill to Team</div>
+            <div class="modal-body">
+                <div class="auth-input-group">
+                    <label for="drillTypeSelect">Drill Type</label>
+                    <select id="drillTypeSelect" onchange="updateDrillOptions()">
+                        <option value="scoring-zones">Scoring Zones</option>
+                    </select>
+                </div>
+                <div id="drillOptionsContainer" style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                        <div style="flex: 1; min-width: 100px;">
+                            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Distance</label>
+                            <select id="assignDrillDistance" style="width: 100%; padding: 6px; border-radius: 5px; border: 1px solid #ccc;">
+                                <option value="15">15m</option>
+                                <option value="17">17m</option>
+                                <option value="20" selected>20m</option>
+                                <option value="24">24m</option>
+                                <option value="30">30m</option>
+                                <option value="35">35m</option>
+                                <option value="40">40m</option>
+                                <option value="45">45m</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 100px;">
+                            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Shot Type</label>
+                            <select id="assignDrillShotType" style="width: 100%; padding: 6px; border-radius: 5px; border: 1px solid #ccc;">
+                                <option value="standing">Standing</option>
+                                <option value="free-kick">Free-Kick</option>
+                                <option value="on-the-run">On the Run</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 100px;">
+                            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Foot</label>
+                            <select id="assignDrillFoot" style="width: 100%; padding: 6px; border-radius: 5px; border: 1px solid #ccc;">
+                                <option value="right">Right Only</option>
+                                <option value="left">Left Only</option>
+                                <option value="both">Both Feet</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 100px;">
+                            <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Total Shots</label>
+                            <select id="assignDrillTotalShots" style="width: 100%; padding: 6px; border-radius: 5px; border: 1px solid #ccc;">
+                                <option value="10">10 shots</option>
+                                <option value="20" selected>20 shots</option>
+                                <option value="30">30 shots</option>
+                                <option value="40">40 shots</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="auth-input-group">
+                    <label for="drillAvailableFor">Available For</label>
+                    <select id="drillAvailableFor" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                        <option value="7">1 Week</option>
+                        <option value="14" selected>2 Weeks</option>
+                        <option value="21">3 Weeks</option>
+                        <option value="30">1 Month</option>
+                        <option value="60">2 Months</option>
+                        <option value="0">No Expiry</option>
+                    </select>
+                    <span style="font-size: 11px; color: #666;">How long the drill will appear for players</span>
+                </div>
+                <div class="auth-input-group">
+                    <label for="drillTarget">Target Score (optional)</label>
+                    <input type="number" id="drillTarget" placeholder="e.g. 80" min="0" max="100" style="width: 100%;">
+                    <span style="font-size: 11px; color: #666;">Target percentage to achieve (e.g. 80 for 80%)</span>
+                </div>
+                <div class="auth-input-group">
+                    <label for="drillNotes">Notes (optional)</label>
+                    <textarea id="drillNotes" placeholder="Any additional instructions..." rows="2" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; resize: vertical;"></textarea>
+                </div>
+                <div id="assignDrillError" style="display: none; color: #c62828; margin-top: 10px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeAssignDrillModal()">Cancel</button>
+                <button class="btn-primary" onclick="assignDrill()">Assign to Team</button>
+            </div>
+        </div>
+    </div>
+    <div id="batchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Enter Shots from This Spot</div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                    <strong>Left Foot</strong>
+                    <div class="input-group" style="margin-top: 8px;">
+                        <label>Total shots:</label>
+                        <input type="number" id="leftTotalInput" min="0" max="50" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Shots scored:</label>
+                        <input type="number" id="leftScoredInput" min="0" max="50" value="0">
+                    </div>
+                </div>
+                <div style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                    <strong>Right Foot</strong>
+                    <div class="input-group" style="margin-top: 8px;">
+                        <label>Total shots:</label>
+                        <input type="number" id="rightTotalInput" min="0" max="50" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Shots scored:</label>
+                        <input type="number" id="rightScoredInput" min="0" max="50" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeBatchModal()">Cancel</button>
+                <button class="btn-primary" onclick="confirmBatchShots()">Add Shots</button>
+            </div>
+        </div>
+    </div>
+    <div id="drillDescriptionModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="drillDescriptionTitle">Drill Instructions</span>
+                <button onclick="closeDrillDescriptionModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div class="modal-body" id="drillDescriptionContent" style="max-height: 60vh; overflow-y: auto; line-height: 1.6;">
+            </div>
+            <div id="drillVideoContainer" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                <a id="drillVideoLink" href="#" target="_blank" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                    🎬 Watch Video Tutorial
+                </a>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn-primary" onclick="closeDrillDescriptionModal()" style="width: 100%;">Got it!</button>
+            </div>
+        </div>
+    </div>
+    <div id="saveDrillModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>💾 Save as Custom Drill</span>
+                <button onclick="closeSaveDrillModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #666; margin-bottom: 15px;">Save your current shot positions as a reusable practice drill.</p>
+                <div id="saveDrillError" style="display: none; background: #ffebee; color: #c62828; padding: 10px; border-radius: 6px; margin-bottom: 15px;"></div>
+                <div class="auth-input-group">
+                    <label>Drill Name *</label>
+                    <input type="text" id="customDrillName" placeholder="e.g., Wing Scoring Practice">
+                </div>
+                <div class="auth-input-group">
+                    <label>Description</label>
+                    <textarea id="customDrillDescription" placeholder="Describe what this drill focuses on..." style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                </div>
+                <div class="auth-input-group">
+                    <label>Shots per spot</label>
+                    <select id="customDrillShotsPerSpot" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <option value="4">4 shots</option>
+                        <option value="5">5 shots</option>
+                        <option value="6">6 shots</option>
+                        <option value="8">8 shots</option>
+                        <option value="10">10 shots</option>
+                    </select>
+                </div>
+                <div id="saveDrillPreview" style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-top: 15px;">
+                    <strong style="color: #2a5298;">Preview:</strong>
+                    <div id="saveDrillSpotCount" style="margin-top: 5px; color: #666;"></div>
+                </div>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="closeSaveDrillModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveCustomDrill()" style="background: #9C27B0;">Save Drill</button>
+            </div>
+        </div>
+    </div>
+    <div id="profileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">👤 My Profile</div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #2a5298; margin-bottom: 10px;">Account</h4>
+                    <div class="auth-input-group">
+                        <label>Email</label>
+                        <input type="email" id="profileEmail" disabled style="background: #f5f5f5;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #2a5298; margin-bottom: 10px;">Personal Information</h4>
+                    <div class="auth-input-group">
+                        <label for="profileName">Name</label>
+                        <input type="text" id="profileName" placeholder="Your name">
+                    </div>
+                    <div class="auth-input-group">
+                        <label for="profileDOB">Date of Birth</label>
+                        <input type="date" id="profileDOB">
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #2a5298; margin-bottom: 10px;">Club Information</h4>
+                    <div class="auth-input-group">
+                        <label for="profileCounty">County</label>
+                        <select id="profileCounty" onchange="updateProfileClubDropdown()">
+                            <option value="">Select your county...</option>
+                        </select>
+                    </div>
+                    <div class="auth-input-group">
+                        <label for="profileClub">Club</label>
+                        <select id="profileClub">
+                            <option value="">Select county first...</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #2a5298; margin-bottom: 10px;">Position</h4>
+                    <div class="auth-input-group">
+                        <label for="profilePrimaryPosition">Role / Position</label>
+                        <select id="profilePrimaryPosition" onchange="handleProfilePositionChange()">
+                            <option value="">Select role/position...</option>
+                            <option value="Coach/Manager">Coach / Manager</option>
+                            <option value="Goalkeeper">Goalkeeper</option>
+                            <option value="Full Back Line">Full Back Line</option>
+                            <option value="Wing Back">Wing Back</option>
+                            <option value="Centre Back">Centre Back</option>
+                            <option value="Midfield">Midfield</option>
+                            <option value="Wing Forward">Wing Forward</option>
+                            <option value="Centre Forward">Centre Forward</option>
+                            <option value="Full Forward Line">Full Forward Line</option>
+                        </select>
+                    </div>
+                    <div class="auth-input-group" id="profileSecondaryPositionGroup">
+                        <label for="profileSecondaryPosition">Secondary Position</label>
+                        <select id="profileSecondaryPosition">
+                            <option value="">Select position...</option>
+                            <option value="None">None</option>
+                            <option value="Goalkeeper">Goalkeeper</option>
+                            <option value="Full Back Line">Full Back Line</option>
+                            <option value="Wing Back">Wing Back</option>
+                            <option value="Centre Back">Centre Back</option>
+                            <option value="Midfield">Midfield</option>
+                            <option value="Wing Forward">Wing Forward</option>
+                            <option value="Centre Forward">Centre Forward</option>
+                            <option value="Full Forward Line">Full Forward Line</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                    <h4 style="color: #2a5298; margin-bottom: 10px;">Change Password</h4>
+                    <div class="auth-input-group">
+                        <label for="profileNewPassword">New Password</label>
+                        <input type="password" id="profileNewPassword" placeholder="Enter new password (min 6 characters)">
+                    </div>
+                    <div class="auth-input-group">
+                        <label for="profileConfirmPassword">Confirm New Password</label>
+                        <input type="password" id="profileConfirmPassword" placeholder="Confirm new password">
+                    </div>
+                    <button class="btn-secondary" onclick="changePassword()" style="margin-top: 10px;">Update Password</button>
+                </div>
+                <div id="profileError" style="display: none; color: #c62828; margin-top: 15px;"></div>
+                <div id="profileSuccess" style="display: none; color: #2e7d32; margin-top: 15px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeProfileModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/clubData.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/sync.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/team.js"></script>
+    <script src="js/sessions.js"></script>
+    <script src="js/pitch.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/drills.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

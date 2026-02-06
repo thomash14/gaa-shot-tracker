@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\OWNER\\\\Dropbox\\\\GAA Project\\\\App Coding\\\\js\"\" 2>&1 || echo \"DIRECTORY_NOT_FOUND \")",
+      "Bash({ sed -n '4216,4232p' \"C:/Users/OWNER/Dropbox/GAA Project/App Coding/app.js\")",
+      "Bash(})",
+      "Bash(dir \"C:\\\\Users\\\\OWNER\\\\Dropbox\\\\GAA Project\\\\App Coding\\\\js\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
