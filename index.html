@@ -6,14 +6,14 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>GAA Shot Tracker</title>
+    <title>Kick On</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <div class="app-header">
-            <h1>⚽ GAA Shot Tracker</h1>
+            <h1>⚽ Kick On</h1>
             <div class="user-header" id="userHeader" style="display: none;">
                 <button class="profile-avatar" onclick="toggleProfileMenu()" id="profileAvatar">
                     <span id="avatarInitials">TH</span>
@@ -241,7 +241,7 @@
                         <h2 style="color: #2a5298; margin-bottom: 20px;">📊 Dashboard</h2>
                         <div id="assignedDrillsSection" class="recent-session-card" style="display: none; margin-bottom: 20px; border-left: 4px solid #4CAF50;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h3 style="color: #2a5298; margin: 0;">🎯 Ready to Practice</h3>
+                                <h3 style="color: #2a5298; margin: 0;">🎯 Ready to Improve?</h3>
                                 <span id="assignedDrillsCount" style="background: #4CAF50; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">0 to do</span>
                             </div>
                             <div id="assignedDrillsList">
@@ -328,16 +328,22 @@
                 <input type="radio" id="half1st" name="matchHalf" value="1st" checked>
                 <input type="radio" id="half2nd" name="matchHalf" value="2nd">
             </div>
-            <div class="controls">
+            <div id="viewSessionHeader" style="display:none; padding:12px 16px; margin-bottom:12px; background:#f0f4f8; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div id="viewSessionTitle" style="font-size:16px; font-weight:bold; color:#2a5298;"></div>
+                    <div id="viewSessionDate" style="font-size:14px; color:#666;"></div>
+                </div>
+            </div>
+            <div id="sessionControls" class="controls">
                 <div class="control-group">
-                    <label id="matchTypeLabel" style="display: none;">Match Type:</label>
+                    <label id="matchTypeLabel" style="display: none;">Competition:</label>
                     <select id="matchType" style="display: none;">
                         <option value="league">League</option>
                         <option value="championship">Championship</option>
                         <option value="challenge">Challenge</option>
                         <option value="custom">Custom...</option>
                     </select>
-                    <input type="text" id="customMatchType" placeholder="Enter custom match type" style="display: none;">
+                    <input type="text" id="customMatchType" placeholder="Enter custom competition" style="display: none;">
                     <label id="sessionNameLabel">Session Name:</label>
                     <input type="text" id="sessionName" placeholder="e.g., Training - Monday Evening">
                     <label>Date:</label>
@@ -361,7 +367,7 @@
                     </div>
                 </div>
             </div>
-            <div class="stats-grid" style="grid-template-columns: 1fr;">
+            <div id="activeSessionStats" class="stats-grid" style="grid-template-columns: 1fr;">
                 <div class="stat-card">
                     <div class="stat-label">Conversion</div>
                     <div style="font-size: 14px; margin-top: 8px; text-align: left; padding: 0 10px;">
@@ -370,7 +376,7 @@
                     <div style="border-top: 1px solid #ddd; margin: 8px 10px 0 10px; padding-top: 8px; font-size: 12px; color: #666; display: flex; gap: 20px;">
                         <div style="flex: 1;">
                             <div style="display: flex; justify-content: space-between;"><span>In-Play</span><span id="inPlayConv">0/0 (0%)</span></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Dead Balls</span><span id="deadBallConv">0/0 (0%)</span></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Placed Balls</span><span id="deadBallConv">0/0 (0%)</span></div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #eee;"><span>Right Foot</span><span id="rightFootConv">0/0 (0%)</span></div>
                             <div style="display: flex; justify-content: space-between;"><span>Left Foot</span><span id="leftFootConv">0/0 (0%)</span></div>
                         </div>
@@ -382,6 +388,7 @@
                     </div>
                 </div>
             </div>
+            <div id="viewSessionStatsPanel" style="display: none;"></div>
             <div class="pitch-container">
                 <div id="pitchTogglesRow1" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
                     <div id="pitchTrackingModeToggle" class="compact-toggle-card" style="display: none;">
@@ -397,7 +404,7 @@
                             </label>
                         </div>
                     </div>
-                    <div class="compact-toggle-card">
+                    <div class="compact-toggle-card" id="kickingFootCard">
                         <div class="toggle-label">Kicking Foot</div>
                         <div class="toggle-options">
                             <label class="toggle-option">
@@ -432,10 +439,12 @@
                         <div class="toggle-options">
                             <select id="shotTypeDropdown" style="padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 12px;">
                                 <option value="not-defined">Not Defined</option>
+                                <option value="outside-of-the-boot">Outside Of The Boot</option>
                                 <option value="on-the-run">On the run</option>
                                 <option value="on-the-turn">On the turn</option>
                                 <option value="standing">Standing</option>
                                 <option value="off-a-dummy">Off a Dummy</option>
+                                <option value="fisted">Fisted</option>
                             </select>
                         </div>
                     </div>
@@ -455,7 +464,7 @@
                 </div>
                 <div id="pitchTogglesRow2" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
                     <button class="btn-success" onclick="markLastShot('scored')" id="scoredBtn" disabled style="padding: 5px 15px; font-size: 12px;">✓ Scored</button>
-                    <button class="btn-danger" onclick="markLastShot('missed')" id="missedBtn" disabled style="padding: 5px 15px; font-size: 12px;">✗ Missed</button>
+                    <button class="btn-danger" id="missedBtn" disabled style="padding: 5px 15px; font-size: 12px;">✗ Missed</button>
                     <button class="btn-secondary" onclick="undoLastShot()" style="padding: 5px 15px; font-size: 12px;">↶ Undo</button>
                 </div>
                 <div class="pitch-wrapper" id="pitchWrapper">
@@ -530,7 +539,12 @@
         </div>
         <div id="sessions-tab" class="tab-content">
             <div class="sessions-list">
-                <h2 style="margin-bottom: 20px; color: #2a5298;">Session History</h2>
+                <h2 style="margin-bottom: 15px; color: #2a5298;">Session History</h2>
+                <div class="tabs" style="margin-bottom: 15px;">
+                    <button class="tab active" onclick="filterSessions('all')" id="sessionsFilterAll">All</button>
+                    <button class="tab" onclick="filterSessions('match')" id="sessionsFilterMatch">⚽ Matches</button>
+                    <button class="tab" onclick="filterSessions('practice')" id="sessionsFilterPractice">🏋️ Practice</button>
+                </div>
                 <div id="sessionsList"></div>
             </div>
         </div>
@@ -588,12 +602,20 @@
                         <input type="date" id="dateTo" onchange="applyAnalyticsFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
                     </div>
                     <div id="matchTypeFilterContainer" style="display: none; align-items: center;">
-                        <label style="font-weight: 600; margin-right: 4px;">Match Type:</label>
+                        <label style="font-weight: 600; margin-right: 4px;">Competition:</label>
                         <select id="matchTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 90px;">
                             <option value="all">All</option>
                             <option value="league">League</option>
                             <option value="championship">Championship</option>
                             <option value="challenge">Challenge</option>
+                        </select>
+                    </div>
+                    <div id="drillFilterContainer" style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Drill:</label>
+                        <select id="drillFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 120px;">
+                            <option value="all">All</option>
+                            <option value="free">Free Practice</option>
+                            <option value="scoring-zones">Scoring Zones</option>
                         </select>
                     </div>
                     <div style="display: flex; align-items: center;">
@@ -610,6 +632,7 @@
                         <select id="shotTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 100px;">
                             <option value="all">All</option>
                             <option value="not-defined">Not Defined</option>
+                            <option value="outside-of-the-boot">Outside Of The Boot</option>
                             <option value="on-the-run">On the run</option>
                             <option value="on-the-turn">On the turn</option>
                             <option value="standing">Standing</option>
@@ -634,6 +657,37 @@
                             <option value="2nd">2nd Half</option>
                         </select>
                     </div>
+                    <div id="windDirectionFilterContainer" style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Wind:</label>
+                        <select id="windDirectionFilter" onchange="handleWindDirectionFilterChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 110px;">
+                            <option value="all">All</option>
+                            <option value="no-wind">No wind</option>
+                            <optgroup label="With">
+                                <option value="straight-with">Straight with</option>
+                                <option value="diag-lr-with">Diag L-R with</option>
+                                <option value="diag-rl-with">Diag R-L with</option>
+                            </optgroup>
+                            <optgroup label="Against">
+                                <option value="straight-against">Straight against</option>
+                                <option value="diag-lr-against">Diag L-R against</option>
+                                <option value="diag-rl-against">Diag R-L against</option>
+                            </optgroup>
+                            <optgroup label="Cross">
+                                <option value="cross-lr">Cross L-R</option>
+                                <option value="cross-rl">Cross R-L</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div id="windStrengthFilterContainer" style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Strength:</label>
+                        <select id="windStrengthFilter" onchange="applyAnalyticsFilters()" disabled style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 80px;">
+                            <option value="all">All</option>
+                            <option value="light">Light</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="strong">Strong</option>
+                            <option value="very-strong">Very Strong</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
                     <div style="flex: 0 0 auto; min-width: 120px; background: #f8f9fa; border-radius: 10px; padding: 15px; text-align: center;">
@@ -648,7 +702,7 @@
                         <div style="border-top: 1px solid #ddd; margin: 8px 10px 0 10px; padding-top: 8px; font-size: 12px; color: #666; display: flex; gap: 20px;">
                             <div style="flex: 1;">
                                 <div style="display: flex; justify-content: space-between;"><span>In-Play</span><span id="analyticsInPlayConv">0/0 (0%)</span></div>
-                                <div style="display: flex; justify-content: space-between;"><span>Dead Balls</span><span id="analyticsDeadBallConv">0/0 (0%)</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Placed Balls</span><span id="analyticsDeadBallConv">0/0 (0%)</span></div>
                             </div>
                             <div style="flex: 1;">
                                 <div style="display: flex; justify-content: space-between;"><span>1 Pointer</span><span id="analyticsOnePointerConv">0/0 (0%)</span></div>
@@ -658,6 +712,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="stat-card" style="margin-bottom: 20px;">
+                <h2 style="color: #2a5298; margin-bottom: 15px;" id="statsTableHeading">Session Breakdown</h2>
+                <div class="stats-table-scroll" id="statsTableContainer"></div>
             </div>
             <div class="stat-card" style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -985,6 +1043,98 @@
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeBatchModal()">Cancel</button>
                 <button class="btn-primary" onclick="confirmBatchShots()">Add Shots</button>
+            </div>
+        </div>
+    </div>
+    <div id="missDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">Miss Details</div>
+            <div class="modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="missResultSelect" style="font-weight: bold; margin-bottom: 5px; display: block;">Result</label>
+                    <select id="missResultSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="">Not Defined</option>
+                        <option value="short">Short</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="wide-left">Wide left</option>
+                        <option value="wide-right">Wide right</option>
+                        <option value="post">Post</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="missReasonSelect" style="font-weight: bold; margin-bottom: 5px; display: block;">Reason</label>
+                    <select id="missReasonSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;" onchange="toggleCustomMissReason()">
+                        <option value="">Not Defined</option>
+                        <option value="pulled">Pulled</option>
+                        <option value="rushed">Rushed</option>
+                        <option value="bad-connection">Bad connection</option>
+                        <option value="outside-range">Outside of range</option>
+                        <option value="at-limits">At limits of range</option>
+                        <option value="other">Other...</option>
+                    </select>
+                    <input type="text" id="missReasonCustom" placeholder="Enter custom reason..." style="display: none; width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-top: 8px;">
+                </div>
+                <div class="input-group">
+                    <label for="missCommentInput" style="font-weight: bold; margin-bottom: 5px; display: block;">Comment</label>
+                    <input type="text" id="missCommentInput" placeholder="Optional notes..." style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeMissDetailsModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveMissDetails()">Save</button>
+            </div>
+        </div>
+    </div>
+    <div id="sessionNotesModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">📝 Session Notes</div>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: #999; margin: 0 0 12px 0;">All fields are optional</p>
+                <div class="auth-input-group">
+                    <label for="sessionNotesText">Comments</label>
+                    <textarea id="sessionNotesText" maxlength="500" placeholder="Any notes about this session..." rows="3" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+                </div>
+                <div class="auth-input-group">
+                    <label for="sessionDidWell">1 Thing You Did Well</label>
+                    <input type="text" id="sessionDidWell" placeholder="e.g., Consistent striking from the left">
+                </div>
+                <div class="auth-input-group">
+                    <label for="sessionToImprove">1 Thing To Improve</label>
+                    <input type="text" id="sessionToImprove" placeholder="e.g., Accuracy under pressure from distance">
+                </div>
+                <div class="auth-input-group">
+                    <label for="sessionWindDirection">Wind Direction (in relation to the top goals)</label>
+                    <select id="sessionWindDirection" onchange="handleSessionWindDirectionChange()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="no-wind">No wind</option>
+                        <optgroup label="With">
+                            <option value="straight-with">Straight with</option>
+                            <option value="diag-lr-with">Diagonal left to right with</option>
+                            <option value="diag-rl-with">Diagonal right to left with</option>
+                        </optgroup>
+                        <optgroup label="Against">
+                            <option value="straight-against">Straight against</option>
+                            <option value="diag-lr-against">Diagonal left to right against</option>
+                            <option value="diag-rl-against">Diagonal right to left against</option>
+                        </optgroup>
+                        <optgroup label="Cross">
+                            <option value="cross-lr">Cross left to right</option>
+                            <option value="cross-rl">Cross right to left</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="auth-input-group" id="sessionWindStrengthGroup" style="display: none;">
+                    <label for="sessionWindStrength">Wind Strength</label>
+                    <select id="sessionWindStrength" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="light">Light</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="strong">Strong</option>
+                        <option value="very-strong">Very Strong</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="cancelSessionNotes()">Cancel</button>
+                <button class="btn-primary" onclick="saveSessionWithNotes()">Save Session</button>
             </div>
         </div>
     </div>

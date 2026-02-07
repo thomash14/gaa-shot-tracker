@@ -140,6 +140,12 @@ function applyAnalyticsFilters() {
     displayAnalytics();
 }
 function displayAnalytics() {
+    if (currentAnalyticsType === 'practice') {
+        document.getElementById('drillFilterContainer').style.display = 'flex';
+        populateDrillFilter();
+    } else {
+        document.getElementById('drillFilterContainer').style.display = 'none';
+    }
     const { startDate, endDate, sessionLimit } = getDateRangeFilter();
     let filteredSessions = sessions.filter(s => s.type === currentAnalyticsType);
     if (sessionLimit) {
@@ -165,7 +171,9 @@ function displayAnalytics() {
     })));
     allShots = filteredSessions.flatMap(s => s.shots.map(shot => ({
         ...shot,
-        matchType: s.matchType
+        matchType: s.matchType,
+        windDirection: s.windDirection || null,
+        windStrength: s.windStrength || null
     })));
     const matchTypeFilterContainer = document.getElementById('matchTypeFilterContainer');
     const matchTypeFilterEl = document.getElementById('matchTypeFilter');
@@ -190,6 +198,9 @@ function displayAnalytics() {
     if (matchTypeFilter !== 'all' && currentAnalyticsType === 'match') {
         allShots = allShots.filter(s => s.matchType === matchTypeFilter);
     }
+    if (currentAnalyticsType === 'practice') {
+        allShots = applyDrillFilter(allShots);
+    }
     const shotCategoryFilter = document.getElementById('shotCategoryFilter').value;
     if (shotCategoryFilter !== 'all') {
         allShots = allShots.filter(s => s.shotCategory === shotCategoryFilter);
@@ -205,6 +216,14 @@ function displayAnalytics() {
     const halfFilter = document.getElementById('halfFilter').value;
     if (halfFilter !== 'all') {
         allShots = allShots.filter(s => s.half === halfFilter);
+    }
+    const windDirFilter = document.getElementById('windDirectionFilter').value;
+    if (windDirFilter !== 'all') {
+        allShots = allShots.filter(s => s.windDirection === windDirFilter);
+    }
+    const windStrFilter = document.getElementById('windStrengthFilter').value;
+    if (windStrFilter !== 'all') {
+        allShots = allShots.filter(s => s.windStrength === windStrFilter);
     }
     const totalShots = allShots.length;
     const scored = allShots.filter(s => s.result === 'scored').length;
@@ -237,6 +256,7 @@ function displayAnalytics() {
     document.getElementById('totalSessions').textContent = filteredSessions.length;
     document.getElementById('sessionsLabel').textContent = currentAnalyticsType === 'match' ? 'Matches' : 'Sessions';
     renderShotMapWithFilters();
+    renderStatsTable(filteredSessions);
     const zones = {};
     allShots.forEach(shot => {
         const zoneInfo = getZone(shot.x, shot.y);
@@ -373,16 +393,25 @@ function switchAnalyticsType(type) {
         customSessionsOption.textContent = type === 'match' ? 'Custom Game Range...' : 'Custom Practice Range...';
     }
     document.getElementById('halfFilterContainer').style.display = type === 'match' ? 'flex' : 'none';
+    document.getElementById('drillFilterContainer').style.display = type === 'practice' ? 'flex' : 'none';
     document.getElementById('footFilter').value = 'all';
     document.getElementById('halfFilter').value = 'all';
     document.getElementById('shotCategoryFilter').value = 'all';
     document.getElementById('shotTypeFilter').value = 'all';
     document.getElementById('matchTypeFilter').value = 'all';
+    document.getElementById('drillFilter').value = 'all';
+    document.getElementById('windDirectionFilter').value = 'all';
+    document.getElementById('windStrengthFilter').value = 'all';
+    document.getElementById('windStrengthFilter').disabled = true;
+    document.getElementById('windDirectionFilterContainer').style.display = 'flex';
+    document.getElementById('windStrengthFilterContainer').style.display = 'flex';
+    if (type === 'practice') populateDrillFilter();
     displayAnalytics();
 }
 function renderShotMapWithFilters() {
+    hideShotTooltip();
     const wrapper = document.getElementById('analyticsPitchWrapper');
-    wrapper.querySelectorAll('.analytics-shot-marker, .analytics-batch-label').forEach(m => m.remove());
+    wrapper.querySelectorAll('.analytics-shot-marker, .shot-tooltip').forEach(m => m.remove());
     const { startDate, endDate } = getDateRangeFilter();
     let filteredSessions = sessions.filter(s => s.type === currentAnalyticsType);
     if (startDate || endDate) {
@@ -402,11 +431,16 @@ function renderShotMapWithFilters() {
     let allShots = filteredSessions.flatMap(s => (s.shots || []).map(shot => ({
         ...shot,
         sessionType: s.type,
-        matchType: s.matchType
+        matchType: s.matchType,
+        windDirection: s.windDirection || null,
+        windStrength: s.windStrength || null
     })));
     const matchTypeFilter = document.getElementById('matchTypeFilter').value;
     if (matchTypeFilter !== 'all' && currentAnalyticsType === 'match') {
         allShots = allShots.filter(s => s.matchType === matchTypeFilter);
+    }
+    if (currentAnalyticsType === 'practice') {
+        allShots = applyDrillFilter(allShots);
     }
     const shotCategoryFilter = document.getElementById('shotCategoryFilter').value;
     if (shotCategoryFilter !== 'all') {
@@ -428,13 +462,20 @@ function renderShotMapWithFilters() {
     } else if (halfFilter === '2nd') {
         allShots = allShots.filter(s => s.half === '2nd');
     }
+    const windDirFilter = document.getElementById('windDirectionFilter').value;
+    if (windDirFilter !== 'all') {
+        allShots = allShots.filter(s => s.windDirection === windDirFilter);
+    }
+    const windStrFilter = document.getElementById('windStrengthFilter').value;
+    if (windStrFilter !== 'all') {
+        allShots = allShots.filter(s => s.windStrength === windStrFilter);
+    }
     // Pitch boundaries as % of SVG (viewBox 0-500 x 0-725, pitch rect x=25..425 y=40..684)
     const PITCH_X_MIN = 25 / 500 * 100;   // 5%
     const PITCH_X_MAX = 425 / 500 * 100;   // 85%
     const PITCH_Y_MIN = 40 / 725 * 100;    // 5.52%
     const PITCH_Y_MAX = 684 / 725 * 100;   // 94.34%
-    const locationMap = new Map();
-    allShots.forEach((shot, i) => {
+    allShots.forEach((shot) => {
         const needsMirror = shot.y >= 50;
         let displayX = shot.x;
         let displayY = shot.y;
@@ -442,81 +483,24 @@ function renderShotMapWithFilters() {
             displayY = PITCH_Y_MIN + PITCH_Y_MAX - shot.y;
             displayX = PITCH_X_MIN + PITCH_X_MAX - shot.x;
         }
-        const key = `${displayX.toFixed(1)}-${displayY.toFixed(1)}`;
-        if (!locationMap.has(key)) {
-            locationMap.set(key, { 
-                x: displayX, 
-                y: displayY, 
-                scored: 0, 
-                total: 0,
-                shotFor: shot.shotFor,
-                foot: shot.foot,
-                distance: shot.distance
-            });
-        }
-        const loc = locationMap.get(key);
-        loc.total++;
-        if (shot.result === 'scored') loc.scored++;
-    });
-    locationMap.forEach((loc, key) => {
+        const isScored = shot.result === 'scored';
+        const isGoal = shot.shotFor === 'goal';
+        const size = 12;
         const marker = document.createElement('div');
         marker.className = 'analytics-shot-marker';
         marker.style.position = 'absolute';
-        marker.style.left = loc.x + '%';
-        marker.style.top = loc.y + '%';
+        marker.style.left = displayX + '%';
+        marker.style.top = displayY + '%';
         marker.style.transform = 'translate(-50%, -50%)';
         marker.style.zIndex = '3';
         marker.style.cursor = 'pointer';
-        
-        const isGoal = loc.shotFor === 'goal';
-        
-        if (loc.total > 1) {
-            // Batch marker
-            const size = 20;
-            marker.style.width = size + 'px';
-            marker.style.height = size + 'px';
-            marker.style.borderRadius = '50%';
-            marker.style.border = '2px solid #333';
-            
-            if (loc.scored === loc.total) {
-                marker.style.background = 'white';
-            } else if (loc.scored === 0) {
-                marker.style.background = '#f44336';
-            } else {
-                marker.style.background = 'linear-gradient(135deg, #4CAF50 50%, #f44336 50%)';
-            }
-            
-            // Add count label below
-            const labelContainer = document.createElement('div');
-            labelContainer.className = 'analytics-batch-label';
-            labelContainer.style.cssText = `position:absolute;left:${loc.x}%;top:calc(${loc.y}% + 12px);transform:translateX(-50%);z-index:3;pointer-events:none;text-align:center;`;
-            labelContainer.innerHTML = `
-                <div style="background:rgba(0,0,0,0.7);color:white;font-size:9px;font-weight:bold;padding:1px 4px;border-radius:3px;white-space:nowrap;">${loc.scored}/${loc.total}</div>
-            `;
-            wrapper.appendChild(labelContainer);
-        } else {
-            // Single shot marker
-            const isScored = loc.scored === 1;
-            const size = 12;
-            
-            if (isGoal) {
-                marker.style.width = size + 'px';
-                marker.style.height = size + 'px';
-                marker.style.borderRadius = '0';
-                marker.style.background = isScored ? 'white' : '#f44336';
-                marker.style.border = '1.5px solid #333';
-            } else {
-                marker.style.width = size + 'px';
-                marker.style.height = size + 'px';
-                marker.style.borderRadius = '50%';
-                marker.style.background = isScored ? 'white' : '#f44336';
-                marker.style.border = '1.5px solid #333';
-            }
-        }
-        
-        const distance = loc.distance ? loc.distance.toFixed(1) + 'm' : '';
-        marker.title = `${loc.scored}/${loc.total} (${Math.round(loc.scored/loc.total*100)}%)${distance ? ' - ' + distance : ''}`;
+        marker.style.width = size + 'px';
+        marker.style.height = size + 'px';
+        marker.style.background = isScored ? 'white' : '#f44336';
+        marker.style.border = '1.5px solid #333';
+        marker.style.borderRadius = isGoal ? '0' : '50%';
         wrapper.appendChild(marker);
+        attachShotTooltipEvents(marker, [shot], wrapper);
     });
 }
 function renderShotMap(footFilter, halfFilter, sessionTypeFilter) {
@@ -575,4 +559,295 @@ function renderShotMap(footFilter, halfFilter, sessionTypeFilter) {
         marker.innerHTML = `<title>${shot.result}${shotFor}${foot}${half} - ${distance}</title>`;
         svg.appendChild(marker);
     });
+}
+function populateDrillFilter() {
+    const drillFilterEl = document.getElementById('drillFilter');
+    const currentSelection = drillFilterEl.value;
+    let html = '<option value="all">All</option><option value="free">Free Practice</option>';
+    html += '<option disabled>──────────</option>';
+    html += '<option value="scoring-zones">Scoring Zones</option>';
+    if (customDrills && customDrills.length > 0) {
+        html += '<option disabled>──────────</option>';
+        customDrills.forEach(d => {
+            html += `<option value="custom-${d.id}">${d.name}</option>`;
+        });
+    }
+    drillFilterEl.innerHTML = html;
+    if ([...drillFilterEl.options].some(opt => opt.value === currentSelection)) {
+        drillFilterEl.value = currentSelection;
+    }
+}
+function applyDrillFilter(allShots) {
+    const drillFilter = document.getElementById('drillFilter').value;
+    if (drillFilter === 'all') return allShots;
+    if (drillFilter === 'free') {
+        return allShots.filter(s => !s.drillKey);
+    }
+    if (drillFilter === 'scoring-zones') {
+        return allShots.filter(s => s.drillKey && s.drillKey.startsWith('scoring-zones'));
+    }
+    // Custom drill: value is "custom-{id}", drillKey is also "custom-{id}"
+    return allShots.filter(s => s.drillKey && s.drillKey === drillFilter);
+}
+function renderStatsTable(filteredSessions) {
+    const container = document.getElementById('statsTableContainer');
+    const heading = document.getElementById('statsTableHeading');
+    heading.textContent = currentAnalyticsType === 'match' ? 'Match Breakdown' : 'Session Breakdown';
+    if (filteredSessions.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px 0;">No sessions to display.</p>';
+        return;
+    }
+
+    // Gather active shot-level filters
+    const shotCatF = document.getElementById('shotCategoryFilter').value;
+    const shotTypeF = document.getElementById('shotTypeFilter').value;
+    const footF = document.getElementById('footFilter').value;
+    const halfF = document.getElementById('halfFilter').value;
+    const windDirF = document.getElementById('windDirectionFilter').value;
+    const windStrF = document.getElementById('windStrengthFilter').value;
+    const matchTypeF = document.getElementById('matchTypeFilter').value;
+    const drillF = currentAnalyticsType === 'practice' ? document.getElementById('drillFilter').value : 'all';
+
+    function filterShots(session) {
+        let shots = (session.shots || []).map(s => ({...s, matchType: session.matchType, windDirection: session.windDirection || null, windStrength: session.windStrength || null}));
+        if (matchTypeF !== 'all' && currentAnalyticsType === 'match') shots = shots.filter(s => s.matchType === matchTypeF);
+        if (currentAnalyticsType === 'practice' && drillF !== 'all') shots = applyDrillFilter(shots);
+        if (shotCatF !== 'all') shots = shots.filter(s => s.shotCategory === shotCatF);
+        if (shotTypeF !== 'all') shots = shots.filter(s => s.shotType === shotTypeF);
+        if (footF !== 'all') shots = shots.filter(s => s.foot === footF);
+        if (halfF !== 'all') shots = shots.filter(s => s.half === halfF);
+        if (windDirF !== 'all') shots = shots.filter(s => s.windDirection === windDirF);
+        if (windStrF !== 'all') shots = shots.filter(s => s.windStrength === windStrF);
+        return shots;
+    }
+
+    function convCell(scored, total) {
+        if (total === 0) return '—';
+        return `${scored}/${total} (${Math.round(scored / total * 100)}%)`;
+    }
+
+    // Collect all shot types used across all filtered sessions for dynamic sub-columns
+    const allShotTypes = new Set();
+    const allMissResults = new Set();
+    const allMissReasons = new Set();
+    const sessionRows = [];
+
+    filteredSessions.forEach(session => {
+        const shots = filterShots(session);
+        if (shots.length === 0) return; // skip sessions with no matching shots
+        const scored = shots.filter(s => s.result === 'scored').length;
+        const total = shots.length;
+        const inPlay = shots.filter(s => s.shotCategory === 'in-play');
+        const inPlayScored = inPlay.filter(s => s.result === 'scored').length;
+        const deadBall = shots.filter(s => s.shotCategory === 'free-kick' || s.shotCategory === '45');
+        const deadBallScored = deadBall.filter(s => s.result === 'scored').length;
+        const onePt = shots.filter(s => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
+        const onePtScored = onePt.filter(s => s.result === 'scored').length;
+        const twoPt = shots.filter(s => s.pointValue === 2 && s.shotFor !== 'goal');
+        const twoPtScored = twoPt.filter(s => s.result === 'scored').length;
+        const goals = shots.filter(s => s.shotFor === 'goal');
+        const goalsScored = goals.filter(s => s.result === 'scored').length;
+
+        // Shot type breakdown
+        const shotTypeCounts = {};
+        shots.forEach(s => {
+            const st = s.shotType || 'not-defined';
+            allShotTypes.add(st);
+            if (!shotTypeCounts[st]) shotTypeCounts[st] = { scored: 0, total: 0 };
+            shotTypeCounts[st].total++;
+            if (s.result === 'scored') shotTypeCounts[st].scored++;
+        });
+
+        // Miss results & reasons
+        const missResultCounts = {};
+        const missReasonCounts = {};
+        const comments = [];
+        shots.forEach(s => {
+            if (s.result === 'missed') {
+                if (s.missResult) {
+                    allMissResults.add(s.missResult);
+                    missResultCounts[s.missResult] = (missResultCounts[s.missResult] || 0) + 1;
+                }
+                if (s.missReason) {
+                    allMissReasons.add(s.missReason);
+                    missReasonCounts[s.missReason] = (missReasonCounts[s.missReason] || 0) + 1;
+                }
+            }
+            if (s.comment) comments.push(s.comment);
+        });
+
+        // Drill type for practice
+        let drillType = 'Free Practice';
+        if (currentAnalyticsType === 'practice') {
+            const drillShots = shots.filter(s => s.drillKey);
+            if (drillShots.length > 0) {
+                const key = drillShots[0].drillKey;
+                if (key.startsWith('scoring-zones')) drillType = 'Scoring Zones';
+                else if (key.startsWith('custom-')) drillType = 'Custom Drill';
+                else drillType = key;
+            }
+        }
+
+        sessionRows.push({
+            session, shots, scored, total, inPlayScored, inPlayTotal: inPlay.length,
+            deadBallScored, deadBallTotal: deadBall.length,
+            onePtScored, onePtTotal: onePt.length,
+            twoPtScored, twoPtTotal: twoPt.length,
+            goalsScored, goalsTotal: goals.length,
+            shotTypeCounts, missResultCounts, missReasonCounts, comments, drillType
+        });
+    });
+
+    if (sessionRows.length === 0) {
+        container.innerHTML = '<p style="color:#999;text-align:center;padding:20px 0;">No shots match the current filters.</p>';
+        return;
+    }
+
+    // Determine which fixed columns have data across all rows
+    const showInPlay = sessionRows.some(r => r.inPlayTotal > 0);
+    const showPlaced = sessionRows.some(r => r.deadBallTotal > 0);
+    const showOnePt = sessionRows.some(r => r.onePtTotal > 0);
+    const showTwoPt = sessionRows.some(r => r.twoPtTotal > 0);
+    const showGoals = sessionRows.some(r => r.goalsTotal > 0);
+    const showComments = sessionRows.some(r => r.comments.length > 0);
+
+    const shotTypeLabels = {
+        'not-defined': 'Not Defined', 'outside-of-the-boot': 'Outside Boot',
+        'on-the-run': 'On the Run', 'on-the-turn': 'On the Turn', 'standing': 'Standing',
+        'off-a-dummy': 'Off a Dummy', 'fisted': 'Fisted',
+        'off-the-hands': 'Off Hands', 'off-the-ground': 'Off Ground'
+    };
+    const missResultLabels = {
+        'short': 'Short', 'blocked': 'Blocked', 'wide-left': 'Wide L',
+        'wide-right': 'Wide R', 'post': 'Post'
+    };
+    const missReasonLabels = {
+        'pulled': 'Pulled', 'rushed': 'Rushed', 'bad-connection': 'Bad Conn.',
+        'outside-range': 'Out of Range', 'at-limits': 'At Limits'
+    };
+
+    const sortedShotTypes = [...allShotTypes].sort();
+    const sortedMissResults = [...allMissResults].sort();
+    const sortedMissReasons = [...allMissReasons].sort();
+
+    // Build header
+    let headerHTML = '<tr>';
+    headerHTML += '<th>Date</th>';
+    if (currentAnalyticsType === 'match') {
+        headerHTML += '<th>Competition</th><th>Opponent</th>';
+    } else {
+        headerHTML += '<th>Drill Type</th>';
+    }
+    headerHTML += '<th>Conv.</th>';
+    if (showInPlay) headerHTML += '<th>In-Play</th>';
+    if (showPlaced) headerHTML += '<th>Placed</th>';
+    if (showOnePt) headerHTML += '<th>1 Pt</th>';
+    if (showTwoPt) headerHTML += '<th>2 Pt</th>';
+    if (showGoals) headerHTML += '<th>Goal</th>';
+    sortedShotTypes.forEach(st => {
+        headerHTML += `<th>${shotTypeLabels[st] || st}</th>`;
+    });
+    sortedMissResults.forEach(mr => {
+        headerHTML += `<th>${missResultLabels[mr] || mr}</th>`;
+    });
+    sortedMissReasons.forEach(mr => {
+        headerHTML += `<th>${missReasonLabels[mr] || mr}</th>`;
+    });
+    if (showComments) headerHTML += '<th>Comments</th>';
+    headerHTML += '</tr>';
+
+    // Build body rows
+    let bodyHTML = '';
+    sessionRows.forEach(row => {
+        const s = row.session;
+        const formattedDate = new Date(s.date).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: '2-digit' });
+        bodyHTML += '<tr>';
+        bodyHTML += `<td>${formattedDate}</td>`;
+        if (currentAnalyticsType === 'match') {
+            const comp = s.matchType ? s.matchType.charAt(0).toUpperCase() + s.matchType.slice(1) : '—';
+            bodyHTML += `<td>${comp}</td>`;
+            bodyHTML += `<td>${s.name || '—'}</td>`;
+        } else {
+            bodyHTML += `<td>${row.drillType}</td>`;
+        }
+        bodyHTML += `<td>${convCell(row.scored, row.total)}</td>`;
+        if (showInPlay) bodyHTML += `<td>${convCell(row.inPlayScored, row.inPlayTotal)}</td>`;
+        if (showPlaced) bodyHTML += `<td>${convCell(row.deadBallScored, row.deadBallTotal)}</td>`;
+        if (showOnePt) bodyHTML += `<td>${convCell(row.onePtScored, row.onePtTotal)}</td>`;
+        if (showTwoPt) bodyHTML += `<td>${convCell(row.twoPtScored, row.twoPtTotal)}</td>`;
+        if (showGoals) bodyHTML += `<td>${convCell(row.goalsScored, row.goalsTotal)}</td>`;
+        sortedShotTypes.forEach(st => {
+            const c = row.shotTypeCounts[st];
+            bodyHTML += `<td>${c ? convCell(c.scored, c.total) : '—'}</td>`;
+        });
+        sortedMissResults.forEach(mr => {
+            const count = row.missResultCounts[mr] || 0;
+            bodyHTML += `<td>${count || '—'}</td>`;
+        });
+        sortedMissReasons.forEach(mr => {
+            const count = row.missReasonCounts[mr] || 0;
+            bodyHTML += `<td>${count || '—'}</td>`;
+        });
+        if (showComments) {
+            const commentText = row.comments.length > 0 ? row.comments.join('; ') : '—';
+            bodyHTML += `<td class="comments-cell">${commentText}</td>`;
+        }
+        bodyHTML += '</tr>';
+    });
+
+    // Summary row (only if more than 1 session)
+    if (sessionRows.length > 1) {
+        const totScored = sessionRows.reduce((a, r) => a + r.scored, 0);
+        const totTotal = sessionRows.reduce((a, r) => a + r.total, 0);
+        const totIP_S = sessionRows.reduce((a, r) => a + r.inPlayScored, 0);
+        const totIP_T = sessionRows.reduce((a, r) => a + r.inPlayTotal, 0);
+        const totDB_S = sessionRows.reduce((a, r) => a + r.deadBallScored, 0);
+        const totDB_T = sessionRows.reduce((a, r) => a + r.deadBallTotal, 0);
+        const tot1_S = sessionRows.reduce((a, r) => a + r.onePtScored, 0);
+        const tot1_T = sessionRows.reduce((a, r) => a + r.onePtTotal, 0);
+        const tot2_S = sessionRows.reduce((a, r) => a + r.twoPtScored, 0);
+        const tot2_T = sessionRows.reduce((a, r) => a + r.twoPtTotal, 0);
+        const totG_S = sessionRows.reduce((a, r) => a + r.goalsScored, 0);
+        const totG_T = sessionRows.reduce((a, r) => a + r.goalsTotal, 0);
+
+        bodyHTML += '<tr class="stats-table-summary">';
+        bodyHTML += `<td>Totals</td>`;
+        const extraCols = currentAnalyticsType === 'match' ? 2 : 1;
+        for (let i = 0; i < extraCols; i++) bodyHTML += '<td></td>';
+        bodyHTML += `<td>${convCell(totScored, totTotal)}</td>`;
+        if (showInPlay) bodyHTML += `<td>${convCell(totIP_S, totIP_T)}</td>`;
+        if (showPlaced) bodyHTML += `<td>${convCell(totDB_S, totDB_T)}</td>`;
+        if (showOnePt) bodyHTML += `<td>${convCell(tot1_S, tot1_T)}</td>`;
+        if (showTwoPt) bodyHTML += `<td>${convCell(tot2_S, tot2_T)}</td>`;
+        if (showGoals) bodyHTML += `<td>${convCell(totG_S, totG_T)}</td>`;
+        sortedShotTypes.forEach(st => {
+            const s = sessionRows.reduce((a, r) => a + (r.shotTypeCounts[st] ? r.shotTypeCounts[st].scored : 0), 0);
+            const t = sessionRows.reduce((a, r) => a + (r.shotTypeCounts[st] ? r.shotTypeCounts[st].total : 0), 0);
+            bodyHTML += `<td>${t > 0 ? convCell(s, t) : '—'}</td>`;
+        });
+        sortedMissResults.forEach(mr => {
+            const count = sessionRows.reduce((a, r) => a + (r.missResultCounts[mr] || 0), 0);
+            bodyHTML += `<td>${count || '—'}</td>`;
+        });
+        sortedMissReasons.forEach(mr => {
+            const count = sessionRows.reduce((a, r) => a + (r.missReasonCounts[mr] || 0), 0);
+            bodyHTML += `<td>${count || '—'}</td>`;
+        });
+        if (showComments) bodyHTML += '<td></td>';
+        bodyHTML += '</tr>';
+    }
+
+    container.innerHTML = `<table class="stats-table"><thead>${headerHTML}</thead><tbody>${bodyHTML}</tbody></table>`;
+}
+
+function handleWindDirectionFilterChange() {
+    const windDir = document.getElementById('windDirectionFilter').value;
+    const windStrEl = document.getElementById('windStrengthFilter');
+    if (windDir === 'all' || windDir === 'no-wind') {
+        windStrEl.disabled = true;
+        windStrEl.value = 'all';
+    } else {
+        windStrEl.disabled = false;
+    }
+    applyAnalyticsFilters();
 }

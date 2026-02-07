@@ -107,12 +107,16 @@ async function loadDataFromCloud() {
         sessions = sessionsData.map(s => ({
             id: s.id, name: s.name, date: s.date, type: s.type,
             matchType: s.match_type, startTime: s.start_time, endTime: s.end_time,
+            sessionNotes: s.session_notes || null, didWell: s.did_well || null,
+            toImprove: s.to_improve || null, windDirection: s.wind_direction || null,
+            windStrength: s.wind_strength || null,
             shots: (s.shots || []).map(shot => ({
                 id: shot.id, x: parseFloat(shot.x), y: parseFloat(shot.y),
                 result: shot.result, distance: shot.distance ? parseFloat(shot.distance) : null,
                 foot: shot.foot, shotCategory: shot.shot_category, shotType: shot.shot_type,
                 shotFor: shot.shot_for, pointValue: shot.point_value, half: shot.half,
-                comment: shot.comment, timestamp: shot.timestamp
+                comment: shot.comment, timestamp: shot.timestamp,
+                missResult: shot.miss_result || null, missReason: shot.miss_reason || null
             }))
         }));
         if (sessions.length === 0) {
@@ -161,12 +165,18 @@ async function saveSessionToCloud(session) {
         if (session.cloudId) {
             await supabaseClient.from('sessions').update({
                 name: session.name, date: session.date, type: session.type,
-                match_type: session.matchType, end_time: session.endTime
+                match_type: session.matchType, end_time: session.endTime,
+                session_notes: session.sessionNotes || null, did_well: session.didWell || null,
+                to_improve: session.toImprove || null, wind_direction: session.windDirection || null,
+                wind_strength: session.windStrength || null
             }).eq('id', session.cloudId);
         } else {
             const { data, error } = await supabaseClient.from('sessions').insert({
                 user_id: currentUser.id, name: session.name, date: session.date,
-                type: session.type, match_type: session.matchType, start_time: session.startTime
+                type: session.type, match_type: session.matchType, start_time: session.startTime,
+                session_notes: session.sessionNotes || null, did_well: session.didWell || null,
+                to_improve: session.toImprove || null, wind_direction: session.windDirection || null,
+                wind_strength: session.windStrength || null
             }).select().single();
             if (error) throw error;
             session.cloudId = data.id;
@@ -185,12 +195,25 @@ async function saveShotToCloud(shot, sessionId) {
             session_id: sessionId, x: shot.x, y: shot.y, result: shot.result,
             distance: shot.distance, foot: shot.foot, shot_category: shot.shotCategory,
             shot_type: shot.shotType, shot_for: shot.shotFor, point_value: shot.pointValue,
-            half: shot.half, comment: shot.comment, timestamp: shot.timestamp
+            half: shot.half, comment: shot.comment, timestamp: shot.timestamp,
+            miss_result: shot.missResult || null, miss_reason: shot.missReason || null
         }).select().single();
         if (error) throw error;
         shot.cloudId = data.id;
     } catch (error) {
         console.error('Shot save error:', error);
+    }
+}
+async function updateShotInCloud(shot) {
+    if (!currentUser || !shot.cloudId) return;
+    try {
+        await supabaseClient.from('shots').update({
+            miss_result: shot.missResult || null,
+            miss_reason: shot.missReason || null,
+            comment: shot.comment || ''
+        }).eq('id', shot.cloudId);
+    } catch (error) {
+        console.error('Shot update error:', error);
     }
 }
 async function deleteShotFromCloud(shotId) {

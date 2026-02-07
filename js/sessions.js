@@ -1,4 +1,5 @@
 function startNewSession() {
+    viewingPastSession = false;
     const name = document.getElementById('sessionName').value || 'Unnamed Session';
     const date = document.getElementById('sessionDate').value;
     const type = document.getElementById('sessionType').value;
@@ -13,13 +14,13 @@ function startNewSession() {
     }
     if (currentSession) {
         if (!confirm('End current session and start a new one?')) return;
-        endSession();
+        if (currentSession.shots.length === 0) {
+            currentSession = null;
+        } else {
+            finaliseSession();
+        }
     }
-    clearPitchMarkers();
-    const distanceLine = document.getElementById('distanceLine');
-    if (distanceLine) distanceLine.remove();
-    const distanceLabel = document.getElementById('distanceLabel');
-    if (distanceLabel) distanceLabel.remove();
+    resetPitchState();
     currentSession = {
         id: Date.now(),
         name: name,
@@ -59,22 +60,57 @@ function endSession() {
         document.getElementById('currentSessionBanner').style.display = 'none';
         document.getElementById('topHalfOverlay').style.display = 'none';
         document.getElementById('bottomHalfOverlay').style.display = 'none';
-        clearPitchMarkers();
+        resetPitchState();
         updateCurrentSessionStats();
         saveData();
         updateUI();
         return;
     }
+    showSessionNotesModal();
+}
+function finaliseSession() {
     currentSession.endTime = new Date().toISOString();
     sessions.unshift(currentSession);
     currentSession = null;
     document.getElementById('currentSessionBanner').style.display = 'none';
     document.getElementById('topHalfOverlay').style.display = 'none';
     document.getElementById('bottomHalfOverlay').style.display = 'none';
-    clearPitchMarkers();
+    resetPitchState();
     updateCurrentSessionStats();
     saveData();
     updateUI();
+}
+function showSessionNotesModal() {
+    document.getElementById('sessionNotesText').value = '';
+    document.getElementById('sessionDidWell').value = '';
+    document.getElementById('sessionToImprove').value = '';
+    document.getElementById('sessionWindDirection').value = 'no-wind';
+    document.getElementById('sessionWindStrength').value = 'light';
+    document.getElementById('sessionWindStrengthGroup').style.display = 'none';
+    document.getElementById('sessionNotesModal').style.display = 'flex';
+}
+function cancelSessionNotes() {
+    document.getElementById('sessionNotesModal').style.display = 'none';
+}
+function handleSessionWindDirectionChange() {
+    const val = document.getElementById('sessionWindDirection').value;
+    document.getElementById('sessionWindStrengthGroup').style.display = val === 'no-wind' ? 'none' : 'block';
+}
+function saveSessionWithNotes() {
+    const notes = document.getElementById('sessionNotesText').value.trim() || null;
+    const didWell = document.getElementById('sessionDidWell').value.trim() || null;
+    const toImprove = document.getElementById('sessionToImprove').value.trim() || null;
+    const windDirection = document.getElementById('sessionWindDirection').value;
+    const windStrength = windDirection === 'no-wind' ? null : document.getElementById('sessionWindStrength').value;
+
+    currentSession.sessionNotes = notes;
+    currentSession.didWell = didWell;
+    currentSession.toImprove = toImprove;
+    currentSession.windDirection = windDirection;
+    currentSession.windStrength = windStrength;
+
+    document.getElementById('sessionNotesModal').style.display = 'none';
+    finaliseSession();
 }
 async function deleteCurrentSession() {
     if (!currentSession) return;
@@ -94,16 +130,12 @@ async function deleteCurrentSession() {
         document.getElementById('currentSessionBanner').style.display = 'none';
         document.getElementById('topHalfOverlay').style.display = 'none';
         document.getElementById('bottomHalfOverlay').style.display = 'none';
-        clearPitchMarkers();
+        resetPitchState();
         document.querySelectorAll('.drill-spot').forEach(el => el.remove());
         document.querySelectorAll('.drill-distance-line').forEach(el => el.remove());
         document.querySelectorAll('.drill-distance-label').forEach(el => el.remove());
         document.querySelectorAll('.drill-preview-marker').forEach(el => el.remove());
         document.querySelectorAll('.drill-preview-line').forEach(el => el.remove());
-        const distanceLine = document.getElementById('distanceLine');
-        if (distanceLine) distanceLine.remove();
-        const distanceLabel = document.getElementById('distanceLabel');
-        if (distanceLabel) distanceLabel.remove();
         document.getElementById('sessionName').value = '';
         if (activeTemplate) {
             activeTemplate = null;
@@ -120,7 +152,7 @@ async function deleteCurrentSession() {
 function switchSessionType(type) {
     document.getElementById('sessionType').value = type;
     if (!currentSession) {
-        clearPitchMarkers();
+        resetPitchState();
     }
     const trackingModeToggle = document.getElementById('pitchTrackingModeToggle');
     const shotForToggle = document.getElementById('pitchShotForToggle');
@@ -135,8 +167,8 @@ function switchSessionType(type) {
         matchTypeLabel.style.display = 'inline';
         matchTypeSelect.style.display = 'inline';
         templatesSection.style.display = 'none';
-        document.getElementById('sessionNameLabel').textContent = 'Description:';
-        document.getElementById('sessionName').placeholder = 'e.g., vs Team Name';
+        document.getElementById('sessionNameLabel').textContent = 'Opponent:';
+        document.getElementById('sessionName').placeholder = 'e.g., St. Patricks';
         if (currentSession && currentSession.type === 'match') {
             topOverlay.style.display = 'block';
             bottomOverlay.style.display = 'block';
@@ -157,11 +189,23 @@ function switchSessionType(type) {
     }
 }
 
+function filterSessions(type) {
+    currentSessionsFilter = type;
+    document.getElementById('sessionsFilterAll').classList.toggle('active', type === 'all');
+    document.getElementById('sessionsFilterMatch').classList.toggle('active', type === 'match');
+    document.getElementById('sessionsFilterPractice').classList.toggle('active', type === 'practice');
+    displaySessions();
+}
+
 function displaySessions() {
     const list = document.getElementById('sessionsList');
-    const nonEmptySessions = sessions.filter(s => s.shots && s.shots.length > 0);
+    let nonEmptySessions = sessions.filter(s => s.shots && s.shots.length > 0);
+    if (currentSessionsFilter !== 'all') {
+        nonEmptySessions = nonEmptySessions.filter(s => (s.type || 'practice') === currentSessionsFilter);
+    }
     if (nonEmptySessions.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No sessions recorded yet. Start tracking your shots!</p></div>';
+        const filterLabel = currentSessionsFilter === 'all' ? '' : currentSessionsFilter;
+        list.innerHTML = `<div class="empty-state"><p>No ${filterLabel} sessions recorded yet. Start tracking your shots!</p></div>`;
         return;
     }
     list.innerHTML = nonEmptySessions.map(session => {
@@ -243,8 +287,72 @@ function getHalfEndInfo(shots) {
 function viewSession(id) {
     const session = sessions.find(s => s.id === id);
     if (!session) return;
+
     switchTab('track');
-    clearPitchMarkers();
+    viewingPastSession = true;
+
+    // Hide recording UI, show view header
+    document.getElementById('sessionControls').style.display = 'none';
+    document.querySelector('.instructions').style.display = 'none';
+    document.getElementById('practiceTemplatesSection').style.display = 'none';
+    document.getElementById('currentSessionBanner').style.display = 'none';
+
+    const sessionType = session.type || 'practice';
+    const matchType = session.matchType || '';
+    const name = session.name || 'Unnamed Session';
+    const formattedDate = new Date(session.date).toLocaleDateString('en-IE', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+    });
+
+    let titleText = '';
+    if (sessionType === 'match' && matchType) {
+        const typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
+        titleText = `${typeLabel} - ${name}`;
+    } else if (sessionType === 'match') {
+        titleText = `Match - ${name}`;
+    } else {
+        titleText = name;
+    }
+
+    document.getElementById('viewSessionTitle').textContent = titleText;
+    document.getElementById('viewSessionDate').textContent = formattedDate;
+    document.getElementById('viewSessionHeader').style.display = 'block';
+
+    // Show session notes if any exist
+    const existingNotes = document.getElementById('viewSessionNotesCard');
+    if (existingNotes) existingNotes.remove();
+    const hasNotes = session.sessionNotes || session.didWell || session.toImprove || (session.windDirection && session.windDirection !== 'no-wind');
+    if (hasNotes) {
+        const notesCard = document.createElement('div');
+        notesCard.id = 'viewSessionNotesCard';
+        notesCard.style.cssText = 'padding:12px 16px; margin-bottom:12px; background:#f9f9f9; border-radius:8px; border-left:4px solid #2a5298; font-size:13px; color:#444;';
+        let notesHTML = '';
+        if (session.sessionNotes) {
+            notesHTML += `<div style="margin-bottom:8px;"><strong>Notes:</strong> ${session.sessionNotes}</div>`;
+        }
+        if (session.didWell) {
+            notesHTML += `<div style="margin-bottom:8px;"><span style="color:#4CAF50; font-weight:bold;">Did Well:</span> ${session.didWell}</div>`;
+        }
+        if (session.toImprove) {
+            notesHTML += `<div style="margin-bottom:8px;"><span style="color:#FF9800; font-weight:bold;">To Improve:</span> ${session.toImprove}</div>`;
+        }
+        if (session.windDirection && session.windDirection !== 'no-wind') {
+            const windLabels = {
+                'straight-with': 'Straight with', 'diag-lr-with': 'Diagonal L-R with', 'diag-rl-with': 'Diagonal R-L with',
+                'straight-against': 'Straight against', 'diag-lr-against': 'Diagonal L-R against', 'diag-rl-against': 'Diagonal R-L against',
+                'cross-lr': 'Cross L-R', 'cross-rl': 'Cross R-L'
+            };
+            const strengthLabels = { 'light': 'Light', 'moderate': 'Moderate', 'strong': 'Strong', 'very-strong': 'Very Strong' };
+            const dirLabel = windLabels[session.windDirection] || session.windDirection;
+            const strLabel = session.windStrength ? ` - ${strengthLabels[session.windStrength] || session.windStrength}` : '';
+            notesHTML += `<div>🌬️ <strong>Wind:</strong> ${dirLabel}${strLabel}</div>`;
+        }
+        notesCard.innerHTML = notesHTML;
+        const header = document.getElementById('viewSessionHeader');
+        header.parentNode.insertBefore(notesCard, header.nextSibling);
+    }
+
+    resetPitchState();
     // For match sessions, add half indicators to the pitch
     if (session.type === 'match' && session.shots && session.shots.length > 0) {
         const halfInfo = getHalfEndInfo(session.shots);
@@ -268,55 +376,122 @@ function viewSession(id) {
             }
         }
     }
-    const locationMap = new Map();
+    const pitchWrapper = document.getElementById('pitchWrapper');
     session.shots.forEach(shot => {
-        const key = `${shot.x.toFixed(1)}-${shot.y.toFixed(1)}`;
-        if (!locationMap.has(key)) {
-            locationMap.set(key, { x: shot.x, y: shot.y, scored: 0, total: 0, isGoal: false, isTwoPoint: false });
-        }
-        const loc = locationMap.get(key);
-        loc.total++;
-        if (shot.result === 'scored') loc.scored++;
-        if (shot.shotFor === 'goal') loc.isGoal = true;
-        if (shot.pointValue === 2) loc.isTwoPoint = true;
-    });
-    locationMap.forEach(loc => {
         const marker = document.createElement('div');
         marker.className = 'shot-marker';
-        marker.style.left = loc.x + '%';
-        marker.style.top = loc.y + '%';
-        if (loc.total > 1) {
-            if (loc.scored > 0 && loc.scored < loc.total) {
-                marker.style.background = 'linear-gradient(135deg, #4CAF50 50%, #f44336 50%)';
-            } else if (loc.scored === loc.total) {
-                marker.classList.add('scored');
-            } else {
-                marker.classList.add('missed');
-            }
-            marker.title = `${loc.scored}/${loc.total} scored`;
-            const labelContainer = document.createElement('div');
-            labelContainer.className = 'batch-label';
-            labelContainer.style.left = loc.x + '%';
-            labelContainer.style.top = `calc(${loc.y}% + 8px)`; // Start just below marker center
-            labelContainer.innerHTML = `
-                <div class="batch-label-line"></div>
-                <div class="batch-label-text">${loc.scored}/${loc.total}</div>
-            `;
-            document.getElementById('pitchWrapper').appendChild(labelContainer);
-        } else {
-            marker.classList.add(loc.scored > 0 ? 'scored' : 'missed');
-        }
-        if (loc.isGoal) marker.classList.add('goal-shot');
-        if (loc.isTwoPoint) marker.classList.add('two-point');
-        document.getElementById('pitchWrapper').appendChild(marker);
+        marker.style.left = shot.x + '%';
+        marker.style.top = shot.y + '%';
+        marker.classList.add(shot.result === 'scored' ? 'scored' : 'missed');
+        if (shot.shotFor === 'goal') marker.classList.add('goal-shot');
+        if (shot.pointValue === 2) marker.classList.add('two-point');
+        pitchWrapper.appendChild(marker);
+        attachShotTooltipEvents(marker, [shot], pitchWrapper);
     });
     const scored = session.shots.filter(s => s.result === 'scored').length;
     const total = session.shots.length;
     const rate = total > 0 ? Math.round((scored / total) * 100) : 0;
-    document.getElementById('totalShotsConv').textContent = total;
-    document.getElementById('scoredShots').textContent = scored;
-    document.getElementById('successRate').textContent = rate + '%';
+
+    const viewPanel = document.getElementById('viewSessionStatsPanel');
+    const activeStats = document.getElementById('activeSessionStats');
+
+    if (session.type === 'match') {
+        activeStats.style.display = 'none';
+        viewPanel.style.display = 'block';
+        viewPanel.innerHTML = buildMatchStatsHTML(session.shots, scored, total, rate);
+    } else {
+        activeStats.style.display = '';
+        viewPanel.style.display = 'none';
+        document.getElementById('totalShotsConv').textContent = total;
+        document.getElementById('scoredShots').textContent = scored;
+        document.getElementById('successRate').textContent = rate + '%';
+    }
 }
+function buildMatchStatsHTML(shots, scored, total, rate) {
+    function statLine(label, shotArr) {
+        const s = shotArr.filter(sh => sh.result === 'scored').length;
+        const t = shotArr.length;
+        if (t === 0) return '';
+        const pct = Math.round((s / t) * 100);
+        return `<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>${label}</span><span>${s}/${t} (${pct}%)</span></div>`;
+    }
+
+    // Categorise shots
+    const inPlay = shots.filter(s => s.shotCategory === 'in-play');
+    const deadBall = shots.filter(s => s.shotCategory === 'free-kick' || s.shotCategory === '45');
+
+    // --- In-Play column ---
+    let ipHTML = '';
+    if (inPlay.length > 0) {
+        ipHTML = statLine('In-Play', inPlay);
+
+        // Sub-categories side by side: left = point type, right = foot
+        const ipOnePt = inPlay.filter(s => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
+        const ipTwoPt = inPlay.filter(s => s.pointValue === 2 && s.shotFor !== 'goal');
+        const ipGoal = inPlay.filter(s => s.shotFor === 'goal');
+        const ipRight = inPlay.filter(s => s.foot === 'right');
+        const ipLeft = inPlay.filter(s => s.foot === 'left');
+
+        const leftCol = [
+            statLine('1 Pointer', ipOnePt),
+            statLine('2 Pointer', ipTwoPt),
+            statLine('Goal', ipGoal)
+        ].filter(Boolean).join('');
+
+        const rightCol = [
+            statLine('Right Foot', ipRight),
+            statLine('Left Foot', ipLeft)
+        ].filter(Boolean).join('');
+
+        if (leftCol || rightCol) {
+            ipHTML += `<div style="display:flex;gap:12px;margin-top:4px;padding-top:4px;border-top:1px solid #eee;padding-left:8px;">`;
+            if (leftCol) ipHTML += `<div style="flex:1;">${leftCol}</div>`;
+            if (rightCol) ipHTML += `<div style="flex:1;">${rightCol}</div>`;
+            ipHTML += `</div>`;
+        }
+
+    }
+
+    // --- Placed Balls column ---
+    let dbHTML = '';
+    if (deadBall.length > 0) {
+        dbHTML = statLine('Placed Balls', deadBall);
+
+        const dbFrees = deadBall.filter(s => s.shotCategory === 'free-kick');
+        const dbOnePt = dbFrees.filter(s => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
+        const dbTwoPt = dbFrees.filter(s => s.pointValue === 2 && s.shotFor !== 'goal');
+        const db45s = deadBall.filter(s => s.shotCategory === '45');
+        const dbGoal = deadBall.filter(s => s.shotFor === 'goal');
+
+        const breakdowns = [
+            statLine('1 Pointer', dbOnePt),
+            statLine('2 Pointer', dbTwoPt),
+            statLine('45s', db45s),
+            statLine('Goal', dbGoal)
+        ].filter(Boolean).join('');
+
+        if (breakdowns) {
+            dbHTML += `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #eee;padding-left:8px;">${breakdowns}</div>`;
+        }
+
+    }
+
+    let html = `<div class="stats-grid" style="grid-template-columns:1fr;">
+        <div class="stat-card">
+            <div class="stat-label">Conversion</div>
+            <div style="font-size:14px;margin-top:8px;text-align:left;padding:0 10px;">
+                <div style="display:flex;justify-content:space-between;font-weight:bold;"><span>Total</span><span><span style="color:#4CAF50;">${scored}</span>/${total} (${rate}%)</span></div>
+            </div>
+            <div style="border-top:1px solid #ddd;margin:8px 10px 0 10px;padding-top:8px;font-size:12px;color:#666;display:flex;gap:20px;align-items:flex-start;">`;
+
+    if (ipHTML) html += `<div style="flex:1;">${ipHTML}</div>`;
+    if (dbHTML) html += `<div style="flex:1;">${dbHTML}</div>`;
+
+    html += `</div></div></div>`;
+
+    return html;
+}
+
 async function deleteSession(id) {
     if (!confirm('Delete this session? This cannot be undone.')) return;
     if (currentUser) {

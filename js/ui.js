@@ -1,4 +1,18 @@
+function restoreTrackingUI() {
+    viewingPastSession = false;
+    resetPitchState();
+    const header = document.getElementById('viewSessionHeader');
+    if (header) header.style.display = 'none';
+    const notesCard = document.getElementById('viewSessionNotesCard');
+    if (notesCard) notesCard.remove();
+    const controls = document.getElementById('sessionControls');
+    if (controls) controls.style.display = '';
+    const instructions = document.querySelector('.instructions');
+    if (instructions) instructions.style.display = '';
+}
+
 function switchSection(section) {
+    restoreTrackingUI();
     document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
     document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -25,7 +39,7 @@ function switchSection(section) {
         case 'sessions':
             document.getElementById('navSessions').classList.add('active');
             document.getElementById('sessions-tab').classList.add('active');
-            displaySessions();
+            filterSessions('all');
             break;
         case 'analytics':
             document.getElementById('navAnalytics').classList.add('active');
@@ -41,6 +55,7 @@ function switchSection(section) {
 }
 
 function switchTab(tab) {
+    restoreTrackingUI();
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     const tabButtons = document.querySelectorAll('.tab');
@@ -60,7 +75,7 @@ function switchTab(tab) {
         content.classList.add('active');
     }
     if (tab === 'sessions') {
-        displaySessions();
+        filterSessions('all');
     } else if (tab === 'analytics') {
         displayAnalytics();
     } else if (tab === 'team') {

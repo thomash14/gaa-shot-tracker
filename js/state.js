@@ -27,6 +27,7 @@ let batchPendingLocation = null;
 let currentFootFilter = 'all';
 let currentHalfFilter = 'all';
 let currentAnalyticsType = 'practice';
+let currentSessionsFilter = 'all';
 let activeTemplate = null;
 let currentDrillIndex = 0;
 let drillProgress = {};
@@ -44,3 +45,6 @@ let cloudSavePromise = null;
 let previewingTemplate = null;
 
 let customDrills = []; // Store user's custom drills
+let viewingPastSession = false; // True when viewing a past session's stats
+let editingShot = null; // Track shot being edited in miss details modal
+let editingMarker = null; // Track marker for the shot being edited

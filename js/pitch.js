@@ -165,6 +165,8 @@ function getTrackingMode() {
     return selected ? selected.value : 'single'; // Default to single for match mode
 }
 function getKickingFoot() {
+    const dropdown = document.getElementById('shotTypeDropdown');
+    if (dropdown && dropdown.value === 'fisted') return 'fisted';
     return document.querySelector('input[name="kickingFoot"]:checked').value;
 }
 function getMatchHalf() {
@@ -189,10 +191,12 @@ function updateShotTypeOptions() {
         container.style.display = 'block';
         dropdown.innerHTML = `
             <option value="not-defined">Not Defined</option>
+            <option value="outside-of-the-boot">Outside Of The Boot</option>
             <option value="on-the-run">On the run</option>
             <option value="on-the-turn">On the turn</option>
             <option value="standing">Standing</option>
             <option value="off-a-dummy">Off a Dummy</option>
+            <option value="fisted">Fisted</option>
         `;
     } else if (shotCategory === 'free-kick') {
         container.style.display = 'block';
@@ -203,7 +207,22 @@ function updateShotTypeOptions() {
     } else {
         container.style.display = 'none';
     }
+    updateKickingFootState();
 }
+
+function updateKickingFootState() {
+    const dropdown = document.getElementById('shotTypeDropdown');
+    const card = document.getElementById('kickingFootCard');
+    const isFisted = dropdown && dropdown.value === 'fisted';
+    if (card) {
+        card.style.opacity = isFisted ? '0.4' : '';
+        card.style.pointerEvents = isFisted ? 'none' : '';
+    }
+    document.getElementById('pitchFootRight').disabled = isFisted;
+    document.getElementById('pitchFootLeft').disabled = isFisted;
+}
+
+document.getElementById('shotTypeDropdown').addEventListener('change', updateKickingFootState);
 
 function is2PointZone(x, y) {
     const svgX = (x / 100) * 500;
@@ -442,14 +461,19 @@ function updateDistanceLine(xPercent, yPercent) {
     text.textContent = distanceToGoal.toFixed(1) + 'm';
     svg.appendChild(text);
 }
-function markLastShot(result) {
+function markLastShot(result, extraFields) {
     if (!pendingShot) return;
     const shot = {
         ...pendingShot,
         result: result,
         timestamp: new Date().toISOString(),
-        comment: '' // Add comment field
+        comment: '',
+        missResult: null,
+        missReason: null
     };
+    if (extraFields) {
+        Object.assign(shot, extraFields);
+    }
     shot.pointValue = getPointValue(shot);
     currentSession.shots.push(shot);
     const marker = document.getElementById('pendingMarker');
@@ -478,12 +502,20 @@ function markLastShot(result) {
 function setupCommentOnMarker(marker, shot) {
     marker.addEventListener('contextmenu', function(e) {
         e.preventDefault();
-        promptForComment(shot, marker);
+        if (shot.result === 'missed') {
+            showMissDetailsModal(shot, marker, false);
+        } else {
+            promptForComment(shot, marker);
+        }
     });
     let commentPressTimer;
     marker.addEventListener('touchstart', function(e) {
         commentPressTimer = setTimeout(() => {
-            promptForComment(shot, marker);
+            if (shot.result === 'missed') {
+                showMissDetailsModal(shot, marker, false);
+            } else {
+                promptForComment(shot, marker);
+            }
         }, 700); // 700ms long press
     });
     marker.addEventListener('touchend', function(e) {
@@ -492,9 +524,7 @@ function setupCommentOnMarker(marker, shot) {
     marker.addEventListener('touchmove', function(e) {
         clearTimeout(commentPressTimer);
     });
-    if (shot.comment) {
-        marker.style.border = '3px solid #FFD700'; // Gold border for shots with comments
-    }
+    updateMarkerBorder(marker, shot);
 }
 function promptForComment(shot, marker) {
     const currentComment = shot.comment || '';
@@ -548,7 +578,30 @@ function clearPitchMarkers() {
     document.querySelectorAll('.batch-label').forEach(m => m.remove());
     document.querySelectorAll('.half-view-label').forEach(m => m.remove());
 }
+
+function resetPitchState() {
+    hideShotTooltip();
+    clearPitchMarkers();
+    // Remove distance line and label
+    const line = document.getElementById('distanceLine');
+    const label = document.getElementById('distanceLabel');
+    if (line) line.remove();
+    if (label) label.remove();
+    // Clear pending shot state
+    pendingShot = null;
+    batchPendingLocation = null;
+    document.getElementById('scoredBtn').disabled = true;
+    document.getElementById('missedBtn').disabled = true;
+}
 function updateCurrentSessionStats() {
+    // Restore active stats panel unless we're viewing a past session
+    const activeStatsEl = document.getElementById('activeSessionStats');
+    const viewPanelEl = document.getElementById('viewSessionStatsPanel');
+    if (!viewingPastSession) {
+        if (activeStatsEl) activeStatsEl.style.display = '';
+        if (viewPanelEl) { viewPanelEl.style.display = 'none'; viewPanelEl.innerHTML = ''; }
+    }
+
     const shots = currentSession ? currentSession.shots : [];
     const scored = shots.filter(s => s.result === 'scored').length;
     const missed = shots.filter(s => s.result === 'missed').length;
@@ -590,10 +643,162 @@ function updateCurrentSessionStats() {
     }
     const saveDrillBtn = document.getElementById('saveDrillBtn');
     if (saveDrillBtn) {
-        const shouldShow = currentSession && 
-                           currentSession.type === 'practice' && 
-                           currentSession.shots && 
+        const shouldShow = currentSession &&
+                           currentSession.type === 'practice' &&
+                           currentSession.shots &&
                            getUniquePositions(currentSession.shots).length >= 2;
         saveDrillBtn.style.display = shouldShow ? '' : 'none';
     }
 }
+
+// --- Miss Details Modal ---
+
+function updateMarkerBorder(marker, shot) {
+    if (shot.comment || shot.missResult || shot.missReason) {
+        marker.style.border = '3px solid #FFD700';
+    }
+}
+
+function toggleCustomMissReason() {
+    const select = document.getElementById('missReasonSelect');
+    const customInput = document.getElementById('missReasonCustom');
+    if (select.value === 'other') {
+        customInput.style.display = 'block';
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+        customInput.value = '';
+    }
+}
+
+function showMissDetailsModal(shot, marker, isNewShot) {
+    editingShot = shot;
+    editingMarker = marker;
+    const modal = document.getElementById('missDetailsModal');
+    const resultSelect = document.getElementById('missResultSelect');
+    const reasonSelect = document.getElementById('missReasonSelect');
+    const customReason = document.getElementById('missReasonCustom');
+    const commentInput = document.getElementById('missCommentInput');
+
+    if (isNewShot) {
+        resultSelect.value = '';
+        reasonSelect.value = '';
+        customReason.value = '';
+        customReason.style.display = 'none';
+        commentInput.value = '';
+    } else {
+        resultSelect.value = shot.missResult || '';
+        const knownReasons = ['', 'pulled', 'rushed', 'bad-connection', 'outside-range', 'at-limits', 'other'];
+        if (shot.missReason && !knownReasons.includes(shot.missReason)) {
+            reasonSelect.value = 'other';
+            customReason.value = shot.missReason;
+            customReason.style.display = 'block';
+        } else {
+            reasonSelect.value = shot.missReason || '';
+            customReason.value = '';
+            customReason.style.display = 'none';
+        }
+        commentInput.value = shot.comment || '';
+    }
+
+    modal.classList.add('active');
+    modal.dataset.isNewShot = isNewShot ? 'true' : 'false';
+}
+
+function closeMissDetailsModal() {
+    document.getElementById('missDetailsModal').classList.remove('active');
+    editingShot = null;
+    editingMarker = null;
+}
+
+function saveMissDetails() {
+    const modal = document.getElementById('missDetailsModal');
+    const isNewShot = modal.dataset.isNewShot === 'true';
+    const missResult = document.getElementById('missResultSelect').value || null;
+    const reasonSelect = document.getElementById('missReasonSelect');
+    const customReason = document.getElementById('missReasonCustom').value.trim();
+    const missReason = reasonSelect.value === 'other' ? (customReason || 'other') : (reasonSelect.value || null);
+    const comment = document.getElementById('missCommentInput').value.trim();
+
+    if (isNewShot) {
+        markLastShot('missed', { missResult, missReason, comment });
+    } else if (editingShot) {
+        editingShot.missResult = missResult;
+        editingShot.missReason = missReason;
+        editingShot.comment = comment;
+        if (editingMarker) {
+            updateMarkerBorder(editingMarker, editingShot);
+            if (editingShot.comment || editingShot.missResult || editingShot.missReason) {
+                const parts = [editingShot.result];
+                if (editingShot.missResult) parts.push(editingShot.missResult);
+                if (editingShot.missReason) parts.push(editingShot.missReason);
+                if (editingShot.comment) parts.push(editingShot.comment);
+                editingMarker.title = parts.join(' - ');
+            } else {
+                editingMarker.title = editingShot.result;
+            }
+        }
+        if (editingShot.cloudId) {
+            updateShotInCloud(editingShot);
+        }
+        saveData();
+    }
+
+    closeMissDetailsModal();
+}
+
+// --- Missed Button Event Listeners ---
+(function setupMissedButton() {
+    const missedBtn = document.getElementById('missedBtn');
+    if (!missedBtn) return;
+
+    let missLongPressTimer = null;
+    let missLongPressFired = false;
+    let missDblClickTimer = null;
+    let missClickCount = 0;
+
+    missedBtn.addEventListener('touchstart', function(e) {
+        missLongPressFired = false;
+        missLongPressTimer = setTimeout(() => {
+            missLongPressFired = true;
+            if (pendingShot) {
+                showMissDetailsModal(null, null, true);
+            }
+        }, 1000);
+    });
+
+    missedBtn.addEventListener('touchend', function(e) {
+        clearTimeout(missLongPressTimer);
+        if (missLongPressFired) {
+            e.preventDefault();
+            return;
+        }
+        // Let click handler deal with single taps
+    });
+
+    missedBtn.addEventListener('touchmove', function(e) {
+        clearTimeout(missLongPressTimer);
+    });
+
+    missedBtn.addEventListener('click', function(e) {
+        if (missLongPressFired) {
+            missLongPressFired = false;
+            return;
+        }
+        missClickCount++;
+        if (missClickCount === 1) {
+            missDblClickTimer = setTimeout(() => {
+                // Single click - quick miss
+                missClickCount = 0;
+                markLastShot('missed');
+            }, 300);
+        } else if (missClickCount === 2) {
+            // Double click - show modal
+            clearTimeout(missDblClickTimer);
+            missClickCount = 0;
+            if (pendingShot) {
+                showMissDetailsModal(null, null, true);
+            }
+        }
+    });
+})();
