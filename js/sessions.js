@@ -510,30 +510,61 @@ async function deleteSession(id) {
     displayAnalytics();
 }
 
+function getMonday(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1) - day; // Monday=1, Sunday shifts back 6
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function buildSessionDateMap() {
+    const dateMap = {};
+    const sessionMap = {};
+    sessions.forEach(s => {
+        if (!s.shots || s.shots.length === 0) return;
+        if (!dateMap[s.date]) dateMap[s.date] = { practice: false, match: false };
+        if (!sessionMap[s.date]) sessionMap[s.date] = [];
+        const t = s.type || 'practice';
+        if (t === 'match') dateMap[s.date].match = true;
+        else dateMap[s.date].practice = true;
+        sessionMap[s.date].push(s);
+    });
+    return { dateMap, sessionMap };
+}
+
 function renderSessionCalendar() {
     const container = document.getElementById('sessionCalendar');
     if (!container) return;
 
+    const { dateMap, sessionMap } = buildSessionDateMap();
+
+    // View toggle
+    let html = '<div class="cal-view-toggle">';
+    html += `<button class="cal-view-btn ${calendarViewMode === 'monthly' ? 'active' : ''}" onclick="switchCalendarView('monthly')">Monthly</button>`;
+    html += `<button class="cal-view-btn ${calendarViewMode === 'weekly' ? 'active' : ''}" onclick="switchCalendarView('weekly')">Weekly</button>`;
+    html += '</div>';
+
+    if (calendarViewMode === 'weekly') {
+        html += renderWeeklyCalendar(dateMap, sessionMap);
+    } else {
+        html += renderMonthlyCalendar(dateMap);
+    }
+
+    container.innerHTML = html;
+}
+
+function renderMonthlyCalendar(dateMap) {
     const year = calendarYear;
     const month = calendarMonth;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Build a map of date -> { practice: bool, match: bool } for ALL sessions (ignoring tab filter)
-    const dateMap = {};
-    sessions.forEach(s => {
-        if (!s.shots || s.shots.length === 0) return;
-        if (!dateMap[s.date]) dateMap[s.date] = { practice: false, match: false };
-        const t = s.type || 'practice';
-        if (t === 'match') dateMap[s.date].match = true;
-        else dateMap[s.date].practice = true;
-    });
-
     // Month info
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    // Monday=0 start: JS getDay() is Sun=0, so convert
     let startDow = firstDay.getDay() - 1;
     if (startDow < 0) startDow = 6;
 
@@ -560,14 +591,12 @@ function renderSessionCalendar() {
     const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     dowLabels.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
 
-    // Fill leading blanks from previous month
     const prevMonthLast = new Date(year, month, 0).getDate();
     for (let i = startDow - 1; i >= 0; i--) {
         const dayNum = prevMonthLast - i;
         html += `<div class="cal-day other-month"><span>${dayNum}</span></div>`;
     }
 
-    // Current month days
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const info = dateMap[dateStr];
@@ -593,7 +622,6 @@ function renderSessionCalendar() {
         html += `<div class="${classes}" ${onclick}><span>${d}</span>${dots}</div>`;
     }
 
-    // Fill trailing blanks
     const totalCells = startDow + daysInMonth;
     const trailingBlanks = (7 - (totalCells % 7)) % 7;
     for (let i = 1; i <= trailingBlanks; i++) {
@@ -602,7 +630,6 @@ function renderSessionCalendar() {
 
     html += '</div>';
 
-    // Summary
     const parts = [];
     if (practiceCount > 0) parts.push(`${practiceCount} practice${practiceCount !== 1 ? 's' : ''}`);
     if (matchCount > 0) parts.push(`${matchCount} match${matchCount !== 1 ? 'es' : ''}`);
@@ -615,7 +642,122 @@ function renderSessionCalendar() {
     }
     html += '</div>';
 
-    container.innerHTML = html;
+    return html;
+}
+
+function renderWeeklyCalendar(dateMap, sessionMap) {
+    if (!calendarWeekStart) {
+        calendarWeekStart = getMonday(new Date());
+    }
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    // Header with nav arrows and date range
+    const weekEnd = new Date(calendarWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const startLabel = calendarWeekStart.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' });
+    const endLabel = weekEnd.toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    let html = '<div class="cal-header">';
+    html += '<button class="cal-nav" onclick="changeCalendarWeek(-1)">&#9664;</button>';
+    html += `<h3>${startLabel} - ${endLabel}</h3>`;
+    html += '<button class="cal-nav" onclick="changeCalendarWeek(1)">&#9654;</button>';
+    html += '</div>';
+
+    html += '<div class="cal-week-grid">';
+
+    let weekPracticeCount = 0, weekMatchCount = 0;
+
+    for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(calendarWeekStart);
+        dayDate.setDate(dayDate.getDate() + i);
+        const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+        const daySessions = sessionMap[dateStr] || [];
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === calendarSelectedDate;
+        const hasSession = daySessions.length > 0;
+
+        // Count for summary
+        daySessions.forEach(s => {
+            if ((s.type || 'practice') === 'match') weekMatchCount++;
+            else weekPracticeCount++;
+        });
+
+        let classes = 'cal-week-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        if (hasSession) classes += ' has-session';
+
+        const dayClick = hasSession ? `onclick="selectCalendarDate('${dateStr}')"` : '';
+
+        html += `<div class="${classes}" ${dayClick}>`;
+        html += `<div class="cal-week-day-header">${dowLabels[i]}</div>`;
+        html += `<div class="cal-week-day-num">${dayDate.getDate()}</div>`;
+        html += '<div class="cal-week-sessions">';
+
+        daySessions.forEach(s => {
+            const sessionType = s.type || 'practice';
+            const scored = s.shots.filter(sh => sh.result === 'scored').length;
+            const total = s.shots.length;
+            const rate = total > 0 ? Math.round((scored / total) * 100) : 0;
+            const matchType = s.matchType || '';
+            let nameDisplay = s.name || 'Unnamed';
+            if (sessionType === 'match' && matchType) {
+                const typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
+                nameDisplay = `${typeLabel} vs ${s.name || '?'}`;
+            }
+
+            html += `<div class="cal-week-session ${sessionType}" onclick="selectWeeklySession(${s.id}); event.stopPropagation();">`;
+            html += `<div class="cal-week-session-name">${nameDisplay}</div>`;
+            html += `<div class="cal-week-session-stats">${scored}/${total} - ${rate}%</div>`;
+            html += '</div>';
+        });
+
+        html += '</div></div>';
+    }
+
+    html += '</div>';
+
+    // Summary
+    const parts = [];
+    if (weekPracticeCount > 0) parts.push(`${weekPracticeCount} practice${weekPracticeCount !== 1 ? 's' : ''}`);
+    if (weekMatchCount > 0) parts.push(`${weekMatchCount} match${weekMatchCount !== 1 ? 'es' : ''}`);
+    const summaryText = parts.length > 0 ? parts.join(', ') : 'No sessions';
+
+    html += '<div class="cal-summary">';
+    html += `This week: ${summaryText}`;
+    if (calendarSelectedDate) {
+        html += '<button class="cal-clear" onclick="clearCalendarDate()">Show all</button>';
+    }
+    html += '</div>';
+
+    return html;
+}
+
+function switchCalendarView(mode) {
+    calendarViewMode = mode;
+    if (mode === 'weekly') {
+        if (calendarSelectedDate) {
+            calendarWeekStart = getMonday(new Date(calendarSelectedDate + 'T12:00:00'));
+        } else if (!calendarWeekStart) {
+            calendarWeekStart = getMonday(new Date());
+        }
+    } else if (mode === 'monthly' && calendarWeekStart) {
+        // Sync month view to show the month containing the current week
+        calendarMonth = calendarWeekStart.getMonth();
+        calendarYear = calendarWeekStart.getFullYear();
+    }
+    renderSessionCalendar();
+}
+
+function changeCalendarWeek(delta) {
+    if (!calendarWeekStart) calendarWeekStart = getMonday(new Date());
+    calendarWeekStart.setDate(calendarWeekStart.getDate() + (delta * 7));
+    calendarSelectedDate = null;
+    renderSessionCalendar();
+    displaySessions();
 }
 
 function changeCalendarMonth(delta) {
@@ -628,11 +770,29 @@ function changeCalendarMonth(delta) {
 }
 
 function selectCalendarDate(dateStr) {
+    if (calendarViewMode === 'monthly') {
+        // Drill down: switch to weekly view for the clicked date's week
+        calendarViewMode = 'weekly';
+        calendarWeekStart = getMonday(new Date(dateStr + 'T12:00:00'));
+        calendarSelectedDate = dateStr;
+        renderSessionCalendar();
+        displaySessions();
+        return;
+    }
+    // Weekly view: toggle date selection
     if (calendarSelectedDate === dateStr) {
         calendarSelectedDate = null;
     } else {
         calendarSelectedDate = dateStr;
     }
+    renderSessionCalendar();
+    displaySessions();
+}
+
+function selectWeeklySession(sessionId) {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    calendarSelectedDate = session.date;
     renderSessionCalendar();
     displaySessions();
 }
