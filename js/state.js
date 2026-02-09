@@ -13,7 +13,7 @@ let currentUser = null;
 
 let currentCarouselIndex = 0;
 const maxCarouselSessions = 5;
-let currentDashboardType = 'practice'; // 'practice' or 'match'
+let currentDashboardType = 'match'; // 'practice' or 'match'
 
 let currentTeam = null;
 let currentMembership = null;
@@ -26,8 +26,11 @@ let sessions = [];
 let batchPendingLocation = null;
 let currentFootFilter = 'all';
 let currentHalfFilter = 'all';
-let currentAnalyticsType = 'practice';
-let currentSessionsFilter = 'all';
+let currentAnalyticsType = 'match';
+let currentSessionsFilter = 'match';
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+let calendarSelectedDate = null; // 'YYYY-MM-DD' string or null
 let activeTemplate = null;
 let currentDrillIndex = 0;
 let drillProgress = {};
@@ -48,3 +51,15 @@ let customDrills = []; // Store user's custom drills
 let viewingPastSession = false; // True when viewing a past session's stats
 let editingShot = null; // Track shot being edited in miss details modal
 let editingMarker = null; // Track marker for the shot being edited
+
+// Session checkbox state for Stats breakdown table
+let uncheckedSessionIds = new Set();
+let lastFilteredAllShots = [];
+let lastSessionRows = [];
+let lastTableMeta = {};
+
+// Session checkbox state for coach player data modal
+let pdUncheckedSessionIds = new Set();
+let lastPdFilteredAllShots = [];
+let lastPdSessionRows = [];
+let lastPdTableMeta = {};

@@ -140,6 +140,7 @@ function applyAnalyticsFilters() {
     displayAnalytics();
 }
 function displayAnalytics() {
+    uncheckedSessionIds.clear();
     if (currentAnalyticsType === 'practice') {
         document.getElementById('drillFilterContainer').style.display = 'flex';
         populateDrillFilter();
@@ -155,222 +156,55 @@ function displayAnalytics() {
         filteredSessions = filteredSessions.filter(s => {
             const dateParts = s.date.split('-');
             const sessionDate = new Date(
-                parseInt(dateParts[0]), 
-                parseInt(dateParts[1]) - 1, 
+                parseInt(dateParts[0]),
+                parseInt(dateParts[1]) - 1,
                 parseInt(dateParts[2]),
-                12, 0, 0, 0 // Set to noon to avoid any edge cases
+                12, 0, 0, 0
             );
             if (startDate && sessionDate < startDate) return false;
             if (endDate && sessionDate > endDate) return false;
             return true;
         });
     }
-    let allShots = filteredSessions.flatMap(s => ({...s, shots: s.shots})).flatMap(s => s.shots.map(shot => ({
+    let allShots = filteredSessions.flatMap(s => s.shots.map(shot => ({
         ...shot,
-        matchType: s.matchType
-    })));
-    allShots = filteredSessions.flatMap(s => s.shots.map(shot => ({
-        ...shot,
+        sessionId: s.id,
         matchType: s.matchType,
         windDirection: s.windDirection || null,
         windStrength: s.windStrength || null
     })));
     const matchTypeFilterContainer = document.getElementById('matchTypeFilterContainer');
-    const matchTypeFilterEl = document.getElementById('matchTypeFilter');
-    const currentMatchTypeSelection = matchTypeFilterEl.value; // Save current selection
     if (currentAnalyticsType === 'match') {
         matchTypeFilterContainer.style.display = 'block';
         const customTypes = [...new Set(filteredSessions.map(s => s.matchType).filter(t => t && !['league', 'championship', 'challenge'].includes(t)))];
-        matchTypeFilterEl.innerHTML = `
-            <option value="all">All</option>
-            <option value="league">League</option>
-            <option value="championship">Championship</option>
-            <option value="challenge">Challenge</option>
-            ${customTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
-        `;
-        if ([...matchTypeFilterEl.options].some(opt => opt.value === currentMatchTypeSelection)) {
-            matchTypeFilterEl.value = currentMatchTypeSelection;
-        }
+        const allOpts = [
+            { value: 'league', label: 'League' },
+            { value: 'championship', label: 'Championship' },
+            { value: 'challenge', label: 'Challenge' },
+            ...customTypes.map(t => ({ value: t, label: t }))
+        ];
+        setMultiSelectOptions('matchTypeFilter', allOpts);
+        allShots = msFilterShots(allShots, 'matchTypeFilter', 'matchType');
     } else {
         matchTypeFilterContainer.style.display = 'none';
     }
-    const matchTypeFilter = matchTypeFilterEl.value;
-    if (matchTypeFilter !== 'all' && currentAnalyticsType === 'match') {
-        allShots = allShots.filter(s => s.matchType === matchTypeFilter);
-    }
     if (currentAnalyticsType === 'practice') {
-        allShots = applyDrillFilter(allShots);
+        allShots = applyDrillFilterMulti(allShots);
     }
-    const shotCategoryFilter = document.getElementById('shotCategoryFilter').value;
-    if (shotCategoryFilter !== 'all') {
-        allShots = allShots.filter(s => s.shotCategory === shotCategoryFilter);
-    }
-    const shotTypeFilter = document.getElementById('shotTypeFilter').value;
-    if (shotTypeFilter !== 'all') {
-        allShots = allShots.filter(s => s.shotType === shotTypeFilter);
-    }
-    const footFilter = document.getElementById('footFilter').value;
-    if (footFilter !== 'all') {
-        allShots = allShots.filter(s => s.foot === footFilter);
-    }
-    const halfFilter = document.getElementById('halfFilter').value;
-    if (halfFilter !== 'all') {
-        allShots = allShots.filter(s => s.half === halfFilter);
-    }
-    const windDirFilter = document.getElementById('windDirectionFilter').value;
-    if (windDirFilter !== 'all') {
-        allShots = allShots.filter(s => s.windDirection === windDirFilter);
-    }
-    const windStrFilter = document.getElementById('windStrengthFilter').value;
-    if (windStrFilter !== 'all') {
-        allShots = allShots.filter(s => s.windStrength === windStrFilter);
-    }
-    const totalShots = allShots.length;
-    const scored = allShots.filter(s => s.result === 'scored').length;
-    const successRate = totalShots > 0 ? Math.round((scored / totalShots) * 100) : 0;
-    const scoredShots = allShots.filter(s => s.result === 'scored');
-    const onePointers = scoredShots.filter(s => (s.pointValue || 1) === 1).length;
-    const twoPointers = scoredShots.filter(s => s.pointValue === 2).length;
-    const totalPoints = onePointers + (twoPointers * 2);
-    const inPlayShots = allShots.filter(s => s.shotCategory === 'in-play');
-    const inPlayScored = inPlayShots.filter(s => s.result === 'scored').length;
-    const inPlayRate = inPlayShots.length > 0 ? Math.round((inPlayScored / inPlayShots.length) * 100) : 0;
-    const deadBallShots = allShots.filter(s => s.shotCategory === 'free-kick' || s.shotCategory === '45');
-    const deadBallScored = deadBallShots.filter(s => s.result === 'scored').length;
-    const deadBallRate = deadBallShots.length > 0 ? Math.round((deadBallScored / deadBallShots.length) * 100) : 0;
-    const onePointerShots = allShots.filter(s => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
-    const onePointerScored = onePointerShots.filter(s => s.result === 'scored').length;
-    const onePointerRate = onePointerShots.length > 0 ? Math.round((onePointerScored / onePointerShots.length) * 100) : 0;
-    const twoPointerShots = allShots.filter(s => s.pointValue === 2 && s.shotFor !== 'goal');
-    const twoPointerScored = twoPointerShots.filter(s => s.result === 'scored').length;
-    const twoPointerRate = twoPointerShots.length > 0 ? Math.round((twoPointerScored / twoPointerShots.length) * 100) : 0;
-    const goalShots = allShots.filter(s => s.shotFor === 'goal');
-    const goalScored = goalShots.filter(s => s.result === 'scored').length;
-    const goalRate = goalShots.length > 0 ? Math.round((goalScored / goalShots.length) * 100) : 0;
-    document.getElementById('analyticsConversionTotal').textContent = `${scored}/${totalShots} (${successRate}%)`;
-    document.getElementById('analyticsInPlayConv').textContent = `${inPlayScored}/${inPlayShots.length} (${inPlayRate}%)`;
-    document.getElementById('analyticsDeadBallConv').textContent = `${deadBallScored}/${deadBallShots.length} (${deadBallRate}%)`;
-    document.getElementById('analyticsOnePointerConv').textContent = `${onePointerScored}/${onePointerShots.length} (${onePointerRate}%)`;
-    document.getElementById('analyticsTwoPointerConv').textContent = `${twoPointerScored}/${twoPointerShots.length} (${twoPointerRate}%)`;
-    document.getElementById('analyticsGoalConv').textContent = `${goalScored}/${goalShots.length} (${goalRate}%)`;
+    allShots = msFilterShots(allShots, 'shotCategoryFilter', 'shotCategory');
+    allShots = msFilterShots(allShots, 'shotTypeFilter', 'shotType');
+    allShots = msFilterShots(allShots, 'footFilter', 'foot');
+    allShots = msFilterShots(allShots, 'resultFilter', 'result');
+    allShots = msFilterShots(allShots, 'halfFilter', 'half');
+    allShots = msFilterShots(allShots, 'windDirectionFilter', 'windDirection');
+    allShots = msFilterShots(allShots, 'windStrengthFilter', 'windStrength');
+    lastFilteredAllShots = allShots;
+    updateConversionStats(allShots);
     document.getElementById('totalSessions').textContent = filteredSessions.length;
     document.getElementById('sessionsLabel').textContent = currentAnalyticsType === 'match' ? 'Matches' : 'Sessions';
-    renderShotMapWithFilters();
+    renderShotMapFromShots(allShots, 'analyticsPitchWrapper');
     renderStatsTable(filteredSessions);
-    const zones = {};
-    allShots.forEach(shot => {
-        const zoneInfo = getZone(shot.x, shot.y);
-        const zoneKey = zoneInfo.zone;
-        if (!zones[zoneKey]) {
-            zones[zoneKey] = { 
-                total: 0, 
-                scored: 0, 
-                name: zoneInfo.name, 
-                color: zoneInfo.color,
-                zone: zoneInfo.zone
-            };
-        }
-        zones[zoneKey].total++;
-        if (shot.result === 'scored') zones[zoneKey].scored++;
-    });
-    const zoneStats = document.getElementById('zoneStats');
-    if (Object.keys(zones).length === 0) {
-        zoneStats.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No data yet. Start tracking shots!</p></div>';
-    } else {
-        const sortedZones = Object.values(zones).sort((a, b) => a.zone - b.zone);
-        let zoneHTML = '<div style="grid-column: 1/-1; margin-bottom: 15px;"><h3 style="color: #2a5298; margin: 0 0 10px 0;">Zone Conversion Rates</h3></div>';
-        zoneHTML += sortedZones.map(stats => {
-            const rate = Math.round((stats.scored / stats.total) * 100);
-            const rateColor = rate >= 80 ? '#4CAF50' : rate >= 60 ? '#8BC34A' : rate >= 40 ? '#FF9800' : '#f44336';
-            return `
-                <div class="zone-card" style="border-left: 4px solid ${stats.color};">
-                    <div class="zone-name">
-                        <span style="background: ${stats.color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 5px;">${stats.zone}</span>
-                        ${stats.name}
-                    </div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: ${rateColor}; margin: 10px 0;">
-                        ${rate}%
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        ${stats.scored}/${stats.total} shots
-                    </div>
-                </div>
-            `;
-        }).join('');
-        const shotsWithDistance = allShots.filter(s => s.distance !== undefined);
-        if (shotsWithDistance.length > 0) {
-            const avgDistance = shotsWithDistance.reduce((sum, s) => sum + s.distance, 0) / shotsWithDistance.length;
-            const scoredShots = shotsWithDistance.filter(s => s.result === 'scored');
-            const missedShots = shotsWithDistance.filter(s => s.result === 'missed');
-            const avgScoredDistance = scoredShots.length > 0 
-                ? scoredShots.reduce((sum, s) => sum + s.distance, 0) / scoredShots.length 
-                : 0;
-            const avgMissedDistance = missedShots.length > 0
-                ? missedShots.reduce((sum, s) => sum + s.distance, 0) / missedShots.length
-                : 0;
-            zoneHTML += `
-                <div style="grid-column: 1/-1; margin: 15px 0 10px 0;"><h3 style="color: #2a5298; margin: 0;">Distance Analysis</h3></div>
-                <div class="zone-card">
-                    <div class="zone-name">Average Distance</div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
-                        ${avgDistance.toFixed(1)}m
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        All shots
-                    </div>
-                </div>
-                <div class="zone-card">
-                    <div class="zone-name">Scored Distance</div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #4CAF50; margin: 10px 0;">
-                        ${avgScoredDistance.toFixed(1)}m
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        ${scoredShots.length} shots scored
-                    </div>
-                </div>
-                <div class="zone-card">
-                    <div class="zone-name">Missed Distance</div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #f44336; margin: 10px 0;">
-                        ${avgMissedDistance.toFixed(1)}m
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        ${missedShots.length} shots missed
-                    </div>
-                </div>
-            `;
-        }
-        const shotsWithFoot = allShots.filter(s => s.foot !== undefined);
-        if (shotsWithFoot.length > 0) {
-            const leftFootShots = shotsWithFoot.filter(s => s.foot === 'left');
-            const rightFootShots = shotsWithFoot.filter(s => s.foot === 'right');
-            const leftScored = leftFootShots.filter(s => s.result === 'scored').length;
-            const rightScored = rightFootShots.filter(s => s.result === 'scored').length;
-            const leftRate = leftFootShots.length > 0 ? Math.round((leftScored / leftFootShots.length) * 100) : 0;
-            const rightRate = rightFootShots.length > 0 ? Math.round((rightScored / rightFootShots.length) * 100) : 0;
-            zoneHTML += `
-                <div style="grid-column: 1/-1; margin: 15px 0 10px 0;"><h3 style="color: #2a5298; margin: 0;">Foot Analysis</h3></div>
-                <div class="zone-card">
-                    <div class="zone-name">Left Foot</div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
-                        ${leftRate}%
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        ${leftScored}/${leftFootShots.length} shots
-                    </div>
-                </div>
-                <div class="zone-card">
-                    <div class="zone-name">Right Foot</div>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
-                        ${rightRate}%
-                    </div>
-                    <div style="font-size: 0.9em; color: #666;">
-                        ${rightScored}/${rightFootShots.length} shots
-                    </div>
-                </div>
-            `;
-        }
-        zoneStats.innerHTML = zoneHTML;
-    }
+    updateZoneStats(allShots);
 }
 function toggleZoneOverlay() {
     const overlay = document.getElementById('zoneOverlays');
@@ -394,15 +228,15 @@ function switchAnalyticsType(type) {
     }
     document.getElementById('halfFilterContainer').style.display = type === 'match' ? 'flex' : 'none';
     document.getElementById('drillFilterContainer').style.display = type === 'practice' ? 'flex' : 'none';
-    document.getElementById('footFilter').value = 'all';
-    document.getElementById('halfFilter').value = 'all';
-    document.getElementById('shotCategoryFilter').value = 'all';
-    document.getElementById('shotTypeFilter').value = 'all';
-    document.getElementById('matchTypeFilter').value = 'all';
-    document.getElementById('drillFilter').value = 'all';
-    document.getElementById('windDirectionFilter').value = 'all';
-    document.getElementById('windStrengthFilter').value = 'all';
-    document.getElementById('windStrengthFilter').disabled = true;
+    resetMultiSelect('footFilter');
+    resetMultiSelect('resultFilter');
+    resetMultiSelect('halfFilter');
+    resetMultiSelect('shotCategoryFilter');
+    resetMultiSelect('shotTypeFilter');
+    resetMultiSelect('matchTypeFilter');
+    resetMultiSelect('drillFilter');
+    resetMultiSelect('windDirectionFilter');
+    resetMultiSelect('windStrengthFilter');
     document.getElementById('windDirectionFilterContainer').style.display = 'flex';
     document.getElementById('windStrengthFilterContainer').style.display = 'flex';
     if (type === 'practice') populateDrillFilter();
@@ -435,41 +269,19 @@ function renderShotMapWithFilters() {
         windDirection: s.windDirection || null,
         windStrength: s.windStrength || null
     })));
-    const matchTypeFilter = document.getElementById('matchTypeFilter').value;
-    if (matchTypeFilter !== 'all' && currentAnalyticsType === 'match') {
-        allShots = allShots.filter(s => s.matchType === matchTypeFilter);
+    if (currentAnalyticsType === 'match') {
+        allShots = msFilterShots(allShots, 'matchTypeFilter', 'matchType');
     }
     if (currentAnalyticsType === 'practice') {
-        allShots = applyDrillFilter(allShots);
+        allShots = applyDrillFilterMulti(allShots);
     }
-    const shotCategoryFilter = document.getElementById('shotCategoryFilter').value;
-    if (shotCategoryFilter !== 'all') {
-        allShots = allShots.filter(s => s.shotCategory === shotCategoryFilter);
-    }
-    const shotTypeFilter = document.getElementById('shotTypeFilter').value;
-    if (shotTypeFilter !== 'all') {
-        allShots = allShots.filter(s => s.shotType === shotTypeFilter);
-    }
-    const footFilter = document.getElementById('footFilter').value;
-    if (footFilter === 'left') {
-        allShots = allShots.filter(s => s.foot === 'left');
-    } else if (footFilter === 'right') {
-        allShots = allShots.filter(s => s.foot === 'right');
-    }
-    const halfFilter = document.getElementById('halfFilter').value;
-    if (halfFilter === '1st') {
-        allShots = allShots.filter(s => s.half === '1st');
-    } else if (halfFilter === '2nd') {
-        allShots = allShots.filter(s => s.half === '2nd');
-    }
-    const windDirFilter = document.getElementById('windDirectionFilter').value;
-    if (windDirFilter !== 'all') {
-        allShots = allShots.filter(s => s.windDirection === windDirFilter);
-    }
-    const windStrFilter = document.getElementById('windStrengthFilter').value;
-    if (windStrFilter !== 'all') {
-        allShots = allShots.filter(s => s.windStrength === windStrFilter);
-    }
+    allShots = msFilterShots(allShots, 'shotCategoryFilter', 'shotCategory');
+    allShots = msFilterShots(allShots, 'shotTypeFilter', 'shotType');
+    allShots = msFilterShots(allShots, 'footFilter', 'foot');
+    allShots = msFilterShots(allShots, 'resultFilter', 'result');
+    allShots = msFilterShots(allShots, 'halfFilter', 'half');
+    allShots = msFilterShots(allShots, 'windDirectionFilter', 'windDirection');
+    allShots = msFilterShots(allShots, 'windStrengthFilter', 'windStrength');
     // Pitch boundaries as % of SVG (viewBox 0-500 x 0-725, pitch rect x=25..425 y=40..684)
     const PITCH_X_MIN = 25 / 500 * 100;   // 5%
     const PITCH_X_MAX = 425 / 500 * 100;   // 85%
@@ -561,33 +373,28 @@ function renderShotMap(footFilter, halfFilter, sessionTypeFilter) {
     });
 }
 function populateDrillFilter() {
-    const drillFilterEl = document.getElementById('drillFilter');
-    const currentSelection = drillFilterEl.value;
-    let html = '<option value="all">All</option><option value="free">Free Practice</option>';
-    html += '<option disabled>──────────</option>';
-    html += '<option value="scoring-zones">Scoring Zones</option>';
+    const opts = [
+        { value: 'free', label: 'Free Practice' },
+        { value: 'scoring-zones', label: 'Scoring Arc' }
+    ];
     if (customDrills && customDrills.length > 0) {
-        html += '<option disabled>──────────</option>';
         customDrills.forEach(d => {
-            html += `<option value="custom-${d.id}">${d.name}</option>`;
+            opts.push({ value: 'custom-' + d.id, label: d.name });
         });
     }
-    drillFilterEl.innerHTML = html;
-    if ([...drillFilterEl.options].some(opt => opt.value === currentSelection)) {
-        drillFilterEl.value = currentSelection;
-    }
+    setMultiSelectOptions('drillFilter', opts);
 }
-function applyDrillFilter(allShots) {
-    const drillFilter = document.getElementById('drillFilter').value;
-    if (drillFilter === 'all') return allShots;
-    if (drillFilter === 'free') {
-        return allShots.filter(s => !s.drillKey);
-    }
-    if (drillFilter === 'scoring-zones') {
-        return allShots.filter(s => s.drillKey && s.drillKey.startsWith('scoring-zones'));
-    }
-    // Custom drill: value is "custom-{id}", drillKey is also "custom-{id}"
-    return allShots.filter(s => s.drillKey && s.drillKey === drillFilter);
+function applyDrillFilterMulti(allShots) {
+    const vals = getMultiSelectValues('drillFilter');
+    if (vals === null) return allShots;
+    return allShots.filter(s => {
+        for (const v of vals) {
+            if (v === 'free' && !s.drillKey) return true;
+            if (v === 'scoring-zones' && s.drillKey && s.drillKey.startsWith('scoring-zones')) return true;
+            if (v !== 'free' && v !== 'scoring-zones' && s.drillKey && s.drillKey === v) return true;
+        }
+        return false;
+    });
 }
 function renderStatsTable(filteredSessions) {
     const container = document.getElementById('statsTableContainer');
@@ -598,26 +405,17 @@ function renderStatsTable(filteredSessions) {
         return;
     }
 
-    // Gather active shot-level filters
-    const shotCatF = document.getElementById('shotCategoryFilter').value;
-    const shotTypeF = document.getElementById('shotTypeFilter').value;
-    const footF = document.getElementById('footFilter').value;
-    const halfF = document.getElementById('halfFilter').value;
-    const windDirF = document.getElementById('windDirectionFilter').value;
-    const windStrF = document.getElementById('windStrengthFilter').value;
-    const matchTypeF = document.getElementById('matchTypeFilter').value;
-    const drillF = currentAnalyticsType === 'practice' ? document.getElementById('drillFilter').value : 'all';
-
     function filterShots(session) {
         let shots = (session.shots || []).map(s => ({...s, matchType: session.matchType, windDirection: session.windDirection || null, windStrength: session.windStrength || null}));
-        if (matchTypeF !== 'all' && currentAnalyticsType === 'match') shots = shots.filter(s => s.matchType === matchTypeF);
-        if (currentAnalyticsType === 'practice' && drillF !== 'all') shots = applyDrillFilter(shots);
-        if (shotCatF !== 'all') shots = shots.filter(s => s.shotCategory === shotCatF);
-        if (shotTypeF !== 'all') shots = shots.filter(s => s.shotType === shotTypeF);
-        if (footF !== 'all') shots = shots.filter(s => s.foot === footF);
-        if (halfF !== 'all') shots = shots.filter(s => s.half === halfF);
-        if (windDirF !== 'all') shots = shots.filter(s => s.windDirection === windDirF);
-        if (windStrF !== 'all') shots = shots.filter(s => s.windStrength === windStrF);
+        if (currentAnalyticsType === 'match') shots = msFilterShots(shots, 'matchTypeFilter', 'matchType');
+        if (currentAnalyticsType === 'practice') shots = applyDrillFilterMulti(shots);
+        shots = msFilterShots(shots, 'shotCategoryFilter', 'shotCategory');
+        shots = msFilterShots(shots, 'shotTypeFilter', 'shotType');
+        shots = msFilterShots(shots, 'footFilter', 'foot');
+        shots = msFilterShots(shots, 'resultFilter', 'result');
+        shots = msFilterShots(shots, 'halfFilter', 'half');
+        shots = msFilterShots(shots, 'windDirectionFilter', 'windDirection');
+        shots = msFilterShots(shots, 'windStrengthFilter', 'windStrength');
         return shots;
     }
 
@@ -682,7 +480,7 @@ function renderStatsTable(filteredSessions) {
             const drillShots = shots.filter(s => s.drillKey);
             if (drillShots.length > 0) {
                 const key = drillShots[0].drillKey;
-                if (key.startsWith('scoring-zones')) drillType = 'Scoring Zones';
+                if (key.startsWith('scoring-zones')) drillType = 'Scoring Arc';
                 else if (key.startsWith('custom-')) drillType = 'Custom Drill';
                 else drillType = key;
             }
@@ -730,8 +528,13 @@ function renderStatsTable(filteredSessions) {
     const sortedMissResults = [...allMissResults].sort();
     const sortedMissReasons = [...allMissReasons].sort();
 
+    // Store for checkbox handlers
+    lastSessionRows = sessionRows;
+    lastTableMeta = { showInPlay, showPlaced, showOnePt, showTwoPt, showGoals, showComments, sortedShotTypes, sortedMissResults, sortedMissReasons, analyticsType: currentAnalyticsType };
+
     // Build header
     let headerHTML = '<tr>';
+    headerHTML += '<th><input type="checkbox" id="statsSelectAll" checked onchange="handleStatsSelectAll(this.checked)"></th>';
     headerHTML += '<th>Date</th>';
     if (currentAnalyticsType === 'match') {
         headerHTML += '<th>Competition</th><th>Opponent</th>';
@@ -739,6 +542,7 @@ function renderStatsTable(filteredSessions) {
         headerHTML += '<th>Drill Type</th>';
     }
     headerHTML += '<th>Conv.</th>';
+    headerHTML += '<th>Pts/Shot <span style="cursor:help;opacity:0.6;" title="Points Per Shot: (1×Pts + 2×2Pts + 3×Goals) ÷ Total Shots">ℹ</span></th>';
     if (showInPlay) headerHTML += '<th>In-Play</th>';
     if (showPlaced) headerHTML += '<th>Placed</th>';
     if (showOnePt) headerHTML += '<th>1 Pt</th>';
@@ -761,7 +565,8 @@ function renderStatsTable(filteredSessions) {
     sessionRows.forEach(row => {
         const s = row.session;
         const formattedDate = new Date(s.date).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: '2-digit' });
-        bodyHTML += '<tr>';
+        bodyHTML += `<tr data-session-id="${String(s.id)}">`;
+        bodyHTML += `<td><input type="checkbox" class="session-row-cb" data-session-id="${String(s.id)}" checked onchange="handleSessionCheckboxChange('${String(s.id)}', this.checked)"></td>`;
         bodyHTML += `<td>${formattedDate}</td>`;
         if (currentAnalyticsType === 'match') {
             const comp = s.matchType ? s.matchType.charAt(0).toUpperCase() + s.matchType.slice(1) : '—';
@@ -771,6 +576,8 @@ function renderStatsTable(filteredSessions) {
             bodyHTML += `<td>${row.drillType}</td>`;
         }
         bodyHTML += `<td>${convCell(row.scored, row.total)}</td>`;
+        const ptsPerShot = row.total > 0 ? ((row.onePtScored * 1 + row.twoPtScored * 2 + row.goalsScored * 3) / row.total).toFixed(2) : '0.00';
+        bodyHTML += `<td>${ptsPerShot}</td>`;
         if (showInPlay) bodyHTML += `<td>${convCell(row.inPlayScored, row.inPlayTotal)}</td>`;
         if (showPlaced) bodyHTML += `<td>${convCell(row.deadBallScored, row.deadBallTotal)}</td>`;
         if (showOnePt) bodyHTML += `<td>${convCell(row.onePtScored, row.onePtTotal)}</td>`;
@@ -811,10 +618,13 @@ function renderStatsTable(filteredSessions) {
         const totG_T = sessionRows.reduce((a, r) => a + r.goalsTotal, 0);
 
         bodyHTML += '<tr class="stats-table-summary">';
+        bodyHTML += '<td></td>';
         bodyHTML += `<td>Totals</td>`;
         const extraCols = currentAnalyticsType === 'match' ? 2 : 1;
         for (let i = 0; i < extraCols; i++) bodyHTML += '<td></td>';
         bodyHTML += `<td>${convCell(totScored, totTotal)}</td>`;
+        const totPtsPerShot = totTotal > 0 ? ((tot1_S * 1 + tot2_S * 2 + totG_S * 3) / totTotal).toFixed(2) : '0.00';
+        bodyHTML += `<td>${totPtsPerShot}</td>`;
         if (showInPlay) bodyHTML += `<td>${convCell(totIP_S, totIP_T)}</td>`;
         if (showPlaced) bodyHTML += `<td>${convCell(totDB_S, totDB_T)}</td>`;
         if (showOnePt) bodyHTML += `<td>${convCell(tot1_S, tot1_T)}</td>`;
@@ -840,14 +650,309 @@ function renderStatsTable(filteredSessions) {
     container.innerHTML = `<table class="stats-table"><thead>${headerHTML}</thead><tbody>${bodyHTML}</tbody></table>`;
 }
 
-function handleWindDirectionFilterChange() {
-    const windDir = document.getElementById('windDirectionFilter').value;
-    const windStrEl = document.getElementById('windStrengthFilter');
-    if (windDir === 'all' || windDir === 'no-wind') {
-        windStrEl.disabled = true;
-        windStrEl.value = 'all';
+function updateConversionStats(allShots) {
+    const totalShots = allShots.length;
+    const scored = allShots.filter(s => s.result === 'scored').length;
+    const successRate = totalShots > 0 ? Math.round((scored / totalShots) * 100) : 0;
+    const inPlayShots = allShots.filter(s => s.shotCategory === 'in-play');
+    const inPlayScored = inPlayShots.filter(s => s.result === 'scored').length;
+    const inPlayRate = inPlayShots.length > 0 ? Math.round((inPlayScored / inPlayShots.length) * 100) : 0;
+    const deadBallShots = allShots.filter(s => s.shotCategory === 'free-kick' || s.shotCategory === '45');
+    const deadBallScored = deadBallShots.filter(s => s.result === 'scored').length;
+    const deadBallRate = deadBallShots.length > 0 ? Math.round((deadBallScored / deadBallShots.length) * 100) : 0;
+    const onePointerShots = allShots.filter(s => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
+    const onePointerScored = onePointerShots.filter(s => s.result === 'scored').length;
+    const onePointerRate = onePointerShots.length > 0 ? Math.round((onePointerScored / onePointerShots.length) * 100) : 0;
+    const twoPointerShots = allShots.filter(s => s.pointValue === 2 && s.shotFor !== 'goal');
+    const twoPointerScored = twoPointerShots.filter(s => s.result === 'scored').length;
+    const twoPointerRate = twoPointerShots.length > 0 ? Math.round((twoPointerScored / twoPointerShots.length) * 100) : 0;
+    const goalShots = allShots.filter(s => s.shotFor === 'goal');
+    const goalScored = goalShots.filter(s => s.result === 'scored').length;
+    const goalRate = goalShots.length > 0 ? Math.round((goalScored / goalShots.length) * 100) : 0;
+    document.getElementById('analyticsConversionTotal').textContent = `${scored}/${totalShots} (${successRate}%)`;
+    document.getElementById('analyticsInPlayConv').textContent = `${inPlayScored}/${inPlayShots.length} (${inPlayRate}%)`;
+    document.getElementById('analyticsDeadBallConv').textContent = `${deadBallScored}/${deadBallShots.length} (${deadBallRate}%)`;
+    document.getElementById('analyticsOnePointerConv').textContent = `${onePointerScored}/${onePointerShots.length} (${onePointerRate}%)`;
+    document.getElementById('analyticsTwoPointerConv').textContent = `${twoPointerScored}/${twoPointerShots.length} (${twoPointerRate}%)`;
+    document.getElementById('analyticsGoalConv').textContent = `${goalScored}/${goalShots.length} (${goalRate}%)`;
+}
+
+function updateZoneStats(allShots) {
+    const zones = {};
+    allShots.forEach(shot => {
+        const zoneInfo = getZone(shot.x, shot.y);
+        const zoneKey = zoneInfo.zone;
+        if (!zones[zoneKey]) {
+            zones[zoneKey] = { total: 0, scored: 0, name: zoneInfo.name, color: zoneInfo.color, zone: zoneInfo.zone };
+        }
+        zones[zoneKey].total++;
+        if (shot.result === 'scored') zones[zoneKey].scored++;
+    });
+    const zoneStats = document.getElementById('zoneStats');
+    if (Object.keys(zones).length === 0) {
+        zoneStats.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No data yet. Start tracking shots!</p></div>';
     } else {
-        windStrEl.disabled = false;
+        const sortedZones = Object.values(zones).sort((a, b) => a.zone - b.zone);
+        let zoneHTML = '<div style="grid-column: 1/-1; margin-bottom: 15px;"><h3 style="color: #2a5298; margin: 0 0 10px 0;">Zone Conversion Rates</h3></div>';
+        zoneHTML += sortedZones.map(stats => {
+            const rate = Math.round((stats.scored / stats.total) * 100);
+            const rateColor = rate >= 80 ? '#4CAF50' : rate >= 60 ? '#8BC34A' : rate >= 40 ? '#FF9800' : '#f44336';
+            return `
+                <div class="zone-card" style="border-left: 4px solid ${stats.color};">
+                    <div class="zone-name">
+                        <span style="background: ${stats.color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 5px;">${stats.zone}</span>
+                        ${stats.name}
+                    </div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: ${rateColor}; margin: 10px 0;">
+                        ${rate}%
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        ${stats.scored}/${stats.total} shots
+                    </div>
+                </div>
+            `;
+        }).join('');
+        const shotsWithDistance = allShots.filter(s => s.distance !== undefined);
+        if (shotsWithDistance.length > 0) {
+            const avgDistance = shotsWithDistance.reduce((sum, s) => sum + s.distance, 0) / shotsWithDistance.length;
+            const scoredShots = shotsWithDistance.filter(s => s.result === 'scored');
+            const missedShots = shotsWithDistance.filter(s => s.result === 'missed');
+            const avgScoredDistance = scoredShots.length > 0
+                ? scoredShots.reduce((sum, s) => sum + s.distance, 0) / scoredShots.length
+                : 0;
+            const avgMissedDistance = missedShots.length > 0
+                ? missedShots.reduce((sum, s) => sum + s.distance, 0) / missedShots.length
+                : 0;
+            zoneHTML += `
+                <div style="grid-column: 1/-1; margin: 15px 0 10px 0;"><h3 style="color: #2a5298; margin: 0;">Distance Analysis</h3></div>
+                <div class="zone-card">
+                    <div class="zone-name">Average Distance</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
+                        ${avgDistance.toFixed(1)}m
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        All shots
+                    </div>
+                </div>
+                <div class="zone-card">
+                    <div class="zone-name">Scored Distance</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #4CAF50; margin: 10px 0;">
+                        ${avgScoredDistance.toFixed(1)}m
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        ${scoredShots.length} shots scored
+                    </div>
+                </div>
+                <div class="zone-card">
+                    <div class="zone-name">Missed Distance</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #f44336; margin: 10px 0;">
+                        ${avgMissedDistance.toFixed(1)}m
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        ${missedShots.length} shots missed
+                    </div>
+                </div>
+            `;
+        }
+        const shotsWithFoot = allShots.filter(s => s.foot !== undefined);
+        if (shotsWithFoot.length > 0) {
+            const leftFootShots = shotsWithFoot.filter(s => s.foot === 'left');
+            const rightFootShots = shotsWithFoot.filter(s => s.foot === 'right');
+            const leftScored = leftFootShots.filter(s => s.result === 'scored').length;
+            const rightScored = rightFootShots.filter(s => s.result === 'scored').length;
+            const leftRate = leftFootShots.length > 0 ? Math.round((leftScored / leftFootShots.length) * 100) : 0;
+            const rightRate = rightFootShots.length > 0 ? Math.round((rightScored / rightFootShots.length) * 100) : 0;
+            zoneHTML += `
+                <div style="grid-column: 1/-1; margin: 15px 0 10px 0;"><h3 style="color: #2a5298; margin: 0;">Foot Analysis</h3></div>
+                <div class="zone-card">
+                    <div class="zone-name">Left Foot</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
+                        ${leftRate}%
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        ${leftScored}/${leftFootShots.length} shots
+                    </div>
+                </div>
+                <div class="zone-card">
+                    <div class="zone-name">Right Foot</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #2a5298; margin: 10px 0;">
+                        ${rightRate}%
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        ${rightScored}/${rightFootShots.length} shots
+                    </div>
+                </div>
+            `;
+        }
+        zoneStats.innerHTML = zoneHTML;
     }
+}
+
+function renderShotMapFromShots(shots, wrapperId) {
+    hideShotTooltip();
+    const wrapper = document.getElementById(wrapperId);
+    wrapper.querySelectorAll('.analytics-shot-marker, .shot-tooltip').forEach(m => m.remove());
+    const PITCH_X_MIN = 25 / 500 * 100;
+    const PITCH_X_MAX = 425 / 500 * 100;
+    const PITCH_Y_MIN = 40 / 725 * 100;
+    const PITCH_Y_MAX = 684 / 725 * 100;
+    shots.forEach(shot => {
+        const needsMirror = shot.y >= 50;
+        let displayX = shot.x;
+        let displayY = shot.y;
+        if (needsMirror) {
+            displayY = PITCH_Y_MIN + PITCH_Y_MAX - shot.y;
+            displayX = PITCH_X_MIN + PITCH_X_MAX - shot.x;
+        }
+        const isScored = shot.result === 'scored';
+        const isGoal = shot.shotFor === 'goal';
+        const size = 12;
+        const marker = document.createElement('div');
+        marker.className = 'analytics-shot-marker';
+        marker.style.position = 'absolute';
+        marker.style.left = displayX + '%';
+        marker.style.top = displayY + '%';
+        marker.style.transform = 'translate(-50%, -50%)';
+        marker.style.zIndex = '3';
+        marker.style.cursor = 'pointer';
+        marker.style.width = size + 'px';
+        marker.style.height = size + 'px';
+        marker.style.background = isScored ? 'white' : '#f44336';
+        marker.style.border = '1.5px solid #333';
+        marker.style.borderRadius = isGoal ? '0' : '50%';
+        wrapper.appendChild(marker);
+        attachShotTooltipEvents(marker, [shot], wrapper);
+    });
+}
+
+function handleSessionCheckboxChange(sessionId, isChecked) {
+    const id = String(sessionId);
+    if (isChecked) {
+        uncheckedSessionIds.delete(id);
+    } else {
+        uncheckedSessionIds.add(id);
+    }
+    updateAnalyticsFromCheckboxes();
+    // Update select-all checkbox state
+    const selectAll = document.getElementById('statsSelectAll');
+    if (selectAll) {
+        const total = lastSessionRows.length;
+        const uncheckedCount = uncheckedSessionIds.size;
+        selectAll.checked = uncheckedCount === 0;
+        selectAll.indeterminate = uncheckedCount > 0 && uncheckedCount < total;
+    }
+}
+
+function handleStatsSelectAll(isChecked) {
+    uncheckedSessionIds.clear();
+    if (!isChecked) {
+        lastSessionRows.forEach(r => uncheckedSessionIds.add(String(r.session.id)));
+    }
+    // Update all row checkboxes
+    document.querySelectorAll('#statsTableContainer .session-row-cb').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updateAnalyticsFromCheckboxes();
+}
+
+function updateAnalyticsFromCheckboxes() {
+    const checkedShots = lastFilteredAllShots.filter(s => !uncheckedSessionIds.has(String(s.sessionId)));
+    updateConversionStats(checkedShots);
+    renderShotMapFromShots(checkedShots, 'analyticsPitchWrapper');
+    updateZoneStats(checkedShots);
+    // Update session count
+    const checkedCount = lastSessionRows.filter(r => !uncheckedSessionIds.has(String(r.session.id))).length;
+    document.getElementById('totalSessions').textContent = checkedCount;
+    // Update summary row
+    updateSummaryRow(lastSessionRows, uncheckedSessionIds, 'statsTableContainer', lastTableMeta);
+    // Apply visual styling to unchecked rows
+    document.querySelectorAll('#statsTableContainer tbody tr[data-session-id]').forEach(tr => {
+        const sid = tr.getAttribute('data-session-id');
+        tr.classList.toggle('session-unchecked', uncheckedSessionIds.has(sid));
+    });
+}
+
+function updateSummaryRow(sessionRows, uncheckedIds, containerId, meta) {
+    const container = document.getElementById(containerId);
+    const existingSummary = container.querySelector('.stats-table-summary');
+    const checkedRows = sessionRows.filter(r => !uncheckedIds.has(String(r.session.id)));
+    // Hide summary if < 2 checked sessions
+    if (checkedRows.length < 2) {
+        if (existingSummary) existingSummary.style.display = 'none';
+        return;
+    }
+    if (existingSummary) existingSummary.style.display = '';
+
+    function convCell(scored, total) {
+        if (total === 0) return '—';
+        return `${scored}/${total} (${Math.round(scored / total * 100)}%)`;
+    }
+
+    const totScored = checkedRows.reduce((a, r) => a + r.scored, 0);
+    const totTotal = checkedRows.reduce((a, r) => a + r.total, 0);
+    const totIP_S = checkedRows.reduce((a, r) => a + r.inPlayScored, 0);
+    const totIP_T = checkedRows.reduce((a, r) => a + r.inPlayTotal, 0);
+    const totDB_S = checkedRows.reduce((a, r) => a + r.deadBallScored, 0);
+    const totDB_T = checkedRows.reduce((a, r) => a + r.deadBallTotal, 0);
+    const tot1_S = checkedRows.reduce((a, r) => a + r.onePtScored, 0);
+    const tot1_T = checkedRows.reduce((a, r) => a + r.onePtTotal, 0);
+    const tot2_S = checkedRows.reduce((a, r) => a + r.twoPtScored, 0);
+    const tot2_T = checkedRows.reduce((a, r) => a + r.twoPtTotal, 0);
+    const totG_S = checkedRows.reduce((a, r) => a + r.goalsScored, 0);
+    const totG_T = checkedRows.reduce((a, r) => a + r.goalsTotal, 0);
+
+    let html = '<td></td>'; // checkbox column
+    html += '<td>Totals</td>';
+    const analyticsType = meta.analyticsType || 'practice';
+    const extraCols = analyticsType === 'match' ? 2 : 1;
+    for (let i = 0; i < extraCols; i++) html += '<td></td>';
+    html += `<td>${convCell(totScored, totTotal)}</td>`;
+    const totPtsPerShot = totTotal > 0 ? ((tot1_S * 1 + tot2_S * 2 + totG_S * 3) / totTotal).toFixed(2) : '0.00';
+    html += `<td>${totPtsPerShot}</td>`;
+    if (meta.showInPlay) html += `<td>${convCell(totIP_S, totIP_T)}</td>`;
+    if (meta.showPlaced) html += `<td>${convCell(totDB_S, totDB_T)}</td>`;
+    if (meta.showOnePt) html += `<td>${convCell(tot1_S, tot1_T)}</td>`;
+    if (meta.showTwoPt) html += `<td>${convCell(tot2_S, tot2_T)}</td>`;
+    if (meta.showGoals) html += `<td>${convCell(totG_S, totG_T)}</td>`;
+    (meta.sortedShotTypes || []).forEach(st => {
+        const s = checkedRows.reduce((a, r) => a + (r.shotTypeCounts[st] ? r.shotTypeCounts[st].scored : 0), 0);
+        const t = checkedRows.reduce((a, r) => a + (r.shotTypeCounts[st] ? r.shotTypeCounts[st].total : 0), 0);
+        html += `<td>${t > 0 ? convCell(s, t) : '—'}</td>`;
+    });
+    (meta.sortedMissResults || []).forEach(mr => {
+        const count = checkedRows.reduce((a, r) => a + (r.missResultCounts[mr] || 0), 0);
+        html += `<td>${count || '—'}</td>`;
+    });
+    (meta.sortedMissReasons || []).forEach(mr => {
+        const count = checkedRows.reduce((a, r) => a + (r.missReasonCounts[mr] || 0), 0);
+        html += `<td>${count || '—'}</td>`;
+    });
+    if (meta.showComments) html += '<td></td>';
+    if (existingSummary) existingSummary.innerHTML = html;
+}
+
+function handleWindDirectionFilterChange() {
     applyAnalyticsFilters();
 }
+
+function initAnalyticsMultiSelects() {
+    const onChange = applyAnalyticsFilters;
+    initMultiSelect('matchTypeFilter', [
+        { value: 'league', label: 'League' },
+        { value: 'championship', label: 'Championship' },
+        { value: 'challenge', label: 'Challenge' }
+    ], onChange);
+    initMultiSelect('drillFilter', [
+        { value: 'free', label: 'Free Practice' },
+        { value: 'scoring-zones', label: 'Scoring Arc' }
+    ], onChange);
+    initMultiSelect('shotCategoryFilter', _shotCategoryOptions(), onChange);
+    initMultiSelect('shotTypeFilter', _shotTypeOptions(), onChange);
+    initMultiSelect('footFilter', _footOptions(), onChange);
+    initMultiSelect('resultFilter', _resultOptions(), onChange);
+    initMultiSelect('halfFilter', _halfOptions(), onChange);
+    initMultiSelect('windDirectionFilter', _windDirectionOptions(), onChange);
+    initMultiSelect('windStrengthFilter', _windStrengthOptions(), onChange);
+}
+
+initAnalyticsMultiSelects();

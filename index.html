@@ -253,8 +253,8 @@
                                 <div class="carousel-indicators" id="carouselIndicators"></div>
                             </div>
                             <div class="tabs" style="margin-bottom: 15px;">
-                                <button class="tab active" onclick="switchDashboardType('practice')" id="dashboardPracticeTab">🏋️ Practice</button>
-                                <button class="tab" onclick="switchDashboardType('match')" id="dashboardMatchTab">⚽ Match</button>
+                                <button class="tab active" onclick="switchDashboardType('match')" id="dashboardMatchTab">⚽ Match</button>
+                                <button class="tab" onclick="switchDashboardType('practice')" id="dashboardPracticeTab">🏋️ Practice</button>
                             </div>
                             <div class="session-carousel-container">
                                 <button class="carousel-btn carousel-prev" onclick="changeCarouselSession(-1)" id="carouselPrev">‹</button>
@@ -540,18 +540,19 @@
         <div id="sessions-tab" class="tab-content">
             <div class="sessions-list">
                 <h2 style="margin-bottom: 15px; color: #2a5298;">Session History</h2>
+                <div id="sessionCalendar" class="session-calendar"></div>
                 <div class="tabs" style="margin-bottom: 15px;">
-                    <button class="tab active" onclick="filterSessions('all')" id="sessionsFilterAll">All</button>
-                    <button class="tab" onclick="filterSessions('match')" id="sessionsFilterMatch">⚽ Matches</button>
+                    <button class="tab active" onclick="filterSessions('match')" id="sessionsFilterMatch">⚽ Matches</button>
                     <button class="tab" onclick="filterSessions('practice')" id="sessionsFilterPractice">🏋️ Practice</button>
+                    <button class="tab" onclick="filterSessions('all')" id="sessionsFilterAll">All</button>
                 </div>
                 <div id="sessionsList"></div>
             </div>
         </div>
         <div id="analytics-tab" class="tab-content">
             <div class="tabs" style="margin-bottom: 20px;">
-                <button class="tab active" onclick="switchAnalyticsType('practice')" id="analyticsPracticeSubTab">🏋️ Practice</button>
-                <button class="tab" onclick="switchAnalyticsType('match')" id="analyticsMatchSubTab">⚽ Match</button>
+                <button class="tab active" onclick="switchAnalyticsType('match')" id="analyticsMatchSubTab">⚽ Match</button>
+                <button class="tab" onclick="switchAnalyticsType('practice')" id="analyticsPracticeSubTab">🏋️ Practice</button>
             </div>
             <div class="stat-card" style="margin-bottom: 20px;">
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center; font-size: 11px;">
@@ -601,92 +602,41 @@
                         <label style="font-weight: 600; margin: 0 4px;">To:</label>
                         <input type="date" id="dateTo" onchange="applyAnalyticsFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
                     </div>
-                    <div id="matchTypeFilterContainer" style="display: none; align-items: center;">
+                    <div id="matchTypeFilterContainer" style="display: block; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Competition:</label>
-                        <select id="matchTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 90px;">
-                            <option value="all">All</option>
-                            <option value="league">League</option>
-                            <option value="championship">Championship</option>
-                            <option value="challenge">Challenge</option>
-                        </select>
+                        <div id="matchTypeFilter" class="ms-container"></div>
                     </div>
-                    <div id="drillFilterContainer" style="display: flex; align-items: center;">
+                    <div id="drillFilterContainer" style="display: none; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Drill:</label>
-                        <select id="drillFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 120px;">
-                            <option value="all">All</option>
-                            <option value="free">Free Practice</option>
-                            <option value="scoring-zones">Scoring Zones</option>
-                        </select>
+                        <div id="drillFilter" class="ms-container"></div>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Shot:</label>
-                        <select id="shotCategoryFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
-                            <option value="all">All</option>
-                            <option value="in-play">In-Play</option>
-                            <option value="free-kick">Free-Kick</option>
-                            <option value="45">45</option>
-                        </select>
+                        <div id="shotCategoryFilter" class="ms-container"></div>
                     </div>
                     <div id="shotTypeFilterContainer" style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Shot Type:</label>
-                        <select id="shotTypeFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 100px;">
-                            <option value="all">All</option>
-                            <option value="not-defined">Not Defined</option>
-                            <option value="outside-of-the-boot">Outside Of The Boot</option>
-                            <option value="on-the-run">On the run</option>
-                            <option value="on-the-turn">On the turn</option>
-                            <option value="standing">Standing</option>
-                            <option value="off-a-dummy">Off a Dummy</option>
-                            <option value="off-the-hands">Off The Hands</option>
-                            <option value="off-the-ground">Off The Ground</option>
-                        </select>
+                        <div id="shotTypeFilter" class="ms-container"></div>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Foot:</label>
-                        <select id="footFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 60px;">
-                            <option value="all">All</option>
-                            <option value="right">Right</option>
-                            <option value="left">Left</option>
-                        </select>
+                        <div id="footFilter" class="ms-container"></div>
                     </div>
-                    <div id="halfFilterContainer" style="display: none; align-items: center;">
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Result:</label>
+                        <div id="resultFilter" class="ms-container"></div>
+                    </div>
+                    <div id="halfFilterContainer" style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Half:</label>
-                        <select id="halfFilter" onchange="applyAnalyticsFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
-                            <option value="all">All</option>
-                            <option value="1st">1st Half</option>
-                            <option value="2nd">2nd Half</option>
-                        </select>
+                        <div id="halfFilter" class="ms-container"></div>
                     </div>
                     <div id="windDirectionFilterContainer" style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Wind:</label>
-                        <select id="windDirectionFilter" onchange="handleWindDirectionFilterChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 110px;">
-                            <option value="all">All</option>
-                            <option value="no-wind">No wind</option>
-                            <optgroup label="With">
-                                <option value="straight-with">Straight with</option>
-                                <option value="diag-lr-with">Diag L-R with</option>
-                                <option value="diag-rl-with">Diag R-L with</option>
-                            </optgroup>
-                            <optgroup label="Against">
-                                <option value="straight-against">Straight against</option>
-                                <option value="diag-lr-against">Diag L-R against</option>
-                                <option value="diag-rl-against">Diag R-L against</option>
-                            </optgroup>
-                            <optgroup label="Cross">
-                                <option value="cross-lr">Cross L-R</option>
-                                <option value="cross-rl">Cross R-L</option>
-                            </optgroup>
-                        </select>
+                        <div id="windDirectionFilter" class="ms-container"></div>
                     </div>
                     <div id="windStrengthFilterContainer" style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Strength:</label>
-                        <select id="windStrengthFilter" onchange="applyAnalyticsFilters()" disabled style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 80px;">
-                            <option value="all">All</option>
-                            <option value="light">Light</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="strong">Strong</option>
-                            <option value="very-strong">Very Strong</option>
-                        </select>
+                        <div id="windStrengthFilter" class="ms-container"></div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
@@ -947,7 +897,7 @@
                 <div class="auth-input-group">
                     <label for="drillTypeSelect">Drill Type</label>
                     <select id="drillTypeSelect" onchange="updateDrillOptions()">
-                        <option value="scoring-zones">Scoring Zones</option>
+                        <option value="scoring-zones">Scoring Arc</option>
                     </select>
                 </div>
                 <div id="drillOptionsContainer" style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -993,6 +943,11 @@
                             </select>
                         </div>
                     </div>
+                </div>
+                <div class="auth-input-group">
+                    <label for="drillStartDate">Start Date</label>
+                    <input type="date" id="drillStartDate" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                    <span style="font-size: 11px; color: #666;">When this drill will appear for players</span>
                 </div>
                 <div class="auth-input-group">
                     <label for="drillAvailableFor">Available For</label>
@@ -1354,88 +1309,42 @@
                             <!-- Competition (Match only) -->
                             <div id="pd-matchTypeFilterContainer" style="display: none; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Competition:</label>
-                                <select id="pd-matchTypeFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 90px;">
-                                    <option value="all">All</option>
-                                    <option value="league">League</option>
-                                    <option value="championship">Championship</option>
-                                    <option value="challenge">Challenge</option>
-                                </select>
+                                <div id="pd-matchTypeFilter" class="ms-container"></div>
                             </div>
                             <!-- Shot Category -->
                             <div style="display: flex; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Shot:</label>
-                                <select id="pd-shotCategoryFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
-                                    <option value="all">All</option>
-                                    <option value="in-play">In-Play</option>
-                                    <option value="free-kick">Free-Kick</option>
-                                    <option value="45">45</option>
-                                </select>
+                                <div id="pd-shotCategoryFilter" class="ms-container"></div>
                             </div>
                             <!-- Shot Type -->
                             <div style="display: flex; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Shot Type:</label>
-                                <select id="pd-shotTypeFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 100px;">
-                                    <option value="all">All</option>
-                                    <option value="not-defined">Not Defined</option>
-                                    <option value="outside-of-the-boot">Outside Of The Boot</option>
-                                    <option value="on-the-run">On the run</option>
-                                    <option value="on-the-turn">On the turn</option>
-                                    <option value="standing">Standing</option>
-                                    <option value="off-a-dummy">Off a Dummy</option>
-                                    <option value="off-the-hands">Off The Hands</option>
-                                    <option value="off-the-ground">Off The Ground</option>
-                                </select>
+                                <div id="pd-shotTypeFilter" class="ms-container"></div>
                             </div>
                             <!-- Foot -->
                             <div style="display: flex; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Foot:</label>
-                                <select id="pd-footFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 60px;">
-                                    <option value="all">All</option>
-                                    <option value="right">Right</option>
-                                    <option value="left">Left</option>
-                                </select>
+                                <div id="pd-footFilter" class="ms-container"></div>
+                            </div>
+                            <!-- Result -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Result:</label>
+                                <div id="pd-resultFilter" class="ms-container"></div>
                             </div>
                             <!-- Half (Match only) -->
                             <div id="pd-halfFilterContainer" style="display: none; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Half:</label>
-                                <select id="pd-halfFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
-                                    <option value="all">All</option>
-                                    <option value="1st">1st Half</option>
-                                    <option value="2nd">2nd Half</option>
-                                </select>
+                                <div id="pd-halfFilter" class="ms-container"></div>
                             </div>
                             <!-- Wind Direction -->
                             <div style="display: flex; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Wind:</label>
-                                <select id="pd-windDirectionFilter" onchange="handlePlayerDataWindDirectionChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 110px;">
-                                    <option value="all">All</option>
-                                    <option value="no-wind">No wind</option>
-                                    <optgroup label="With">
-                                        <option value="straight-with">Straight with</option>
-                                        <option value="diag-lr-with">Diag L-R with</option>
-                                        <option value="diag-rl-with">Diag R-L with</option>
-                                    </optgroup>
-                                    <optgroup label="Against">
-                                        <option value="straight-against">Straight against</option>
-                                        <option value="diag-lr-against">Diag L-R against</option>
-                                        <option value="diag-rl-against">Diag R-L against</option>
-                                    </optgroup>
-                                    <optgroup label="Cross">
-                                        <option value="cross-lr">Cross L-R</option>
-                                        <option value="cross-rl">Cross R-L</option>
-                                    </optgroup>
-                                </select>
+                                <div id="pd-windDirectionFilter" class="ms-container"></div>
                             </div>
                             <!-- Wind Strength -->
                             <div style="display: flex; align-items: center;">
                                 <label style="font-weight: 600; margin-right: 4px;">Strength:</label>
-                                <select id="pd-windStrengthFilter" onchange="applyPlayerDataFilters()" disabled style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 80px;">
-                                    <option value="all">All</option>
-                                    <option value="light">Light</option>
-                                    <option value="moderate">Moderate</option>
-                                    <option value="strong">Strong</option>
-                                    <option value="very-strong">Very Strong</option>
-                                </select>
+                                <div id="pd-windStrengthFilter" class="ms-container"></div>
                             </div>
                         </div>
                         <!-- Stats Summary -->
@@ -1549,6 +1458,7 @@
     <script src="js/clubData.js"></script>
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/multiselect.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/profile.js"></script>

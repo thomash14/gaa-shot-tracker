@@ -439,6 +439,14 @@
             position: sticky;
             left: 0;
             z-index: 3;
+            width: 30px;
+            min-width: 30px;
+            text-align: center;
+        }
+        .stats-table thead th:nth-child(2) {
+            position: sticky;
+            left: 30px;
+            z-index: 3;
             text-align: left;
         }
         .stats-table tbody td {
@@ -449,6 +457,17 @@
         .stats-table tbody td:first-child {
             position: sticky;
             left: 0;
+            background: inherit;
+            z-index: 1;
+            width: 30px;
+            min-width: 30px;
+            text-align: center;
+            font-weight: normal;
+            color: inherit;
+        }
+        .stats-table tbody td:nth-child(2) {
+            position: sticky;
+            left: 30px;
             background: inherit;
             z-index: 1;
             text-align: left;
@@ -469,8 +488,15 @@
             font-weight: bold;
             border-top: 2px solid #2a5298;
         }
-        .stats-table tbody tr.stats-table-summary td:first-child {
+        .stats-table tbody tr.stats-table-summary td:first-child,
+        .stats-table tbody tr.stats-table-summary td:nth-child(2) {
             background: #e8edf5;
+        }
+        .stats-table tbody tr.session-unchecked {
+            opacity: 0.45;
+        }
+        .stats-table tbody tr.session-unchecked:hover {
+            opacity: 0.65;
         }
         .stats-table .tt-scored { color: #2e7d32; }
         .stats-table .tt-missed { color: #c62828; }
@@ -1559,3 +1585,50 @@
         .player-data-clickable:hover {
             background: #f0f4ff;
         }
+
+/* Multi-select checkbox dropdown */
+.ms-container { position: relative; display: inline-block; }
+.ms-trigger { padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;
+              background: white; cursor: pointer; white-space: nowrap; overflow: hidden;
+              text-overflow: ellipsis; min-width: 60px; max-width: 130px;
+              display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.ms-trigger::after { content: '\25BE'; font-size: 9px; color: #666; flex-shrink: 0; }
+.ms-trigger:hover { border-color: #2a5298; }
+.ms-panel { position: absolute; top: 100%; left: 0; z-index: 500; background: white;
+            border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 140px; max-height: 220px; overflow-y: auto; display: none; font-size: 11px; }
+.ms-toggle-all { display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+                 border-bottom: 1px solid #e0e0e0; font-weight: 600; color: #2a5298;
+                 cursor: pointer; user-select: none; }
+.ms-group-header { padding: 4px 8px 2px; font-weight: 600; color: #666; font-size: 10px;
+                   text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid #eee; margin-top: 2px; }
+.ms-option { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+             cursor: pointer; user-select: none; }
+.ms-option:hover { background: #f0f4f8; }
+.ms-toggle-all input[type="checkbox"], .ms-option input[type="checkbox"] { margin: 0; cursor: pointer; }
+
+/* Session Calendar */
+.session-calendar { background: white; border-radius: 10px; border: 1px solid #e0e0e0; padding: 12px; margin-bottom: 15px; }
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cal-header h3 { margin: 0; font-size: 15px; color: #2a5298; }
+.cal-nav { background: none; border: 1px solid #ccc; border-radius: 4px; width: 28px; height: 28px;
+           cursor: pointer; font-size: 14px; color: #2a5298; display: flex; align-items: center; justify-content: center; }
+.cal-nav:hover { background: #f0f4f8; border-color: #2a5298; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; text-align: center; }
+.cal-dow { font-size: 10px; font-weight: 600; color: #999; padding: 4px 0; text-transform: uppercase; }
+.cal-day { position: relative; padding: 6px 2px; font-size: 12px; border-radius: 6px; cursor: default;
+           min-height: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cal-day.other-month { color: #ccc; }
+.cal-day.has-session { cursor: pointer; }
+.cal-day.has-session:hover { background: #f0f4f8; }
+.cal-day.today { font-weight: 700; box-shadow: inset 0 0 0 1.5px #2a5298; border-radius: 6px; }
+.cal-day.selected { background: #2a5298; color: white; border-radius: 6px; }
+.cal-day.selected .cal-dots span { border-color: white; }
+.cal-dots { display: flex; gap: 3px; justify-content: center; margin-top: 2px; height: 6px; }
+.cal-dots span { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.cal-dot-practice { background: #4CAF50; }
+.cal-dot-match { background: #2196F3; }
+.cal-summary { font-size: 11px; color: #666; text-align: center; margin-top: 8px; }
+.cal-clear { background: none; border: none; color: #2a5298; cursor: pointer; font-size: 11px;
+             text-decoration: underline; margin-left: 6px; }
+.cal-clear:hover { color: #1a3a6a; }

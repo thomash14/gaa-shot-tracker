@@ -363,6 +363,10 @@ async function leaveTeam() {
     }
 }
 function openAssignDrillModal() {
+    const today = new Date().toISOString().split('T')[0];
+    const startDateEl = document.getElementById('drillStartDate');
+    startDateEl.value = today;
+    startDateEl.min = today;
     document.getElementById('drillAvailableFor').value = '14'; // Default 2 weeks
     document.getElementById('drillTarget').value = '80';
     document.getElementById('drillNotes').value = '';
@@ -380,12 +384,14 @@ async function assignDrill() {
     const shotType = document.getElementById('assignDrillShotType').value;
     const foot = document.getElementById('assignDrillFoot').value;
     const totalShots = document.getElementById('assignDrillTotalShots').value;
+    const startDate = document.getElementById('drillStartDate').value;
     const availableForDays = parseInt(document.getElementById('drillAvailableFor').value);
     const target = document.getElementById('drillTarget').value;
     const notes = document.getElementById('drillNotes').value;
     let expiresAt = null;
     if (availableForDays > 0) {
-        const expiry = new Date();
+        const startParts = startDate.split('-');
+        const expiry = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
         expiry.setDate(expiry.getDate() + availableForDays);
         expiresAt = expiry.toISOString().split('T')[0];
     }
@@ -400,6 +406,7 @@ async function assignDrill() {
                 foot: foot,
                 totalShots: parseInt(totalShots)
             },
+            start_date: startDate,
             due_date: expiresAt || '2099-12-31', // Use far future date if no expiry
             target_percentage: target ? parseInt(target) : null,
             notes: notes || null,
@@ -510,20 +517,30 @@ async function renderCoachDrillsView() {
             console.log('Could not load profiles for completions:', e);
         }
     }
+    const coachTodayStr = new Date().toISOString().split('T')[0];
     container.innerHTML = teamDrills.map(drill => {
         const settings = drill.settings || {};
         const assignedDate = new Date(drill.created_at);
         const expiresDate = new Date(drill.due_date);
         const isExpired = expiresDate < new Date() && expiresDate.getFullYear() < 2099;
         const hasNoExpiry = expiresDate.getFullYear() >= 2099;
+        const isScheduled = drill.start_date && drill.start_date > coachTodayStr;
         const drillCompletions = completions.filter(c => c.drill_id === drill.id);
         const completedCount = drillCompletions.length;
         const footLabel = settings.foot === 'both' ? 'Both Feet' : (settings.foot === 'right' ? 'Right' : 'Left');
+        const borderColor = isExpired ? '#999' : isScheduled ? '#FF9800' : '#2a5298';
+        let scheduledBadge = '';
+        if (isScheduled) {
+            const startParts = drill.start_date.split('-');
+            const startDateObj = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
+            const startLabel = startDateObj.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' });
+            scheduledBadge = `<span style="background: #FF9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px;">Starts ${startLabel}</span>`;
+        }
         return `
-            <div class="stat-card" style="margin-bottom: 15px; padding: 15px; border-left: 4px solid ${isExpired ? '#999' : '#2a5298'}; ${isExpired ? 'opacity: 0.7;' : ''}">
+            <div class="stat-card" style="margin-bottom: 15px; padding: 15px; border-left: 4px solid ${borderColor}; ${isExpired ? 'opacity: 0.7;' : ''}">
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div>
-                        <strong style="font-size: 15px;">Scoring Zones - ${settings.distance}m</strong>
+                        <strong style="font-size: 15px;">Scoring Arc - ${settings.distance}m${scheduledBadge}</strong>
                         <div style="color: #666; font-size: 12px; margin-top: 4px;">
                             ${settings.totalShots} shots • ${settings.shotType} • ${footLabel}
                         </div>
@@ -583,7 +600,10 @@ async function renderPlayerDrillsView() {
         console.log('Could not load my completions:', e);
     }
     const completedDrillIds = myCompletions.map(c => c.drill_id);
+    const todayStr = new Date().toISOString().split('T')[0];
     const activeDrills = teamDrills.filter(d => {
+        // Hide drills that haven't started yet
+        if (d.start_date && d.start_date > todayStr) return false;
         const expiresDate = new Date(d.due_date);
         const isExpired = expiresDate < new Date() && expiresDate.getFullYear() < 2099;
         const isCompleted = completedDrillIds.includes(d.id);
@@ -605,7 +625,7 @@ async function renderPlayerDrillsView() {
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div>
                         <strong style="font-size: 15px;">
-                            ${isCompleted ? '✅ ' : '🎯 '}Scoring Zones - ${settings.distance}m
+                            ${isCompleted ? '✅ ' : '🎯 '}Scoring Arc - ${settings.distance}m
                         </strong>
                         <div style="color: #666; font-size: 12px; margin-top: 4px;">
                             ${settings.totalShots} shots • ${settings.shotType} • ${footLabel}
@@ -640,7 +660,8 @@ function renderDashboardAssignedDrills(activeDrills, completedDrillIds) {
     const container = document.getElementById('assignedDrillsList');
     const countBadge = document.getElementById('assignedDrillsCount');
     if (!section || !container) return;
-    const pendingDrills = activeDrills.filter(d => !completedDrillIds.includes(d.id));
+    const dashTodayStr = new Date().toISOString().split('T')[0];
+    const pendingDrills = activeDrills.filter(d => !completedDrillIds.includes(d.id) && !(d.start_date && d.start_date > dashTodayStr));
     if (pendingDrills.length === 0) {
         section.style.display = 'none';
         return;
@@ -666,7 +687,7 @@ function renderDashboardAssignedDrills(activeDrills, completedDrillIds) {
         return `
             <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: ${isExpiringSoon ? '#fff8e1' : '#f8f9fa'}; border-radius: 8px; margin-bottom: 8px;">
                 <div style="flex: 1; font-weight: 500; color: #2a5298; font-size: 14px;">
-                    🎯 Scoring Zones - ${settings.distance}m ${settings.shotType}
+                    🎯 Scoring Arc - ${settings.distance}m ${settings.shotType}
                     ${expiryBadge}
                 </div>
                 <button class="btn-secondary" onclick="showAssignedDrillInfo('${drill.id}')" style="padding: 6px 10px; font-size: 12px;" title="View details">
@@ -703,7 +724,7 @@ function showAssignedDrillInfo(drillId) {
             ${drill.notes ? `<p style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 6px; font-style: italic;">"${drill.notes}"</p>` : ''}
         </div>
     `;
-    document.getElementById('drillDescriptionTitle').textContent = `Scoring Zones - ${settings.distance}m`;
+    document.getElementById('drillDescriptionTitle').textContent = `Scoring Arc - ${settings.distance}m`;
     document.getElementById('drillDescriptionContent').innerHTML = content;
     document.getElementById('drillVideoContainer').style.display = 'none';
     document.getElementById('drillDescriptionModal').classList.add('active');
@@ -877,14 +898,14 @@ function resetPlayerDataFilters() {
     document.getElementById('pd-dateRangeFilter').value = 'all';
     document.getElementById('pd-customSessionContainer').style.display = 'none';
     document.getElementById('pd-customDateContainer').style.display = 'none';
-    document.getElementById('pd-shotCategoryFilter').value = 'all';
-    document.getElementById('pd-shotTypeFilter').value = 'all';
-    document.getElementById('pd-footFilter').value = 'all';
-    document.getElementById('pd-halfFilter').value = 'all';
-    document.getElementById('pd-matchTypeFilter').value = 'all';
-    document.getElementById('pd-windDirectionFilter').value = 'all';
-    document.getElementById('pd-windStrengthFilter').value = 'all';
-    document.getElementById('pd-windStrengthFilter').disabled = true;
+    resetMultiSelect('pd-shotCategoryFilter');
+    resetMultiSelect('pd-shotTypeFilter');
+    resetMultiSelect('pd-footFilter');
+    resetMultiSelect('pd-resultFilter');
+    resetMultiSelect('pd-halfFilter');
+    resetMultiSelect('pd-matchTypeFilter');
+    resetMultiSelect('pd-windDirectionFilter');
+    resetMultiSelect('pd-windStrengthFilter');
     document.getElementById('pd-showZoneOverlay').checked = false;
     document.getElementById('pd-zoneOverlays').style.display = 'none';
 }
@@ -907,14 +928,14 @@ function switchPlayerDataType(type) {
     document.getElementById('pd-dateRangeFilter').value = 'all';
     document.getElementById('pd-customSessionContainer').style.display = 'none';
     document.getElementById('pd-customDateContainer').style.display = 'none';
-    document.getElementById('pd-shotCategoryFilter').value = 'all';
-    document.getElementById('pd-shotTypeFilter').value = 'all';
-    document.getElementById('pd-footFilter').value = 'all';
-    document.getElementById('pd-halfFilter').value = 'all';
-    document.getElementById('pd-matchTypeFilter').value = 'all';
-    document.getElementById('pd-windDirectionFilter').value = 'all';
-    document.getElementById('pd-windStrengthFilter').value = 'all';
-    document.getElementById('pd-windStrengthFilter').disabled = true;
+    resetMultiSelect('pd-shotCategoryFilter');
+    resetMultiSelect('pd-shotTypeFilter');
+    resetMultiSelect('pd-footFilter');
+    resetMultiSelect('pd-resultFilter');
+    resetMultiSelect('pd-halfFilter');
+    resetMultiSelect('pd-matchTypeFilter');
+    resetMultiSelect('pd-windDirectionFilter');
+    resetMultiSelect('pd-windStrengthFilter');
     displayPlayerDataAnalytics();
 }
 
@@ -997,14 +1018,6 @@ function getPlayerDataDateRangeFilter() {
 }
 
 function handlePlayerDataWindDirectionChange() {
-    const windDir = document.getElementById('pd-windDirectionFilter').value;
-    const windStrEl = document.getElementById('pd-windStrengthFilter');
-    if (windDir === 'all' || windDir === 'no-wind') {
-        windStrEl.disabled = true;
-        windStrEl.value = 'all';
-    } else {
-        windStrEl.disabled = false;
-    }
     applyPlayerDataFilters();
 }
 
@@ -1019,6 +1032,7 @@ function togglePlayerDataZoneOverlay() {
 }
 
 function displayPlayerDataAnalytics() {
+    pdUncheckedSessionIds.clear();
     const { startDate, endDate, sessionLimit } = getPlayerDataDateRangeFilter();
     let filteredSessions = playerDataSessions.filter(s => s.type === currentPlayerDataType);
     if (sessionLimit) {
@@ -1040,47 +1054,45 @@ function displayPlayerDataAnalytics() {
 
     let allShots = filteredSessions.flatMap(s => s.shots.map(shot => ({
         ...shot,
+        sessionId: s.id,
         matchType: s.matchType,
         windDirection: s.windDirection || null,
         windStrength: s.windStrength || null
     })));
 
     // Competition filter (match only)
-    const matchTypeFilterEl = document.getElementById('pd-matchTypeFilter');
-    const currentMatchTypeSelection = matchTypeFilterEl.value;
     if (currentPlayerDataType === 'match') {
         const customTypes = [...new Set(filteredSessions.map(s => s.matchType).filter(t => t && !['league', 'championship', 'challenge'].includes(t)))];
-        matchTypeFilterEl.innerHTML = `
-            <option value="all">All</option>
-            <option value="league">League</option>
-            <option value="championship">Championship</option>
-            <option value="challenge">Challenge</option>
-            ${customTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
-        `;
-        if ([...matchTypeFilterEl.options].some(opt => opt.value === currentMatchTypeSelection)) {
-            matchTypeFilterEl.value = currentMatchTypeSelection;
-        }
-    }
-    const matchTypeFilter = matchTypeFilterEl.value;
-    if (matchTypeFilter !== 'all' && currentPlayerDataType === 'match') {
-        allShots = allShots.filter(s => s.matchType === matchTypeFilter);
+        const allOpts = [
+            { value: 'league', label: 'League' },
+            { value: 'championship', label: 'Championship' },
+            { value: 'challenge', label: 'Challenge' },
+            ...customTypes.map(t => ({ value: t, label: t }))
+        ];
+        setMultiSelectOptions('pd-matchTypeFilter', allOpts);
+        allShots = msFilterShots(allShots, 'pd-matchTypeFilter', 'matchType');
     }
 
     // Shot-level filters
-    const shotCategoryFilter = document.getElementById('pd-shotCategoryFilter').value;
-    if (shotCategoryFilter !== 'all') allShots = allShots.filter(s => s.shotCategory === shotCategoryFilter);
-    const shotTypeFilter = document.getElementById('pd-shotTypeFilter').value;
-    if (shotTypeFilter !== 'all') allShots = allShots.filter(s => s.shotType === shotTypeFilter);
-    const footFilter = document.getElementById('pd-footFilter').value;
-    if (footFilter !== 'all') allShots = allShots.filter(s => s.foot === footFilter);
-    const halfFilter = document.getElementById('pd-halfFilter').value;
-    if (halfFilter !== 'all') allShots = allShots.filter(s => s.half === halfFilter);
-    const windDirFilter = document.getElementById('pd-windDirectionFilter').value;
-    if (windDirFilter !== 'all') allShots = allShots.filter(s => s.windDirection === windDirFilter);
-    const windStrFilter = document.getElementById('pd-windStrengthFilter').value;
-    if (windStrFilter !== 'all') allShots = allShots.filter(s => s.windStrength === windStrFilter);
+    allShots = msFilterShots(allShots, 'pd-shotCategoryFilter', 'shotCategory');
+    allShots = msFilterShots(allShots, 'pd-shotTypeFilter', 'shotType');
+    allShots = msFilterShots(allShots, 'pd-footFilter', 'foot');
+    allShots = msFilterShots(allShots, 'pd-resultFilter', 'result');
+    allShots = msFilterShots(allShots, 'pd-halfFilter', 'half');
+    allShots = msFilterShots(allShots, 'pd-windDirectionFilter', 'windDirection');
+    allShots = msFilterShots(allShots, 'pd-windStrengthFilter', 'windStrength');
 
-    // Conversion stats
+    lastPdFilteredAllShots = allShots;
+    updatePdConversionStats(allShots);
+    document.getElementById('pd-totalSessions').textContent = filteredSessions.length;
+    document.getElementById('pd-statsTableHeading').textContent = currentPlayerDataType === 'match' ? 'Match Breakdown' : 'Session Breakdown';
+
+    renderShotMapFromShots(allShots, 'playerDataPitchWrapper');
+    renderPlayerDataStatsTable(filteredSessions);
+    updatePdZoneStats(allShots);
+}
+
+function updatePdConversionStats(allShots) {
     const totalShots = allShots.length;
     const scored = allShots.filter(s => s.result === 'scored').length;
     const successRate = totalShots > 0 ? Math.round((scored / totalShots) * 100) : 0;
@@ -1099,20 +1111,15 @@ function displayPlayerDataAnalytics() {
     const goalShots = allShots.filter(s => s.shotFor === 'goal');
     const goalScored = goalShots.filter(s => s.result === 'scored').length;
     const goalRate = goalShots.length > 0 ? Math.round((goalScored / goalShots.length) * 100) : 0;
-
     document.getElementById('pd-conversionTotal').textContent = `${scored}/${totalShots} (${successRate}%)`;
     document.getElementById('pd-inPlayConv').textContent = `${inPlayScored}/${inPlayShots.length} (${inPlayRate}%)`;
     document.getElementById('pd-deadBallConv').textContent = `${deadBallScored}/${deadBallShots.length} (${deadBallRate}%)`;
     document.getElementById('pd-onePointerConv').textContent = `${onePointerScored}/${onePointerShots.length} (${onePointerRate}%)`;
     document.getElementById('pd-twoPointerConv').textContent = `${twoPointerScored}/${twoPointerShots.length} (${twoPointerRate}%)`;
     document.getElementById('pd-goalConv').textContent = `${goalScored}/${goalShots.length} (${goalRate}%)`;
-    document.getElementById('pd-totalSessions').textContent = filteredSessions.length;
-    document.getElementById('pd-statsTableHeading').textContent = currentPlayerDataType === 'match' ? 'Match Breakdown' : 'Session Breakdown';
+}
 
-    renderPlayerDataShotMap(allShots);
-    renderPlayerDataStatsTable(filteredSessions);
-
-    // Zone stats
+function updatePdZoneStats(allShots) {
     const zones = {};
     allShots.forEach(shot => {
         const zoneInfo = getZone(shot.x, shot.y);
@@ -1123,7 +1130,6 @@ function displayPlayerDataAnalytics() {
         zones[zoneKey].total++;
         if (shot.result === 'scored') zones[zoneKey].scored++;
     });
-
     const zoneStatsEl = document.getElementById('pd-zoneStats');
     if (Object.keys(zones).length === 0) {
         zoneStatsEl.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No shot data for the current filters.</p></div>';
@@ -1144,8 +1150,6 @@ function displayPlayerDataAnalytics() {
                 </div>
             `;
         }).join('');
-
-        // Distance analysis
         const shotsWithDistance = allShots.filter(s => s.distance !== undefined);
         if (shotsWithDistance.length > 0) {
             const avgDistance = shotsWithDistance.reduce((sum, s) => sum + s.distance, 0) / shotsWithDistance.length;
@@ -1172,8 +1176,6 @@ function displayPlayerDataAnalytics() {
                 </div>
             `;
         }
-
-        // Foot analysis
         const shotsWithFoot = allShots.filter(s => s.foot !== undefined);
         if (shotsWithFoot.length > 0) {
             const leftFootShots = shotsWithFoot.filter(s => s.foot === 'left');
@@ -1200,42 +1202,45 @@ function displayPlayerDataAnalytics() {
     }
 }
 
-function renderPlayerDataShotMap(shots) {
-    hideShotTooltip();
-    const wrapper = document.getElementById('playerDataPitchWrapper');
-    wrapper.querySelectorAll('.analytics-shot-marker, .shot-tooltip').forEach(m => m.remove());
+function handlePdSessionCheckboxChange(sessionId, isChecked) {
+    const id = String(sessionId);
+    if (isChecked) {
+        pdUncheckedSessionIds.delete(id);
+    } else {
+        pdUncheckedSessionIds.add(id);
+    }
+    updatePlayerDataFromCheckboxes();
+    const selectAll = document.getElementById('pdStatsSelectAll');
+    if (selectAll) {
+        const total = lastPdSessionRows.length;
+        const uncheckedCount = pdUncheckedSessionIds.size;
+        selectAll.checked = uncheckedCount === 0;
+        selectAll.indeterminate = uncheckedCount > 0 && uncheckedCount < total;
+    }
+}
 
-    const PITCH_X_MIN = 25 / 500 * 100;
-    const PITCH_X_MAX = 425 / 500 * 100;
-    const PITCH_Y_MIN = 40 / 725 * 100;
-    const PITCH_Y_MAX = 684 / 725 * 100;
+function handlePdStatsSelectAll(isChecked) {
+    pdUncheckedSessionIds.clear();
+    if (!isChecked) {
+        lastPdSessionRows.forEach(r => pdUncheckedSessionIds.add(String(r.session.id)));
+    }
+    document.querySelectorAll('#pd-statsTableContainer .pd-session-row-cb').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updatePlayerDataFromCheckboxes();
+}
 
-    shots.forEach(shot => {
-        const needsMirror = shot.y >= 50;
-        let displayX = shot.x;
-        let displayY = shot.y;
-        if (needsMirror) {
-            displayY = PITCH_Y_MIN + PITCH_Y_MAX - shot.y;
-            displayX = PITCH_X_MIN + PITCH_X_MAX - shot.x;
-        }
-        const isScored = shot.result === 'scored';
-        const isGoal = shot.shotFor === 'goal';
-        const size = 12;
-        const marker = document.createElement('div');
-        marker.className = 'analytics-shot-marker';
-        marker.style.position = 'absolute';
-        marker.style.left = displayX + '%';
-        marker.style.top = displayY + '%';
-        marker.style.transform = 'translate(-50%, -50%)';
-        marker.style.zIndex = '3';
-        marker.style.cursor = 'pointer';
-        marker.style.width = size + 'px';
-        marker.style.height = size + 'px';
-        marker.style.background = isScored ? 'white' : '#f44336';
-        marker.style.border = '1.5px solid #333';
-        marker.style.borderRadius = isGoal ? '0' : '50%';
-        wrapper.appendChild(marker);
-        attachShotTooltipEvents(marker, [shot], wrapper);
+function updatePlayerDataFromCheckboxes() {
+    const checkedShots = lastPdFilteredAllShots.filter(s => !pdUncheckedSessionIds.has(String(s.sessionId)));
+    updatePdConversionStats(checkedShots);
+    renderShotMapFromShots(checkedShots, 'playerDataPitchWrapper');
+    updatePdZoneStats(checkedShots);
+    const checkedCount = lastPdSessionRows.filter(r => !pdUncheckedSessionIds.has(String(r.session.id))).length;
+    document.getElementById('pd-totalSessions').textContent = checkedCount;
+    updateSummaryRow(lastPdSessionRows, pdUncheckedSessionIds, 'pd-statsTableContainer', lastPdTableMeta);
+    document.querySelectorAll('#pd-statsTableContainer tbody tr[data-session-id]').forEach(tr => {
+        const sid = tr.getAttribute('data-session-id');
+        tr.classList.toggle('session-unchecked', pdUncheckedSessionIds.has(sid));
     });
 }
 
@@ -1247,23 +1252,16 @@ function renderPlayerDataStatsTable(filteredSessions) {
         return;
     }
 
-    const shotCatF = document.getElementById('pd-shotCategoryFilter').value;
-    const shotTypeF = document.getElementById('pd-shotTypeFilter').value;
-    const footF = document.getElementById('pd-footFilter').value;
-    const halfF = document.getElementById('pd-halfFilter').value;
-    const windDirF = document.getElementById('pd-windDirectionFilter').value;
-    const windStrF = document.getElementById('pd-windStrengthFilter').value;
-    const matchTypeF = document.getElementById('pd-matchTypeFilter').value;
-
     function filterShots(session) {
         let shots = (session.shots || []).map(s => ({...s, matchType: session.matchType, windDirection: session.windDirection || null, windStrength: session.windStrength || null}));
-        if (matchTypeF !== 'all' && currentPlayerDataType === 'match') shots = shots.filter(s => s.matchType === matchTypeF);
-        if (shotCatF !== 'all') shots = shots.filter(s => s.shotCategory === shotCatF);
-        if (shotTypeF !== 'all') shots = shots.filter(s => s.shotType === shotTypeF);
-        if (footF !== 'all') shots = shots.filter(s => s.foot === footF);
-        if (halfF !== 'all') shots = shots.filter(s => s.half === halfF);
-        if (windDirF !== 'all') shots = shots.filter(s => s.windDirection === windDirF);
-        if (windStrF !== 'all') shots = shots.filter(s => s.windStrength === windStrF);
+        if (currentPlayerDataType === 'match') shots = msFilterShots(shots, 'pd-matchTypeFilter', 'matchType');
+        shots = msFilterShots(shots, 'pd-shotCategoryFilter', 'shotCategory');
+        shots = msFilterShots(shots, 'pd-shotTypeFilter', 'shotType');
+        shots = msFilterShots(shots, 'pd-footFilter', 'foot');
+        shots = msFilterShots(shots, 'pd-resultFilter', 'result');
+        shots = msFilterShots(shots, 'pd-halfFilter', 'half');
+        shots = msFilterShots(shots, 'pd-windDirectionFilter', 'windDirection');
+        shots = msFilterShots(shots, 'pd-windStrengthFilter', 'windStrength');
         return shots;
     }
 
@@ -1360,7 +1358,12 @@ function renderPlayerDataStatsTable(filteredSessions) {
     const sortedMissResults = [...allMissResults].sort();
     const sortedMissReasons = [...allMissReasons].sort();
 
+    // Store for checkbox handlers
+    lastPdSessionRows = sessionRows;
+    lastPdTableMeta = { showInPlay, showPlaced, showOnePt, showTwoPt, showGoals, showComments, sortedShotTypes, sortedMissResults, sortedMissReasons, analyticsType: currentPlayerDataType };
+
     let headerHTML = '<tr>';
+    headerHTML += '<th><input type="checkbox" id="pdStatsSelectAll" checked onchange="handlePdStatsSelectAll(this.checked)"></th>';
     headerHTML += '<th>Date</th>';
     if (currentPlayerDataType === 'match') {
         headerHTML += '<th>Competition</th><th>Opponent</th>';
@@ -1384,7 +1387,8 @@ function renderPlayerDataStatsTable(filteredSessions) {
     sessionRows.forEach(row => {
         const s = row.session;
         const formattedDate = new Date(s.date).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: '2-digit' });
-        bodyHTML += '<tr>';
+        bodyHTML += `<tr data-session-id="${String(s.id)}">`;
+        bodyHTML += `<td><input type="checkbox" class="pd-session-row-cb" data-session-id="${String(s.id)}" checked onchange="handlePdSessionCheckboxChange('${String(s.id)}', this.checked)"></td>`;
         bodyHTML += `<td>${formattedDate}</td>`;
         if (currentPlayerDataType === 'match') {
             const comp = s.matchType ? s.matchType.charAt(0).toUpperCase() + s.matchType.slice(1) : '—';
@@ -1436,6 +1440,7 @@ function renderPlayerDataStatsTable(filteredSessions) {
         const totG_T = sessionRows.reduce((a, r) => a + r.goalsTotal, 0);
 
         bodyHTML += '<tr class="stats-table-summary">';
+        bodyHTML += '<td></td>';
         bodyHTML += '<td>Totals</td>';
         const extraCols = currentPlayerDataType === 'match' ? 2 : 1;
         for (let i = 0; i < extraCols; i++) bodyHTML += '<td></td>';
@@ -1466,3 +1471,21 @@ function renderPlayerDataStatsTable(filteredSessions) {
 
     container.innerHTML = `<table class="stats-table"><thead>${headerHTML}</thead><tbody>${bodyHTML}</tbody></table>`;
 }
+
+function initPlayerDataMultiSelects() {
+    const onChange = applyPlayerDataFilters;
+    initMultiSelect('pd-matchTypeFilter', [
+        { value: 'league', label: 'League' },
+        { value: 'championship', label: 'Championship' },
+        { value: 'challenge', label: 'Challenge' }
+    ], onChange);
+    initMultiSelect('pd-shotCategoryFilter', _shotCategoryOptions(), onChange);
+    initMultiSelect('pd-shotTypeFilter', _shotTypeOptions(), onChange);
+    initMultiSelect('pd-footFilter', _footOptions(), onChange);
+    initMultiSelect('pd-resultFilter', _resultOptions(), onChange);
+    initMultiSelect('pd-halfFilter', _halfOptions(), onChange);
+    initMultiSelect('pd-windDirectionFilter', _windDirectionOptions(), onChange);
+    initMultiSelect('pd-windStrengthFilter', _windStrengthOptions(), onChange);
+}
+
+initPlayerDataMultiSelects();

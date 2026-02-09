@@ -577,6 +577,12 @@ function clearPitchMarkers() {
     document.querySelectorAll('.shot-marker').forEach(m => m.remove());
     document.querySelectorAll('.batch-label').forEach(m => m.remove());
     document.querySelectorAll('.half-view-label').forEach(m => m.remove());
+    // Clear drill overlays (spots, dotted lines, distance labels, previews)
+    document.querySelectorAll('.drill-spot').forEach(m => m.remove());
+    document.querySelectorAll('.drill-distance-line').forEach(m => m.remove());
+    document.querySelectorAll('.drill-distance-label').forEach(m => m.remove());
+    document.querySelectorAll('.drill-preview-marker').forEach(m => m.remove());
+    document.querySelectorAll('.drill-preview-line').forEach(m => m.remove());
 }
 
 function resetPitchState() {

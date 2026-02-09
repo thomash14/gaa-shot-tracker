@@ -191,9 +191,11 @@ function switchSessionType(type) {
 
 function filterSessions(type) {
     currentSessionsFilter = type;
+    calendarSelectedDate = null;
     document.getElementById('sessionsFilterAll').classList.toggle('active', type === 'all');
     document.getElementById('sessionsFilterMatch').classList.toggle('active', type === 'match');
     document.getElementById('sessionsFilterPractice').classList.toggle('active', type === 'practice');
+    renderSessionCalendar();
     displaySessions();
 }
 
@@ -203,9 +205,13 @@ function displaySessions() {
     if (currentSessionsFilter !== 'all') {
         nonEmptySessions = nonEmptySessions.filter(s => (s.type || 'practice') === currentSessionsFilter);
     }
+    if (calendarSelectedDate) {
+        nonEmptySessions = nonEmptySessions.filter(s => s.date === calendarSelectedDate);
+    }
     if (nonEmptySessions.length === 0) {
         const filterLabel = currentSessionsFilter === 'all' ? '' : currentSessionsFilter;
-        list.innerHTML = `<div class="empty-state"><p>No ${filterLabel} sessions recorded yet. Start tracking your shots!</p></div>`;
+        const dateNote = calendarSelectedDate ? ' on ' + new Date(calendarSelectedDate + 'T12:00:00').toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        list.innerHTML = `<div class="empty-state"><p>No ${filterLabel} sessions${dateNote}. ${calendarSelectedDate ? '' : 'Start tracking your shots!'}</p></div>`;
         return;
     }
     list.innerHTML = nonEmptySessions.map(session => {
@@ -499,6 +505,140 @@ async function deleteSession(id) {
     }
     sessions = sessions.filter(s => s.id !== id);
     saveData();
+    renderSessionCalendar();
     displaySessions();
     displayAnalytics();
+}
+
+function renderSessionCalendar() {
+    const container = document.getElementById('sessionCalendar');
+    if (!container) return;
+
+    const year = calendarYear;
+    const month = calendarMonth;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Build a map of date -> { practice: bool, match: bool } for ALL sessions (ignoring tab filter)
+    const dateMap = {};
+    sessions.forEach(s => {
+        if (!s.shots || s.shots.length === 0) return;
+        if (!dateMap[s.date]) dateMap[s.date] = { practice: false, match: false };
+        const t = s.type || 'practice';
+        if (t === 'match') dateMap[s.date].match = true;
+        else dateMap[s.date].practice = true;
+    });
+
+    // Month info
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    // Monday=0 start: JS getDay() is Sun=0, so convert
+    let startDow = firstDay.getDay() - 1;
+    if (startDow < 0) startDow = 6;
+
+    const monthLabel = firstDay.toLocaleDateString('en-IE', { month: 'long', year: 'numeric' });
+
+    // Count practices/matches this month
+    let practiceCount = 0, matchCount = 0;
+    sessions.forEach(s => {
+        if (!s.shots || s.shots.length === 0) return;
+        const parts = s.date.split('-');
+        if (parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month) {
+            if ((s.type || 'practice') === 'match') matchCount++;
+            else practiceCount++;
+        }
+    });
+
+    let html = '<div class="cal-header">';
+    html += '<button class="cal-nav" onclick="changeCalendarMonth(-1)">&#9664;</button>';
+    html += `<h3>${monthLabel}</h3>`;
+    html += '<button class="cal-nav" onclick="changeCalendarMonth(1)">&#9654;</button>';
+    html += '</div>';
+
+    html += '<div class="cal-grid">';
+    const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    dowLabels.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
+
+    // Fill leading blanks from previous month
+    const prevMonthLast = new Date(year, month, 0).getDate();
+    for (let i = startDow - 1; i >= 0; i--) {
+        const dayNum = prevMonthLast - i;
+        html += `<div class="cal-day other-month"><span>${dayNum}</span></div>`;
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const info = dateMap[dateStr];
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === calendarSelectedDate;
+        const hasSession = !!info;
+
+        let classes = 'cal-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        if (hasSession) classes += ' has-session';
+
+        const onclick = hasSession ? `onclick="selectCalendarDate('${dateStr}')"` : '';
+
+        let dots = '';
+        if (info) {
+            dots = '<div class="cal-dots">';
+            if (info.match) dots += '<span class="cal-dot-match"></span>';
+            if (info.practice) dots += '<span class="cal-dot-practice"></span>';
+            dots += '</div>';
+        }
+
+        html += `<div class="${classes}" ${onclick}><span>${d}</span>${dots}</div>`;
+    }
+
+    // Fill trailing blanks
+    const totalCells = startDow + daysInMonth;
+    const trailingBlanks = (7 - (totalCells % 7)) % 7;
+    for (let i = 1; i <= trailingBlanks; i++) {
+        html += `<div class="cal-day other-month"><span>${i}</span></div>`;
+    }
+
+    html += '</div>';
+
+    // Summary
+    const parts = [];
+    if (practiceCount > 0) parts.push(`${practiceCount} practice${practiceCount !== 1 ? 's' : ''}`);
+    if (matchCount > 0) parts.push(`${matchCount} match${matchCount !== 1 ? 'es' : ''}`);
+    const summaryText = parts.length > 0 ? parts.join(', ') : 'No sessions';
+
+    html += '<div class="cal-summary">';
+    html += `${monthLabel}: ${summaryText}`;
+    if (calendarSelectedDate) {
+        html += '<button class="cal-clear" onclick="clearCalendarDate()">Show all</button>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+function changeCalendarMonth(delta) {
+    calendarMonth += delta;
+    if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+    else if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+    calendarSelectedDate = null;
+    renderSessionCalendar();
+    displaySessions();
+}
+
+function selectCalendarDate(dateStr) {
+    if (calendarSelectedDate === dateStr) {
+        calendarSelectedDate = null;
+    } else {
+        calendarSelectedDate = dateStr;
+    }
+    renderSessionCalendar();
+    displaySessions();
+}
+
+function clearCalendarDate() {
+    calendarSelectedDate = null;
+    renderSessionCalendar();
+    displaySessions();
 }

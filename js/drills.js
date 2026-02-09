@@ -36,12 +36,12 @@ function calculateScoringZoneSpots(distanceMeters) {
 }
 const scoringZonesDrill = {
     id: 'scoring-zones',
-    name: "Scoring Zones",
+    name: "Scoring Arc",
     author: "Custom Drill",
     description: "Scoring from different angles on the pitch. 80%+ is a brilliant result!",
     isDynamic: true,
     detailedInstructions: `
-        <h4>🎯 Scoring Zones Drill</h4>
+        <h4>🎯 Scoring Arc Drill</h4>
         <p><strong>Objective:</strong> Improve your point-taking accuracy from different angles and distances on the pitch.</p>
         <h5>How to do it:</h5>
         <ol>

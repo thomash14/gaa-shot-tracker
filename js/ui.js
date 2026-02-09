@@ -1,5 +1,7 @@
 function restoreTrackingUI() {
     viewingPastSession = false;
+    activeTemplate = null;
+    previewingTemplate = null;
     resetPitchState();
     const header = document.getElementById('viewSessionHeader');
     if (header) header.style.display = 'none';
@@ -39,7 +41,7 @@ function switchSection(section) {
         case 'sessions':
             document.getElementById('navSessions').classList.add('active');
             document.getElementById('sessions-tab').classList.add('active');
-            filterSessions('all');
+            filterSessions('match');
             break;
         case 'analytics':
             document.getElementById('navAnalytics').classList.add('active');
@@ -75,7 +77,7 @@ function switchTab(tab) {
         content.classList.add('active');
     }
     if (tab === 'sessions') {
-        filterSessions('all');
+        filterSessions('match');
     } else if (tab === 'analytics') {
         displayAnalytics();
     } else if (tab === 'team') {
