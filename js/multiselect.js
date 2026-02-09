@@ -240,3 +240,15 @@ function _resultOptions() {
         { value: 'missed', label: 'Missed' }
     ];
 }
+
+function _skillsetOptions() {
+    return [
+        { value: 'kicking-at-goal', label: 'Kicking at Goal' },
+        { value: 'kick-passing', label: 'Kick Passing' },
+        { value: 'hand-passing', label: 'Hand Passing' },
+        { value: 'high-catch', label: 'High Catch' },
+        { value: 'soloing', label: 'Soloing' },
+        { value: 'pick-up', label: 'Pick-Up' },
+        { value: 'fun-challenges', label: 'Fun Challenges' }
+    ];
+}

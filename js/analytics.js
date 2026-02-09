@@ -143,9 +143,12 @@ function displayAnalytics() {
     uncheckedSessionIds.clear();
     if (currentAnalyticsType === 'practice') {
         document.getElementById('drillFilterContainer').style.display = 'flex';
+        document.getElementById('skillsetFilterContainer').style.display = 'flex';
         populateDrillFilter();
+        populateSkillsetFilter();
     } else {
         document.getElementById('drillFilterContainer').style.display = 'none';
+        document.getElementById('skillsetFilterContainer').style.display = 'none';
     }
     const { startDate, endDate, sessionLimit } = getDateRangeFilter();
     let filteredSessions = sessions.filter(s => s.type === currentAnalyticsType);
@@ -190,6 +193,7 @@ function displayAnalytics() {
     }
     if (currentAnalyticsType === 'practice') {
         allShots = applyDrillFilterMulti(allShots);
+        allShots = applySkillsetFilterMulti(allShots);
     }
     allShots = msFilterShots(allShots, 'shotCategoryFilter', 'shotCategory');
     allShots = msFilterShots(allShots, 'shotTypeFilter', 'shotType');
@@ -228,6 +232,7 @@ function switchAnalyticsType(type) {
     }
     document.getElementById('halfFilterContainer').style.display = type === 'match' ? 'flex' : 'none';
     document.getElementById('drillFilterContainer').style.display = type === 'practice' ? 'flex' : 'none';
+    document.getElementById('skillsetFilterContainer').style.display = type === 'practice' ? 'flex' : 'none';
     resetMultiSelect('footFilter');
     resetMultiSelect('resultFilter');
     resetMultiSelect('halfFilter');
@@ -235,11 +240,15 @@ function switchAnalyticsType(type) {
     resetMultiSelect('shotTypeFilter');
     resetMultiSelect('matchTypeFilter');
     resetMultiSelect('drillFilter');
+    resetMultiSelect('skillsetFilter');
     resetMultiSelect('windDirectionFilter');
     resetMultiSelect('windStrengthFilter');
     document.getElementById('windDirectionFilterContainer').style.display = 'flex';
     document.getElementById('windStrengthFilterContainer').style.display = 'flex';
-    if (type === 'practice') populateDrillFilter();
+    if (type === 'practice') {
+        populateDrillFilter();
+        populateSkillsetFilter();
+    }
     displayAnalytics();
 }
 function renderShotMapWithFilters() {
@@ -274,6 +283,7 @@ function renderShotMapWithFilters() {
     }
     if (currentAnalyticsType === 'practice') {
         allShots = applyDrillFilterMulti(allShots);
+        allShots = applySkillsetFilterMulti(allShots);
     }
     allShots = msFilterShots(allShots, 'shotCategoryFilter', 'shotCategory');
     allShots = msFilterShots(allShots, 'shotTypeFilter', 'shotType');
@@ -384,6 +394,29 @@ function populateDrillFilter() {
     }
     setMultiSelectOptions('drillFilter', opts);
 }
+function populateSkillsetFilter() {
+    setMultiSelectOptions('skillsetFilter', _skillsetOptions());
+}
+
+function applySkillsetFilterMulti(allShots) {
+    const vals = getMultiSelectValues('skillsetFilter');
+    if (vals === null) return allShots;
+    return allShots.filter(s => {
+        let skillset;
+        if (!s.drillKey) {
+            skillset = 'kicking-at-goal';
+        } else if (s.drillKey.startsWith('scoring-zones')) {
+            skillset = 'kicking-at-goal';
+        } else if (s.drillKey.startsWith('custom-')) {
+            const drill = customDrills.find(d => 'custom-' + d.id === s.drillKey);
+            skillset = drill?.skillset || 'kicking-at-goal';
+        } else {
+            skillset = 'kicking-at-goal';
+        }
+        return vals.has(skillset);
+    });
+}
+
 function applyDrillFilterMulti(allShots) {
     const vals = getMultiSelectValues('drillFilter');
     if (vals === null) return allShots;
@@ -408,7 +441,10 @@ function renderStatsTable(filteredSessions) {
     function filterShots(session) {
         let shots = (session.shots || []).map(s => ({...s, matchType: session.matchType, windDirection: session.windDirection || null, windStrength: session.windStrength || null}));
         if (currentAnalyticsType === 'match') shots = msFilterShots(shots, 'matchTypeFilter', 'matchType');
-        if (currentAnalyticsType === 'practice') shots = applyDrillFilterMulti(shots);
+        if (currentAnalyticsType === 'practice') {
+            shots = applyDrillFilterMulti(shots);
+            shots = applySkillsetFilterMulti(shots);
+        }
         shots = msFilterShots(shots, 'shotCategoryFilter', 'shotCategory');
         shots = msFilterShots(shots, 'shotTypeFilter', 'shotType');
         shots = msFilterShots(shots, 'footFilter', 'foot');
@@ -946,6 +982,7 @@ function initAnalyticsMultiSelects() {
         { value: 'free', label: 'Free Practice' },
         { value: 'scoring-zones', label: 'Scoring Arc' }
     ], onChange);
+    initMultiSelect('skillsetFilter', _skillsetOptions(), onChange);
     initMultiSelect('shotCategoryFilter', _shotCategoryOptions(), onChange);
     initMultiSelect('shotTypeFilter', _shotTypeOptions(), onChange);
     initMultiSelect('footFilter', _footOptions(), onChange);

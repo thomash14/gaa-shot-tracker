@@ -49,6 +49,7 @@ let cloudSavePromise = null;
 
 let previewingTemplate = null;
 
+let currentSkillsetFilter = 'all';
 let customDrills = []; // Store user's custom drills
 let viewingPastSession = false; // True when viewing a past session's stats
 let editingShot = null; // Track shot being edited in miss details modal

@@ -34,12 +34,24 @@ function calculateScoringZoneSpots(distanceMeters) {
     });
     return spots;
 }
+const SKILLSET_CATEGORIES = [
+    { value: 'all', label: 'All' },
+    { value: 'kicking-at-goal', label: 'Kicking at Goal' },
+    { value: 'kick-passing', label: 'Kick Passing' },
+    { value: 'hand-passing', label: 'Hand Passing' },
+    { value: 'high-catch', label: 'High Catch' },
+    { value: 'soloing', label: 'Soloing' },
+    { value: 'pick-up', label: 'Pick-Up' },
+    { value: 'fun-challenges', label: 'Fun Challenges' }
+];
+
 const scoringZonesDrill = {
     id: 'scoring-zones',
     name: "Scoring Arc",
     author: "Custom Drill",
     description: "Scoring from different angles on the pitch. 80%+ is a brilliant result!",
     isDynamic: true,
+    skillset: 'kicking-at-goal',
     detailedInstructions: `
         <h4>🎯 Scoring Arc Drill</h4>
         <p><strong>Objective:</strong> Improve your point-taking accuracy from different angles and distances on the pitch.</p>
@@ -78,11 +90,25 @@ function toggleTemplatesView() {
     }
 }
 
+function filterBySkillset(value) {
+    currentSkillsetFilter = value;
+    renderPracticeTemplates();
+}
+
 function renderPracticeTemplates() {
     const list = document.getElementById('templatesList');
     if (!list) return;
     let html = '';
-    html += practiceTemplates.filter(t => !t.isCustom).map(template => {
+    // Skillset filter dropdown
+    html += `<div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <label style="font-weight: 600; font-size: 14px; color: #333;">Skillset:</label>
+        <select onchange="filterBySkillset(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 2px solid #e0e0e0; font-size: 14px; background: white;">
+            ${SKILLSET_CATEGORIES.map(cat => `<option value="${cat.value}" ${currentSkillsetFilter === cat.value ? 'selected' : ''}>${cat.label}</option>`).join('')}
+        </select>
+    </div>`;
+    const filteredBuiltIn = practiceTemplates.filter(t => !t.isCustom).filter(t => currentSkillsetFilter === 'all' || t.skillset === currentSkillsetFilter);
+    const filteredCustom = customDrills.filter(d => currentSkillsetFilter === 'all' || (d.skillset || 'kicking-at-goal') === currentSkillsetFilter);
+    html += filteredBuiltIn.map(template => {
         if (template.isDynamic) {
             const progressKey = `${template.id}-${drillSettings.distance}-${drillSettings.shotType}-${drillSettings.footOption}-${drillSettings.totalShots}`;
             const progress = drillProgress[progressKey] || {};
@@ -185,13 +211,13 @@ function renderPracticeTemplates() {
             `;
         }
     }).join('');
-    if (customDrills.length > 0) {
+    if (filteredCustom.length > 0) {
         html += `
             <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #e0e0e0;">
                 <h4 style="color: #9C27B0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
                     <span>💾</span> My Custom Drills
                 </h4>
-                ${customDrills.map(drill => {
+                ${filteredCustom.map(drill => {
                     const totalShots = drill.spots.reduce((sum, s) => sum + s.shots, 0);
                     const templateId = `custom-${drill.id}`;
                     const progress = drillProgress[templateId] || {};
@@ -222,6 +248,13 @@ function renderPracticeTemplates() {
                 }).join('')}
             </div>
         `;
+    }
+    if (filteredBuiltIn.length === 0 && filteredCustom.length === 0 && currentSkillsetFilter !== 'all') {
+        const label = SKILLSET_CATEGORIES.find(c => c.value === currentSkillsetFilter)?.label || currentSkillsetFilter;
+        html += `<div style="text-align: center; padding: 30px 20px; color: #999;">
+            <p>No drills found for <strong>${label}</strong>.</p>
+            <p style="font-size: 13px; margin-top: 8px;">Create a custom drill and assign it to this skillset.</p>
+        </div>`;
     }
     list.innerHTML = html;
 }
@@ -274,6 +307,8 @@ function openSaveDrillModal() {
     }
     document.getElementById('customDrillName').value = currentSession.name || '';
     document.getElementById('customDrillDescription').value = '';
+    const skillsetSelect = document.getElementById('customDrillSkillset');
+    if (skillsetSelect) skillsetSelect.value = 'kicking-at-goal';
     document.getElementById('saveDrillError').style.display = 'none';
     document.getElementById('saveDrillSpotCount').innerHTML = `
         <span style="font-size: 14px;">📍 ${positions.length} shooting spots will be saved</span>
@@ -309,12 +344,15 @@ async function saveCustomDrill() {
                             currentUser.user_metadata?.name || 
                             currentUser.email?.split('@')[0] || 
                             'Me';
+        const skillsetEl = document.getElementById('customDrillSkillset');
+        const skillset = skillsetEl ? skillsetEl.value : 'kicking-at-goal';
         const drillData = {
             user_id: currentUser.id,
             name: name,
             description: description || null,
             author: displayName,
             spots: spots,
+            skillset: skillset,
             is_public: false,
             created_at: new Date().toISOString()
         };

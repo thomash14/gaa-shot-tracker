@@ -610,6 +610,10 @@
                         <label style="font-weight: 600; margin-right: 4px;">Drill:</label>
                         <div id="drillFilter" class="ms-container"></div>
                     </div>
+                    <div id="skillsetFilterContainer" style="display: none; align-items: center;">
+                        <label style="font-weight: 600; margin-right: 4px;">Skillset:</label>
+                        <div id="skillsetFilter" class="ms-container"></div>
+                    </div>
                     <div style="display: flex; align-items: center;">
                         <label style="font-weight: 600; margin-right: 4px;">Shot:</label>
                         <div id="shotCategoryFilter" class="ms-container"></div>
@@ -1137,6 +1141,18 @@
                 <div class="auth-input-group">
                     <label>Description</label>
                     <textarea id="customDrillDescription" placeholder="Describe what this drill focuses on..." style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                </div>
+                <div class="auth-input-group">
+                    <label>Skillset</label>
+                    <select id="customDrillSkillset" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <option value="kicking-at-goal">Kicking at Goal</option>
+                        <option value="kick-passing">Kick Passing</option>
+                        <option value="hand-passing">Hand Passing</option>
+                        <option value="high-catch">High Catch</option>
+                        <option value="soloing">Soloing</option>
+                        <option value="pick-up">Pick-Up</option>
+                        <option value="fun-challenges">Fun Challenges</option>
+                    </select>
                 </div>
                 <div class="auth-input-group">
                     <label>Shots per spot</label>
