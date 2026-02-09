@@ -1521,3 +1521,41 @@
                 font-size: 14px;
             }
         }
+        #playerDataPitchWrapper {
+            position: relative;
+        }
+        #playerDataPitchWrapper svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+        .modal-content.player-data-fullpage {
+            max-width: 1100px;
+            width: 95%;
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 25px;
+        }
+        .modal-content.player-data-fullpage .modal-body {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 600px) {
+            .modal-content.player-data-fullpage {
+                width: 100%;
+                max-width: 100%;
+                max-height: 100vh;
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+        .player-data-clickable {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .player-data-clickable:hover {
+            background: #f0f4ff;
+        }

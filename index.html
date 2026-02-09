@@ -828,6 +828,16 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                        <div>
+                            <strong>🏟️ Share Match Data with Coach</strong>
+                            <p style="font-size: 13px; color: #666; margin-top: 5px;">When on, your coach can see your match stats and session data</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="shareMatchWithCoachToggle" onchange="toggleShareMatchWithCoach()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
                 <div id="inviteCodeSection" style="display: none; background: #e8f5e9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                     <strong>🎫 Team Invite Code</strong>
@@ -1285,6 +1295,257 @@
             </div>
         </div>
     </div>
+    <!-- Player Data Modal (Coach View) -->
+    <div id="playerDataModal" class="modal">
+        <div class="modal-content player-data-fullpage">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <span id="playerDataTitle">Player Data</span>
+                <button onclick="closePlayerDataModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="playerDataLoading" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="color: #666; margin-top: 10px;">Loading player data...</p>
+                </div>
+                <div id="playerDataError" style="display: none; color: #c62828; text-align: center; padding: 20px;"></div>
+                <div id="playerDataContent" style="display: none;">
+                    <!-- Tabs -->
+                    <div id="playerDataTabs" class="tabs" style="display: none; margin-bottom: 20px;">
+                        <button class="tab active" onclick="switchPlayerDataType('practice')" id="playerDataPracticeTab">Practice</button>
+                        <button class="tab" onclick="switchPlayerDataType('match')" id="playerDataMatchTab">Match</button>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div class="stat-card" style="margin-bottom: 20px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center; font-size: 11px;">
+                            <!-- Date Range -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;" id="pd-dateRangeLabel">Date/Practice Range:</label>
+                                <select id="pd-dateRangeFilter" onchange="handlePlayerDataDateRangeChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 130px;">
+                                    <option value="all">All Time</option>
+                                    <option value="customSessions">Custom Session Range...</option>
+                                    <option value="today">Today</option>
+                                    <option value="last7">Last 7 Days</option>
+                                    <option value="last30">Last 30 Days</option>
+                                    <option value="thisMonth">This Month</option>
+                                    <option value="lastMonth">Last Month</option>
+                                    <option value="thisYear">This Year</option>
+                                    <option value="custom">Custom Date Range...</option>
+                                </select>
+                            </div>
+                            <!-- Custom Session Count -->
+                            <div id="pd-customSessionContainer" style="display: none; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Last</label>
+                                <select id="pd-sessionCountFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 45px;">
+                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                                    <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                                    <option value="10">10</option><option value="12">12</option><option value="15">15</option>
+                                    <option value="20">20</option>
+                                </select>
+                                <label style="font-weight: 600; margin-left: 4px;" id="pd-gamesLabel">Practices</label>
+                            </div>
+                            <!-- Custom Date Range -->
+                            <div id="pd-customDateContainer" style="display: none; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">From:</label>
+                                <input type="date" id="pd-dateFrom" onchange="applyPlayerDataFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
+                                <label style="font-weight: 600; margin: 0 4px;">To:</label>
+                                <input type="date" id="pd-dateTo" onchange="applyPlayerDataFilters()" style="padding: 3px 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px;">
+                            </div>
+                            <!-- Competition (Match only) -->
+                            <div id="pd-matchTypeFilterContainer" style="display: none; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Competition:</label>
+                                <select id="pd-matchTypeFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 90px;">
+                                    <option value="all">All</option>
+                                    <option value="league">League</option>
+                                    <option value="championship">Championship</option>
+                                    <option value="challenge">Challenge</option>
+                                </select>
+                            </div>
+                            <!-- Shot Category -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Shot:</label>
+                                <select id="pd-shotCategoryFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
+                                    <option value="all">All</option>
+                                    <option value="in-play">In-Play</option>
+                                    <option value="free-kick">Free-Kick</option>
+                                    <option value="45">45</option>
+                                </select>
+                            </div>
+                            <!-- Shot Type -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Shot Type:</label>
+                                <select id="pd-shotTypeFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 100px;">
+                                    <option value="all">All</option>
+                                    <option value="not-defined">Not Defined</option>
+                                    <option value="outside-of-the-boot">Outside Of The Boot</option>
+                                    <option value="on-the-run">On the run</option>
+                                    <option value="on-the-turn">On the turn</option>
+                                    <option value="standing">Standing</option>
+                                    <option value="off-a-dummy">Off a Dummy</option>
+                                    <option value="off-the-hands">Off The Hands</option>
+                                    <option value="off-the-ground">Off The Ground</option>
+                                </select>
+                            </div>
+                            <!-- Foot -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Foot:</label>
+                                <select id="pd-footFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 60px;">
+                                    <option value="all">All</option>
+                                    <option value="right">Right</option>
+                                    <option value="left">Left</option>
+                                </select>
+                            </div>
+                            <!-- Half (Match only) -->
+                            <div id="pd-halfFilterContainer" style="display: none; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Half:</label>
+                                <select id="pd-halfFilter" onchange="applyPlayerDataFilters()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 70px;">
+                                    <option value="all">All</option>
+                                    <option value="1st">1st Half</option>
+                                    <option value="2nd">2nd Half</option>
+                                </select>
+                            </div>
+                            <!-- Wind Direction -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Wind:</label>
+                                <select id="pd-windDirectionFilter" onchange="handlePlayerDataWindDirectionChange()" style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 110px;">
+                                    <option value="all">All</option>
+                                    <option value="no-wind">No wind</option>
+                                    <optgroup label="With">
+                                        <option value="straight-with">Straight with</option>
+                                        <option value="diag-lr-with">Diag L-R with</option>
+                                        <option value="diag-rl-with">Diag R-L with</option>
+                                    </optgroup>
+                                    <optgroup label="Against">
+                                        <option value="straight-against">Straight against</option>
+                                        <option value="diag-lr-against">Diag L-R against</option>
+                                        <option value="diag-rl-against">Diag R-L against</option>
+                                    </optgroup>
+                                    <optgroup label="Cross">
+                                        <option value="cross-lr">Cross L-R</option>
+                                        <option value="cross-rl">Cross R-L</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <!-- Wind Strength -->
+                            <div style="display: flex; align-items: center;">
+                                <label style="font-weight: 600; margin-right: 4px;">Strength:</label>
+                                <select id="pd-windStrengthFilter" onchange="applyPlayerDataFilters()" disabled style="padding: 4px 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; width: 80px;">
+                                    <option value="all">All</option>
+                                    <option value="light">Light</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="strong">Strong</option>
+                                    <option value="very-strong">Very Strong</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Stats Summary -->
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <div style="flex: 0 0 auto; min-width: 120px; background: #f8f9fa; border-radius: 10px; padding: 15px; text-align: center;">
+                                <div style="font-size: 14px; color: #666; text-transform: uppercase;" id="pd-sessionsLabel">Sessions</div>
+                                <div style="font-size: 32px; font-weight: bold; color: #2a5298;" id="pd-totalSessions">0</div>
+                            </div>
+                            <div style="flex: 1; min-width: 350px; background: #f8f9fa; border-radius: 10px; padding: 15px;">
+                                <div style="font-size: 14px; color: #666; text-transform: uppercase; text-align: center; margin-bottom: 10px;">Conversion</div>
+                                <div style="font-size: 14px; text-align: left; padding: 0 10px;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                                        <span>Total</span>
+                                        <span style="color: #4CAF50;" id="pd-conversionTotal">0/0 (0%)</span>
+                                    </div>
+                                </div>
+                                <div style="border-top: 1px solid #ddd; margin: 8px 10px 0 10px; padding-top: 8px; font-size: 12px; color: #666; display: flex; gap: 20px;">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between;"><span>In-Play</span><span id="pd-inPlayConv">0/0 (0%)</span></div>
+                                        <div style="display: flex; justify-content: space-between;"><span>Placed Balls</span><span id="pd-deadBallConv">0/0 (0%)</span></div>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between;"><span>1 Pointer</span><span id="pd-onePointerConv">0/0 (0%)</span></div>
+                                        <div style="display: flex; justify-content: space-between;"><span>2 Pointer</span><span id="pd-twoPointerConv">0/0 (0%)</span></div>
+                                        <div style="display: flex; justify-content: space-between;"><span>Goal</span><span id="pd-goalConv">0/0 (0%)</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Breakdown Table -->
+                    <div class="stat-card" style="margin-bottom: 20px;">
+                        <h2 style="color: #2a5298; margin-bottom: 15px;" id="pd-statsTableHeading">Session Breakdown</h2>
+                        <div class="stats-table-scroll" id="pd-statsTableContainer"></div>
+                    </div>
+                    <!-- Shot Map -->
+                    <div class="stat-card" style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="color: #2a5298; margin: 0;">Shot Map</h2>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="pd-showZoneOverlay" onchange="togglePlayerDataZoneOverlay()" style="width: 18px; height: 18px;">
+                                <span style="font-size: 14px;">Show Zones</span>
+                            </label>
+                        </div>
+                        <div class="pitch-wrapper" id="playerDataPitchWrapper" style="max-width: 600px; margin: 0 auto;">
+                            <svg viewBox="0 0 500 725" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="500" height="725" fill="#5a9d6f"/>
+                                <rect x="25" y="40" width="400" height="644" fill="none" stroke="white" stroke-width="1.5"/>
+                                <line x1="25" y1="362" x2="425" y2="362" stroke="white" stroke-width="2.5" stroke-dasharray="10,5"/>
+                                <line x1="25" y1="98" x2="425" y2="98" stroke="white" stroke-width="1"/>
+                                <rect x="175" y="40" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="129" x2="425" y2="129" stroke="white" stroke-width="1"/>
+                                <path d="M 71 129 A 178 178 0 0 0 379 129" fill="none" stroke="white" stroke-width="1"/>
+                                <path d="M 167 129 A 58 58 0 0 0 283 129" fill="none" stroke="white" stroke-width="1"/>
+                                <circle cx="225" cy="89" r="3" fill="white"/>
+                                <line x1="25" y1="240" x2="425" y2="240" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="329" x2="425" y2="329" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="395" x2="425" y2="395" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="484" x2="425" y2="484" stroke="white" stroke-width="1"/>
+                                <path d="M 167 595 A 58 58 0 0 1 283 595" fill="none" stroke="white" stroke-width="1"/>
+                                <path d="M 71 595 A 178 178 0 0 1 379 595" fill="none" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="595" x2="425" y2="595" stroke="white" stroke-width="1"/>
+                                <line x1="25" y1="626" x2="425" y2="626" stroke="white" stroke-width="1"/>
+                                <rect x="175" y="626" width="100" height="58" fill="none" stroke="white" stroke-width="1"/>
+                                <circle cx="225" cy="635" r="3" fill="white"/>
+                                <line x1="195" y1="40" x2="255" y2="40" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                                <line x1="195" y1="684" x2="255" y2="684" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+                                <circle cx="195" cy="40" r="3" fill="white"/>
+                                <circle cx="255" cy="40" r="3" fill="white"/>
+                                <circle cx="195" cy="684" r="3" fill="white"/>
+                                <circle cx="255" cy="684" r="3" fill="white"/>
+                                <!-- Zone Overlays -->
+                                <g id="pd-zoneOverlays" style="display: none;">
+                                    <rect x="25" y="240" width="400" height="122" fill="#9E9E9E" opacity="0.4" stroke="#000" stroke-width="1"/>
+                                    <text x="225" y="305" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">1</text>
+                                    <rect x="25" y="40" width="90" height="89" fill="#4CAF50" opacity="0.4" stroke="#000" stroke-width="1"/>
+                                    <text x="70" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">7</text>
+                                    <rect x="115" y="40" width="220" height="89" fill="#8BC34A" opacity="0.4" stroke="#000" stroke-width="1"/>
+                                    <text x="225" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">8</text>
+                                    <rect x="335" y="40" width="90" height="89" fill="#4CAF50" opacity="0.4" stroke="#000" stroke-width="1"/>
+                                    <text x="380" y="90" text-anchor="middle" fill="white" font-size="24" font-weight="bold" stroke="#333" stroke-width="0.5">9</text>
+                                    <path d="M 97 129 L 97 129 A 156 156 0 0 0 353 129 L 353 129 Z" fill="#CDDC39" opacity="0.4" stroke="#000" stroke-width="1"/>
+                                    <text x="225" y="165" text-anchor="middle" fill="black" font-size="20" font-weight="bold">6</text>
+                                    <path d="M 71 129 A 178 178 0 0 0 379 129 L 353 129 A 156 156 0 0 1 97 129 Z" fill="#FF9800" opacity="0.5" stroke="#000" stroke-width="1"/>
+                                    <text x="225" y="210" text-anchor="middle" fill="white" font-size="14" font-weight="bold">5</text>
+                                    <path d="M 25 129 L 46 129 A 200 200 0 0 0 225 240 L 25 240 Z" fill="#1565C0" opacity="0.5" stroke="#000" stroke-width="1"/>
+                                    <text x="50" y="200" text-anchor="middle" fill="white" font-size="14" font-weight="bold" stroke="#333" stroke-width="0.5">2</text>
+                                    <path d="M 71 129 A 178 178 0 0 0 379 129 L 404 129 A 200 200 0 0 1 46 129 Z" fill="#7B1FA2" opacity="0.5" stroke="#000" stroke-width="1"/>
+                                    <text x="225" y="230" text-anchor="middle" fill="white" font-size="16" font-weight="bold" stroke="#333" stroke-width="0.5">3</text>
+                                    <path d="M 225 240 A 200 200 0 0 0 404 129 L 425 129 L 425 240 Z" fill="#1565C0" opacity="0.5" stroke="#000" stroke-width="1"/>
+                                    <text x="400" y="200" text-anchor="middle" fill="white" font-size="14" font-weight="bold" stroke="#333" stroke-width="0.5">4</text>
+                                </g>
+                            </svg>
+                        </div>
+                        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 8px; font-size: 12px; color: #666;">
+                            <span><span style="display:inline-block;width:10px;height:10px;background:white;border:1.5px solid #333;border-radius:50%;vertical-align:middle;"></span> Scored</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;background:#f44336;border:1.5px solid #333;border-radius:50%;vertical-align:middle;"></span> Missed</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;background:white;border:1.5px solid #333;vertical-align:middle;"></span> Goal</span>
+                        </div>
+                    </div>
+                    <!-- Zone Stats -->
+                    <div class="stat-card">
+                        <h2 style="color: #2a5298; margin-bottom: 20px;">Performance by Zone</h2>
+                        <div class="zone-stats" id="pd-zoneStats"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="js/clubData.js"></script>
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
