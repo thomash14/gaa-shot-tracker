@@ -137,6 +137,31 @@ async function loadDataFromCloud() {
             .eq('user_id', currentUser.id);
         drillProgress = {};
         (drillData || []).forEach(d => drillProgress[d.progress_key] = d.spot_scores);
+        // Load training logs
+        try {
+            const { data: tlData } = await supabaseClient
+                .from('training_logs')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('date', { ascending: false });
+            trainingLogs = (tlData || []).map(t => ({
+                id: t.id,
+                date: t.date,
+                sessionType: t.session_type,
+                kickingBefore: t.kicking_before || false,
+                beforeDuration: t.before_duration || null,
+                kickingAfter: t.kicking_after || false,
+                afterDuration: t.after_duration || null,
+                gymDuration: t.gym_duration || null,
+                gymFocus: t.gym_focus || null,
+                recoveryDuration: t.recovery_duration || null,
+                recoveryType: t.recovery_type || null,
+                comments: t.comments || null,
+                cloudId: t.id
+            }));
+        } catch (e) {
+            console.warn('Training logs table not available:', e);
+        }
         await loadCustomDrills();
         updateSyncStatus('synced', '✓ Synced');
         updateUI();
@@ -232,6 +257,57 @@ async function deleteSessionFromCloud(sessionId) {
         updateSyncStatus('synced', '✓ Synced');
     } catch (error) {
         console.error('Delete error:', error);
+        updateSyncStatus('error', '✗ Failed');
+    }
+}
+async function saveTrainingLogToCloud(log) {
+    if (!currentUser) return;
+    updateSyncStatus('syncing', '↻ Saving...');
+    try {
+        if (log.cloudId) {
+            await supabaseClient.from('training_logs').update({
+                date: log.date, session_type: log.sessionType,
+                kicking_before: log.kickingBefore || false,
+                before_duration: log.beforeDuration || null,
+                kicking_after: log.kickingAfter || false,
+                after_duration: log.afterDuration || null,
+                gym_duration: log.gymDuration || null,
+                gym_focus: log.gymFocus || null,
+                recovery_duration: log.recoveryDuration || null,
+                recovery_type: log.recoveryType || null,
+                comments: log.comments || null
+            }).eq('id', log.cloudId);
+        } else {
+            const { data, error } = await supabaseClient.from('training_logs').insert({
+                user_id: currentUser.id,
+                date: log.date, session_type: log.sessionType,
+                kicking_before: log.kickingBefore || false,
+                before_duration: log.beforeDuration || null,
+                kicking_after: log.kickingAfter || false,
+                after_duration: log.afterDuration || null,
+                gym_duration: log.gymDuration || null,
+                gym_focus: log.gymFocus || null,
+                recovery_duration: log.recoveryDuration || null,
+                recovery_type: log.recoveryType || null,
+                comments: log.comments || null
+            }).select().single();
+            if (error) throw error;
+            log.cloudId = data.id;
+        }
+        updateSyncStatus('synced', '✓ Synced');
+    } catch (error) {
+        console.error('Training log save error:', error);
+        updateSyncStatus('error', '✗ Failed');
+    }
+}
+async function deleteTrainingLogFromCloud(cloudId) {
+    if (!currentUser || !cloudId) return;
+    updateSyncStatus('syncing', '↻ Deleting...');
+    try {
+        await supabaseClient.from('training_logs').delete().eq('id', cloudId);
+        updateSyncStatus('synced', '✓ Synced');
+    } catch (error) {
+        console.error('Training log delete error:', error);
         updateSyncStatus('error', '✗ Failed');
     }
 }

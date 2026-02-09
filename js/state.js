@@ -50,7 +50,9 @@ let cloudSavePromise = null;
 let previewingTemplate = null;
 
 let currentSkillsetFilter = 'all';
+let expandedDrillId = null; // Track which drill row is expanded (selected but not yet started)
 let customDrills = []; // Store user's custom drills
+let trainingLogs = []; // Training/gym/recovery session logs
 let viewingPastSession = false; // True when viewing a past session's stats
 let editingShot = null; // Track shot being edited in miss details modal
 let editingMarker = null; // Track marker for the shot being edited

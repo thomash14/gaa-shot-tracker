@@ -195,55 +195,131 @@ function filterSessions(type) {
     document.getElementById('sessionsFilterAll').classList.toggle('active', type === 'all');
     document.getElementById('sessionsFilterMatch').classList.toggle('active', type === 'match');
     document.getElementById('sessionsFilterPractice').classList.toggle('active', type === 'practice');
+    document.getElementById('sessionsFilterTraining').classList.toggle('active', type === 'training');
     renderSessionCalendar();
     displaySessions();
 }
 
 function displaySessions() {
     const list = document.getElementById('sessionsList');
-    let nonEmptySessions = sessions.filter(s => s.shots && s.shots.length > 0);
-    if (currentSessionsFilter !== 'all') {
-        nonEmptySessions = nonEmptySessions.filter(s => (s.type || 'practice') === currentSessionsFilter);
+
+    // Build training log items for display when relevant
+    const trainingTypes = ['training', 'gym', 'recovery'];
+    const showTrainingLogs = currentSessionsFilter === 'all' || currentSessionsFilter === 'training';
+    const showShotSessions = currentSessionsFilter !== 'training';
+
+    let items = [];
+
+    if (showShotSessions) {
+        let nonEmptySessions = sessions.filter(s => s.shots && s.shots.length > 0);
+        if (currentSessionsFilter !== 'all') {
+            nonEmptySessions = nonEmptySessions.filter(s => (s.type || 'practice') === currentSessionsFilter);
+        }
+        if (calendarSelectedDate) {
+            nonEmptySessions = nonEmptySessions.filter(s => s.date === calendarSelectedDate);
+        }
+        nonEmptySessions.forEach(session => {
+            items.push({ type: 'shot', date: session.date, data: session });
+        });
     }
-    if (calendarSelectedDate) {
-        nonEmptySessions = nonEmptySessions.filter(s => s.date === calendarSelectedDate);
+
+    if (showTrainingLogs) {
+        let logs = trainingLogs.slice();
+        if (calendarSelectedDate) {
+            logs = logs.filter(l => l.date === calendarSelectedDate);
+        }
+        logs.forEach(log => {
+            items.push({ type: 'training', date: log.date, data: log });
+        });
     }
-    if (nonEmptySessions.length === 0) {
+
+    // Sort by date descending
+    items.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (items.length === 0) {
         const filterLabel = currentSessionsFilter === 'all' ? '' : currentSessionsFilter;
         const dateNote = calendarSelectedDate ? ' on ' + new Date(calendarSelectedDate + 'T12:00:00').toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         list.innerHTML = `<div class="empty-state"><p>No ${filterLabel} sessions${dateNote}. ${calendarSelectedDate ? '' : 'Start tracking your shots!'}</p></div>`;
         return;
     }
-    list.innerHTML = nonEmptySessions.map(session => {
-        const scored = session.shots.filter(s => s.result === 'scored').length;
-        const total = session.shots.length;
-        const rate = total > 0 ? Math.round((scored / total) * 100) : 0;
-        const sessionType = session.type || 'practice';
-        const matchType = session.matchType || '';
-        const typeIcon = sessionType === 'match' ? '⚽' : '🏋️';
-        let typeLabel = sessionType === 'match' ? 'Match' : 'Practice';
-        if (sessionType === 'match' && matchType) {
-            typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
-        }
-        const formattedDate = new Date(session.date).toLocaleDateString('en-IE', { 
-            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' 
-        });
-        return `
-            <div class="session-item">
-                <div class="session-info">
-                    <div class="session-type-header">${typeIcon} ${typeLabel}</div>
-                    <div class="session-name-sub">${session.name || 'Unnamed Session'}</div>
-                    <div class="session-stats">
-                        ${formattedDate} • ${total} shots • ${rate}% success
+
+    list.innerHTML = items.map(item => {
+        if (item.type === 'shot') {
+            const session = item.data;
+            const scored = session.shots.filter(s => s.result === 'scored').length;
+            const total = session.shots.length;
+            const rate = total > 0 ? Math.round((scored / total) * 100) : 0;
+            const sessionType = session.type || 'practice';
+            const matchType = session.matchType || '';
+            const typeIcon = sessionType === 'match' ? '⚽' : '🏋️';
+            let typeLabel = sessionType === 'match' ? 'Match' : 'Practice';
+            if (sessionType === 'match' && matchType) {
+                typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
+            }
+            const formattedDate = new Date(session.date + 'T12:00:00').toLocaleDateString('en-IE', {
+                weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+            });
+            // Use quotes for UUID session IDs (cloud), bare for numeric (offline)
+            const idParam = typeof session.id === 'number' ? session.id : `'${session.id}'`;
+            return `
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-type-header">${typeIcon} ${typeLabel}</div>
+                        <div class="session-name-sub">${session.name || 'Unnamed Session'}</div>
+                        <div class="session-stats">
+                            ${formattedDate} • ${total} shots • ${rate}% success
+                        </div>
+                    </div>
+                    <div class="session-actions">
+                        <button class="btn-primary" onclick="viewSession(${idParam})">View</button>
+                        <button class="btn-danger" onclick="deleteSession(${idParam})">Delete</button>
                     </div>
                 </div>
-                <div class="session-actions">
-                    <button class="btn-primary" onclick="viewSession(${session.id})">View</button>
-                    <button class="btn-danger" onclick="deleteSession(${session.id})">Delete</button>
+            `;
+        } else {
+            const log = item.data;
+            const typeIcons = { training: '🏃', gym: '💪', recovery: '🧊' };
+            const typeLabels = { training: 'Team Training', gym: 'Gym Session', recovery: 'Recovery' };
+            const logClass = log.sessionType + '-log';
+            const formattedDate = new Date(log.date + 'T12:00:00').toLocaleDateString('en-IE', {
+                weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+            });
+            let details = buildTrainingLogSummary(log);
+            return `
+                <div class="session-item ${logClass}">
+                    <div class="session-info">
+                        <div class="session-type-header">${typeIcons[log.sessionType] || '📋'} ${typeLabels[log.sessionType] || log.sessionType}</div>
+                        <div class="session-stats">${formattedDate}${details ? ' • ' + details : ''}</div>
+                        ${log.comments ? `<div class="session-stats" style="font-style:italic;color:#888;">${log.comments}</div>` : ''}
+                    </div>
+                    <div class="session-actions">
+                        <button class="btn-danger" onclick="deleteTrainingLog('${log.id}')">Delete</button>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     }).join('');
+}
+
+function buildTrainingLogSummary(log) {
+    const parts = [];
+    if (log.sessionType === 'training') {
+        if (log.kickingBefore) parts.push(`Kicked before (${log.beforeDuration || '?'}m)`);
+        if (log.kickingAfter) parts.push(`Kicked after (${log.afterDuration || '?'}m)`);
+    } else if (log.sessionType === 'gym') {
+        if (log.gymDuration) parts.push(`${log.gymDuration} mins`);
+        if (log.gymFocus) {
+            const focusLabels = { 'full-body': 'Full Body', 'upper-body': 'Upper Body', 'lower-body': 'Lower Body', core: 'Core', cardio: 'Cardio', mobility: 'Mobility', mixed: 'Mixed' };
+            parts.push(focusLabels[log.gymFocus] || log.gymFocus);
+        }
+    } else if (log.sessionType === 'recovery') {
+        if (log.recoveryDuration) parts.push(`${log.recoveryDuration} mins`);
+        if (log.recoveryType) {
+            const recLabels = { 'ice-bath': 'Ice Bath', stretching: 'Stretching', 'foam-rolling': 'Foam Rolling', pool: 'Pool', physio: 'Physio', 'rest-day': 'Rest Day', other: 'Other' };
+            parts.push(recLabels[log.recoveryType] || log.recoveryType);
+        }
+    }
+    return parts.join(' • ');
 }
 // Determine which end of the pitch was attacked in each half
 // by checking the average y-position of shots tagged as 1st vs 2nd half
@@ -522,23 +598,30 @@ function getMonday(date) {
 function buildSessionDateMap() {
     const dateMap = {};
     const sessionMap = {};
+    const trainingMap = {};
     sessions.forEach(s => {
         if (!s.shots || s.shots.length === 0) return;
-        if (!dateMap[s.date]) dateMap[s.date] = { practice: false, match: false };
+        if (!dateMap[s.date]) dateMap[s.date] = { practice: false, match: false, training: false, gym: false, recovery: false };
         if (!sessionMap[s.date]) sessionMap[s.date] = [];
         const t = s.type || 'practice';
         if (t === 'match') dateMap[s.date].match = true;
         else dateMap[s.date].practice = true;
         sessionMap[s.date].push(s);
     });
-    return { dateMap, sessionMap };
+    trainingLogs.forEach(log => {
+        if (!dateMap[log.date]) dateMap[log.date] = { practice: false, match: false, training: false, gym: false, recovery: false };
+        if (!trainingMap[log.date]) trainingMap[log.date] = [];
+        dateMap[log.date][log.sessionType] = true;
+        trainingMap[log.date].push(log);
+    });
+    return { dateMap, sessionMap, trainingMap };
 }
 
 function renderSessionCalendar() {
     const container = document.getElementById('sessionCalendar');
     if (!container) return;
 
-    const { dateMap, sessionMap } = buildSessionDateMap();
+    const { dateMap, sessionMap, trainingMap } = buildSessionDateMap();
 
     // View toggle
     let html = '<div class="cal-view-toggle">';
@@ -547,7 +630,7 @@ function renderSessionCalendar() {
     html += '</div>';
 
     if (calendarViewMode === 'weekly') {
-        html += renderWeeklyCalendar(dateMap, sessionMap);
+        html += renderWeeklyCalendar(dateMap, sessionMap, trainingMap);
     } else {
         html += renderMonthlyCalendar(dateMap);
     }
@@ -570,14 +653,22 @@ function renderMonthlyCalendar(dateMap) {
 
     const monthLabel = firstDay.toLocaleDateString('en-IE', { month: 'long', year: 'numeric' });
 
-    // Count practices/matches this month
-    let practiceCount = 0, matchCount = 0;
+    // Count practices/matches/training this month
+    let practiceCount = 0, matchCount = 0, trainingCount = 0, gymCount = 0, recoveryCount = 0;
     sessions.forEach(s => {
         if (!s.shots || s.shots.length === 0) return;
         const parts = s.date.split('-');
         if (parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month) {
             if ((s.type || 'practice') === 'match') matchCount++;
             else practiceCount++;
+        }
+    });
+    trainingLogs.forEach(log => {
+        const parts = log.date.split('-');
+        if (parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month) {
+            if (log.sessionType === 'training') trainingCount++;
+            else if (log.sessionType === 'gym') gymCount++;
+            else if (log.sessionType === 'recovery') recoveryCount++;
         }
     });
 
@@ -604,18 +695,21 @@ function renderMonthlyCalendar(dateMap) {
         const isSelected = dateStr === calendarSelectedDate;
         const hasSession = !!info;
 
-        let classes = 'cal-day';
+        let classes = 'cal-day cal-day-clickable';
         if (isToday) classes += ' today';
         if (isSelected) classes += ' selected';
         if (hasSession) classes += ' has-session';
 
-        const onclick = hasSession ? `onclick="selectCalendarDate('${dateStr}')"` : '';
+        const onclick = `onclick="showCalendarDateMenu('${dateStr}', event)"`;
 
         let dots = '';
         if (info) {
             dots = '<div class="cal-dots">';
             if (info.match) dots += '<span class="cal-dot-match"></span>';
             if (info.practice) dots += '<span class="cal-dot-practice"></span>';
+            if (info.training) dots += '<span class="cal-dot-training"></span>';
+            if (info.gym) dots += '<span class="cal-dot-gym"></span>';
+            if (info.recovery) dots += '<span class="cal-dot-recovery"></span>';
             dots += '</div>';
         }
 
@@ -633,6 +727,9 @@ function renderMonthlyCalendar(dateMap) {
     const parts = [];
     if (practiceCount > 0) parts.push(`${practiceCount} practice${practiceCount !== 1 ? 's' : ''}`);
     if (matchCount > 0) parts.push(`${matchCount} match${matchCount !== 1 ? 'es' : ''}`);
+    if (trainingCount > 0) parts.push(`${trainingCount} training`);
+    if (gymCount > 0) parts.push(`${gymCount} gym`);
+    if (recoveryCount > 0) parts.push(`${recoveryCount} recovery`);
     const summaryText = parts.length > 0 ? parts.join(', ') : 'No sessions';
 
     html += '<div class="cal-summary">';
@@ -642,10 +739,19 @@ function renderMonthlyCalendar(dateMap) {
     }
     html += '</div>';
 
+    // Legend
+    html += '<div class="cal-legend">';
+    html += '<div class="cal-legend-item"><span class="cal-legend-dot" style="background:#2196F3;"></span> Match</div>';
+    html += '<div class="cal-legend-item"><span class="cal-legend-dot" style="background:#4CAF50;"></span> Practice</div>';
+    html += '<div class="cal-legend-item"><span class="cal-legend-dot" style="background:#FF9800;"></span> Training</div>';
+    html += '<div class="cal-legend-item"><span class="cal-legend-dot" style="background:#9C27B0;"></span> Gym</div>';
+    html += '<div class="cal-legend-item"><span class="cal-legend-dot" style="background:#FFC107;"></span> Recovery</div>';
+    html += '</div>';
+
     return html;
 }
 
-function renderWeeklyCalendar(dateMap, sessionMap) {
+function renderWeeklyCalendar(dateMap, sessionMap, trainingMap) {
     if (!calendarWeekStart) {
         calendarWeekStart = getMonday(new Date());
     }
@@ -668,32 +774,38 @@ function renderWeeklyCalendar(dateMap, sessionMap) {
 
     html += '<div class="cal-week-grid">';
 
-    let weekPracticeCount = 0, weekMatchCount = 0;
+    let weekPracticeCount = 0, weekMatchCount = 0, weekTrainingCount = 0, weekGymCount = 0, weekRecoveryCount = 0;
 
     for (let i = 0; i < 7; i++) {
         const dayDate = new Date(calendarWeekStart);
         dayDate.setDate(dayDate.getDate() + i);
         const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
         const daySessions = sessionMap[dateStr] || [];
+        const dayTraining = trainingMap[dateStr] || [];
         const isToday = dateStr === todayStr;
         const isSelected = dateStr === calendarSelectedDate;
-        const hasSession = daySessions.length > 0;
+        const hasContent = daySessions.length > 0 || dayTraining.length > 0;
 
         // Count for summary
         daySessions.forEach(s => {
             if ((s.type || 'practice') === 'match') weekMatchCount++;
             else weekPracticeCount++;
         });
+        dayTraining.forEach(t => {
+            if (t.sessionType === 'training') weekTrainingCount++;
+            else if (t.sessionType === 'gym') weekGymCount++;
+            else if (t.sessionType === 'recovery') weekRecoveryCount++;
+        });
 
         let classes = 'cal-week-day';
         if (isToday) classes += ' today';
         if (isSelected) classes += ' selected';
-        if (hasSession) classes += ' has-session';
+        if (hasContent) classes += ' has-session';
 
-        const dayClick = hasSession ? `onclick="selectCalendarDate('${dateStr}')"` : '';
+        const dayClick = hasContent ? `onclick="selectCalendarDate('${dateStr}')"` : '';
 
         html += `<div class="${classes}" ${dayClick}>`;
-        html += `<div class="cal-week-day-header">${dowLabels[i]}</div>`;
+        html += `<div class="cal-week-day-header" style="display:flex;justify-content:space-between;align-items:center;">${dowLabels[i]} <span style="cursor:pointer;font-size:14px;color:#999;" onclick="showCalendarDateMenu('${dateStr}', event); event.stopPropagation();">+</span></div>`;
         html += `<div class="cal-week-day-num">${dayDate.getDate()}</div>`;
         html += '<div class="cal-week-sessions">';
 
@@ -715,6 +827,15 @@ function renderWeeklyCalendar(dateMap, sessionMap) {
             html += '</div>';
         });
 
+        dayTraining.forEach(t => {
+            const typeLabels = { training: 'Training', gym: 'Gym', recovery: 'Recovery' };
+            const typeIcons = { training: '🏃', gym: '💪', recovery: '🧊' };
+            html += `<div class="cal-week-session ${t.sessionType}" onclick="event.stopPropagation();">`;
+            html += `<div class="cal-week-session-name">${typeIcons[t.sessionType] || '📋'} ${typeLabels[t.sessionType] || t.sessionType}</div>`;
+            if (t.comments) html += `<div class="cal-week-session-stats">${t.comments.substring(0, 30)}</div>`;
+            html += '</div>';
+        });
+
         html += '</div></div>';
     }
 
@@ -724,6 +845,9 @@ function renderWeeklyCalendar(dateMap, sessionMap) {
     const parts = [];
     if (weekPracticeCount > 0) parts.push(`${weekPracticeCount} practice${weekPracticeCount !== 1 ? 's' : ''}`);
     if (weekMatchCount > 0) parts.push(`${weekMatchCount} match${weekMatchCount !== 1 ? 'es' : ''}`);
+    if (weekTrainingCount > 0) parts.push(`${weekTrainingCount} training`);
+    if (weekGymCount > 0) parts.push(`${weekGymCount} gym`);
+    if (weekRecoveryCount > 0) parts.push(`${weekRecoveryCount} recovery`);
     const summaryText = parts.length > 0 ? parts.join(', ') : 'No sessions';
 
     html += '<div class="cal-summary">';
@@ -799,6 +923,162 @@ function selectWeeklySession(sessionId) {
 
 function clearCalendarDate() {
     calendarSelectedDate = null;
+    renderSessionCalendar();
+    displaySessions();
+}
+
+// --- Calendar date menu ---
+function showCalendarDateMenu(dateStr, event) {
+    event.stopPropagation();
+    const menu = document.getElementById('calendarDateMenu');
+
+    // Check if shot sessions exist on this date
+    const hasShotSessions = sessions.some(s => s.date === dateStr && s.shots && s.shots.length > 0);
+
+    const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IE', {
+        weekday: 'short', day: 'numeric', month: 'short'
+    });
+
+    let html = `<div class="cal-date-menu-header">${formattedDate}</div>`;
+    if (hasShotSessions) {
+        html += `<button class="cal-date-menu-item" onclick="closeCalendarDateMenu(); selectCalendarDate('${dateStr}');">
+            <span class="menu-icon">📊</span> View Sessions
+        </button>`;
+    }
+    html += `<button class="cal-date-menu-item" onclick="closeCalendarDateMenu(); openTrainingSessionModal('${dateStr}');">
+        <span class="menu-icon">📋</span> Log Training Session
+    </button>`;
+
+    menu.innerHTML = html;
+
+    // Position near click
+    const rect = event.target.closest('.cal-day, .cal-week-day-header') || event.target;
+    const targetRect = rect.getBoundingClientRect();
+    let top = targetRect.bottom + 4;
+    let left = targetRect.left;
+
+    // Keep within viewport
+    if (left + 220 > window.innerWidth) left = window.innerWidth - 225;
+    if (left < 5) left = 5;
+    if (top + 150 > window.innerHeight) top = targetRect.top - 150;
+
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+    menu.classList.add('visible');
+
+    // Close on outside click (delay to avoid immediate trigger)
+    setTimeout(() => {
+        document.addEventListener('click', closeCalendarDateMenuOutside);
+    }, 10);
+}
+
+function closeCalendarDateMenu() {
+    const menu = document.getElementById('calendarDateMenu');
+    menu.classList.remove('visible');
+    document.removeEventListener('click', closeCalendarDateMenuOutside);
+}
+
+function closeCalendarDateMenuOutside(e) {
+    const menu = document.getElementById('calendarDateMenu');
+    if (!menu.contains(e.target)) {
+        closeCalendarDateMenu();
+    }
+}
+
+// --- Training session modal ---
+function openTrainingSessionModal(dateStr) {
+    const modal = document.getElementById('trainingSessionModal');
+    const formattedDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IE', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    document.getElementById('trainingModalDate').value = formattedDate;
+    document.getElementById('trainingModalDate').dataset.dateStr = dateStr;
+    document.getElementById('trainingSessionType').value = 'training';
+    document.getElementById('kickingBefore').checked = false;
+    document.getElementById('kickingAfter').checked = false;
+    document.getElementById('kickingBeforeReveal').classList.remove('visible');
+    document.getElementById('kickingAfterReveal').classList.remove('visible');
+    document.getElementById('beforeDuration').value = '20';
+    document.getElementById('afterDuration').value = '20';
+    document.getElementById('gymDuration').value = '60';
+    document.getElementById('gymFocus').value = 'full-body';
+    document.getElementById('recoveryDuration').value = '30';
+    document.getElementById('recoveryType').value = 'ice-bath';
+    document.getElementById('trainingComments').value = '';
+    onTrainingTypeChange();
+    modal.classList.add('active');
+}
+
+function closeTrainingSessionModal() {
+    document.getElementById('trainingSessionModal').classList.remove('active');
+}
+
+function onTrainingTypeChange() {
+    const type = document.getElementById('trainingSessionType').value;
+    document.getElementById('trainingFieldsTraining').classList.toggle('visible', type === 'training');
+    document.getElementById('trainingFieldsGym').classList.toggle('visible', type === 'gym');
+    document.getElementById('trainingFieldsRecovery').classList.toggle('visible', type === 'recovery');
+}
+
+function toggleRevealField(revealId, show) {
+    document.getElementById(revealId).classList.toggle('visible', show);
+}
+
+function saveTrainingLog() {
+    const dateStr = document.getElementById('trainingModalDate').dataset.dateStr;
+    const sessionType = document.getElementById('trainingSessionType').value;
+    const comments = document.getElementById('trainingComments').value.trim() || null;
+
+    const log = {
+        id: Date.now(),
+        date: dateStr,
+        sessionType: sessionType,
+        kickingBefore: false,
+        beforeDuration: null,
+        kickingAfter: false,
+        afterDuration: null,
+        gymDuration: null,
+        gymFocus: null,
+        recoveryDuration: null,
+        recoveryType: null,
+        comments: comments,
+        cloudId: null
+    };
+
+    if (sessionType === 'training') {
+        log.kickingBefore = document.getElementById('kickingBefore').checked;
+        log.beforeDuration = log.kickingBefore ? parseInt(document.getElementById('beforeDuration').value) : null;
+        log.kickingAfter = document.getElementById('kickingAfter').checked;
+        log.afterDuration = log.kickingAfter ? parseInt(document.getElementById('afterDuration').value) : null;
+    } else if (sessionType === 'gym') {
+        log.gymDuration = parseInt(document.getElementById('gymDuration').value);
+        log.gymFocus = document.getElementById('gymFocus').value;
+    } else if (sessionType === 'recovery') {
+        log.recoveryDuration = parseInt(document.getElementById('recoveryDuration').value);
+        log.recoveryType = document.getElementById('recoveryType').value;
+    }
+
+    trainingLogs.unshift(log);
+    saveData();
+
+    // Cloud sync
+    if (currentUser) {
+        saveTrainingLogToCloud(log).then(() => saveData());
+    }
+
+    closeTrainingSessionModal();
+    renderSessionCalendar();
+    displaySessions();
+}
+
+async function deleteTrainingLog(logId) {
+    if (!confirm('Delete this training log?')) return;
+    const log = trainingLogs.find(l => String(l.id) === String(logId));
+    if (log && log.cloudId && currentUser) {
+        await deleteTrainingLogFromCloud(log.cloudId);
+    }
+    trainingLogs = trainingLogs.filter(l => String(l.id) !== String(logId));
+    saveData();
     renderSessionCalendar();
     displaySessions();
 }

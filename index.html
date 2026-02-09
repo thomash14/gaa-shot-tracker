@@ -544,6 +544,7 @@
                 <div class="tabs" style="margin-bottom: 15px;">
                     <button class="tab active" onclick="filterSessions('match')" id="sessionsFilterMatch">⚽ Matches</button>
                     <button class="tab" onclick="filterSessions('practice')" id="sessionsFilterPractice">🏋️ Practice</button>
+                    <button class="tab" onclick="filterSessions('training')" id="sessionsFilterTraining">📋 Training</button>
                     <button class="tab" onclick="filterSessions('all')" id="sessionsFilterAll">All</button>
                 </div>
                 <div id="sessionsList"></div>
@@ -1467,6 +1468,127 @@
                         <div class="zone-stats" id="pd-zoneStats"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar date menu popup -->
+    <div id="calendarDateMenu" class="cal-date-menu"></div>
+
+    <!-- Training Session Modal -->
+    <div id="trainingSessionModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">Log Training Session</div>
+            <div class="modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label style="font-size: 13px; color: #666;">Date</label>
+                    <input type="text" id="trainingModalDate" readonly style="background: #f5f5f5; text-align: left; font-size: 14px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>Session Type</label>
+                    <select id="trainingSessionType" onchange="onTrainingTypeChange()" style="width: 100%; font-size: 14px; text-align: left;">
+                        <option value="training">Team Training</option>
+                        <option value="gym">Gym Session</option>
+                        <option value="recovery">Recovery Session</option>
+                    </select>
+                </div>
+
+                <!-- Team Training fields -->
+                <div id="trainingFieldsTraining" class="training-fields-group visible">
+                    <div class="training-checkbox-group">
+                        <input type="checkbox" id="kickingBefore" onchange="toggleRevealField('kickingBeforeReveal', this.checked)">
+                        <label for="kickingBefore">Kicking before training</label>
+                    </div>
+                    <div id="kickingBeforeReveal" class="reveal-field">
+                        <label>Duration</label>
+                        <select id="beforeDuration">
+                            <option value="10">10 mins</option>
+                            <option value="15">15 mins</option>
+                            <option value="20" selected>20 mins</option>
+                            <option value="30">30 mins</option>
+                            <option value="45">45 mins</option>
+                            <option value="60">60 mins</option>
+                        </select>
+                    </div>
+                    <div class="training-checkbox-group">
+                        <input type="checkbox" id="kickingAfter" onchange="toggleRevealField('kickingAfterReveal', this.checked)">
+                        <label for="kickingAfter">Kicking after training</label>
+                    </div>
+                    <div id="kickingAfterReveal" class="reveal-field">
+                        <label>Duration</label>
+                        <select id="afterDuration">
+                            <option value="10">10 mins</option>
+                            <option value="15">15 mins</option>
+                            <option value="20" selected>20 mins</option>
+                            <option value="30">30 mins</option>
+                            <option value="45">45 mins</option>
+                            <option value="60">60 mins</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Gym fields -->
+                <div id="trainingFieldsGym" class="training-fields-group">
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 13px; font-weight: 600;">Duration</label>
+                        <select id="gymDuration" style="width: 100%; font-size: 14px;">
+                            <option value="30">30 mins</option>
+                            <option value="45">45 mins</option>
+                            <option value="60" selected>60 mins</option>
+                            <option value="75">75 mins</option>
+                            <option value="90">90 mins</option>
+                            <option value="120">2 hours</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 13px; font-weight: 600;">Focus</label>
+                        <select id="gymFocus" style="width: 100%; font-size: 14px;">
+                            <option value="full-body">Full Body</option>
+                            <option value="upper-body">Upper Body</option>
+                            <option value="lower-body">Lower Body</option>
+                            <option value="core">Core</option>
+                            <option value="cardio">Cardio</option>
+                            <option value="mobility">Mobility</option>
+                            <option value="mixed">Mixed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Recovery fields -->
+                <div id="trainingFieldsRecovery" class="training-fields-group">
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 13px; font-weight: 600;">Duration</label>
+                        <select id="recoveryDuration" style="width: 100%; font-size: 14px;">
+                            <option value="15">15 mins</option>
+                            <option value="20">20 mins</option>
+                            <option value="30" selected>30 mins</option>
+                            <option value="45">45 mins</option>
+                            <option value="60">60 mins</option>
+                            <option value="90">90 mins</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 13px; font-weight: 600;">Type</label>
+                        <select id="recoveryType" style="width: 100%; font-size: 14px;">
+                            <option value="ice-bath">Ice Bath</option>
+                            <option value="stretching">Stretching</option>
+                            <option value="foam-rolling">Foam Rolling</option>
+                            <option value="pool">Pool Recovery</option>
+                            <option value="physio">Physio</option>
+                            <option value="rest-day">Rest Day</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 13px; font-weight: 600;">Comments</label>
+                    <textarea id="trainingComments" rows="3" placeholder="Optional notes..." style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveTrainingLog()">Save</button>
+                <button class="btn-secondary" onclick="closeTrainingSessionModal()">Cancel</button>
             </div>
         </div>
     </div>

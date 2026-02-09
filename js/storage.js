@@ -4,13 +4,15 @@ function loadData() {
         const data = JSON.parse(stored);
         sessions = data.sessions || [];
         currentSession = data.currentSession || null;
+        trainingLogs = data.trainingLogs || [];
     }
     updateUI();
 }
 function saveData() {
     window.localStorage.setItem('gaaShotTracker', JSON.stringify({
         sessions: sessions,
-        currentSession: currentSession
+        currentSession: currentSession,
+        trainingLogs: trainingLogs
     }));
 }
 
