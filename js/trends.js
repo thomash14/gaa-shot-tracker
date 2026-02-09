@@ -48,11 +48,13 @@ function renderTrendsContent(prefix, filteredSessions, allShots, analyticsType) 
     if (!container) return;
 
     if (analyticsType === 'match') {
-        // Hide drill selector, show pts/shot card
+        // Hide drill selector, show match-only cards
         const drillSel = document.getElementById(prefix + 'trendsDrillSelector');
         if (drillSel) drillSel.style.display = 'none';
         const ptsCard = document.getElementById(prefix + 'trendsPtsPerShotCard');
         if (ptsCard) ptsCard.style.display = '';
+        const spgCard = document.getElementById(prefix + 'trendsShotsPerGameCard');
+        if (spgCard) spgCard.style.display = '';
         const chartTitle = document.getElementById(prefix + 'trendsChartTitle');
         if (chartTitle) chartTitle.textContent = 'Conversion Rate Trend';
 
@@ -61,20 +63,26 @@ function renderTrendsContent(prefix, filteredSessions, allShots, analyticsType) 
             document.getElementById(prefix + 'trendsConversionChart').innerHTML =
                 '<div class="trends-min-sessions-msg">Play at least 2 matches to see trends.</div>';
             document.getElementById(prefix + 'trendsPtsPerShotChart').innerHTML = '';
+            document.getElementById(prefix + 'trendsShotsPerGameChart').innerHTML = '';
             document.getElementById(prefix + 'trendsProgressSummary').innerHTML = '';
             return;
         }
         renderTrendChart(prefix + 'trendsConversionChart', data.conversionPoints, {
-            valueKey: 'rate', suffix: '%', label: 'Conversion'
+            valueKey: 'rate', suffix: '%', label: 'Conversion', isMatch: true
         });
         renderTrendChart(prefix + 'trendsPtsPerShotChart', data.ptsPerShotPoints, {
-            valueKey: 'ptsPerShot', suffix: '', label: 'Pts/Shot', decimals: 2
+            valueKey: 'ptsPerShot', suffix: '', label: 'Pts/Shot', decimals: 2, isMatch: true
         });
-        renderProgressSummary(prefix + 'trendsProgressSummary', data.conversionPoints, data.ptsPerShotPoints);
+        renderTrendChart(prefix + 'trendsShotsPerGameChart', data.shotsPerGamePoints, {
+            valueKey: 'total', suffix: '', label: 'Shots', isMatch: true
+        });
+        renderProgressSummary(prefix + 'trendsProgressSummary', data.conversionPoints, data.ptsPerShotPoints, data.shotsPerGamePoints);
     } else {
-        // Practice mode - show drill selector
+        // Practice mode - hide match-only cards, show drill selector
         const ptsCard = document.getElementById(prefix + 'trendsPtsPerShotCard');
         if (ptsCard) ptsCard.style.display = 'none';
+        const spgCard = document.getElementById(prefix + 'trendsShotsPerGameCard');
+        if (spgCard) spgCard.style.display = 'none';
         const chartTitle = document.getElementById(prefix + 'trendsChartTitle');
         if (chartTitle) chartTitle.textContent = 'Drill Conversion Trend';
 
@@ -110,6 +118,7 @@ function buildMatchDataPoints(filteredSessions, allShots) {
 
     const conversionPoints = [];
     const ptsPerShotPoints = [];
+    const shotsPerGamePoints = [];
 
     // Sort sessions chronologically
     const sorted = [...filteredSessions].sort((a, b) => {
@@ -127,15 +136,18 @@ function buildMatchDataPoints(filteredSessions, allShots) {
         const twoPt = shots.filter(s => s.pointValue === 2 && s.shotFor !== 'goal' && s.result === 'scored').length;
         const goals = shots.filter(s => s.shotFor === 'goal' && s.result === 'scored').length;
         const ptsPerShot = total > 0 ? (onePt * 1 + twoPt * 2 + goals * 3) / total : 0;
+        const inPlay = shots.filter(s => s.shotCategory === 'in-play').length;
+        const placed = shots.filter(s => s.shotCategory === 'free-kick' || s.shotCategory === '45').length;
 
         const label = session.name || session.matchType || 'Match';
         const dateStr = formatTrendDate(session.date);
 
         conversionPoints.push({ date: session.date, dateStr, label, scored, total, rate });
         ptsPerShotPoints.push({ date: session.date, dateStr, label, ptsPerShot: parseFloat(ptsPerShot.toFixed(2)), scored, total });
+        shotsPerGamePoints.push({ date: session.date, dateStr, label, total, inPlay, placed, scored });
     });
 
-    return { conversionPoints, ptsPerShotPoints };
+    return { conversionPoints, ptsPerShotPoints, shotsPerGamePoints };
 }
 
 function buildPracticeDrillDataPoints(filteredSessions, drillKey) {
@@ -248,7 +260,7 @@ function renderTrendChart(containerId, dataPoints, options) {
 
     const { valueKey, suffix, label, decimals } = options;
     const W = 800, H = 400;
-    const PAD = { left: 65, right: 30, top: 30, bottom: 80 };
+    const PAD = { left: 65, right: 30, top: 30, bottom: options.isMatch ? 95 : 80 };
     const chartW = W - PAD.left - PAD.right;
     const chartH = H - PAD.top - PAD.bottom;
 
@@ -326,10 +338,16 @@ function renderTrendChart(containerId, dataPoints, options) {
     dataPoints.forEach((p, i) => {
         const x = xPos(i);
         const y = H - PAD.bottom + 18;
+        // For match charts, show opponent name as primary label with date below
+        const primaryLabel = options.isMatch && p.label ? p.label : p.dateStr;
+        const secondaryLabel = options.isMatch && p.label ? p.dateStr : null;
         if (rotateLabels) {
-            svg += `<text x="${x}" y="${y}" text-anchor="end" fill="#666" font-size="10" transform="rotate(-45, ${x}, ${y})">${p.dateStr}</text>`;
+            svg += `<text x="${x}" y="${y}" text-anchor="end" fill="#666" font-size="10" transform="rotate(-45, ${x}, ${y})">${primaryLabel}</text>`;
         } else {
-            svg += `<text x="${x}" y="${y}" text-anchor="middle" fill="#666" font-size="11">${p.dateStr}</text>`;
+            svg += `<text x="${x}" y="${y}" text-anchor="middle" fill="#666" font-size="11" font-weight="${options.isMatch ? '600' : 'normal'}">${primaryLabel}</text>`;
+            if (secondaryLabel) {
+                svg += `<text x="${x}" y="${y + 14}" text-anchor="middle" fill="#999" font-size="9">${secondaryLabel}</text>`;
+            }
         }
     });
 
@@ -340,7 +358,7 @@ function renderTrendChart(containerId, dataPoints, options) {
     container._trendData = dataPoints;
 }
 
-function renderProgressSummary(containerId, convPoints, ptsPoints) {
+function renderProgressSummary(containerId, convPoints, ptsPoints, spgPoints) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -393,6 +411,31 @@ function renderProgressSummary(containerId, convPoints, ptsPoints) {
             </div>`;
     }
 
+    let spgHtml = '';
+    if (spgPoints && spgPoints.length >= 2) {
+        const spgAvg = (spgPoints.reduce((a, p) => a + p.total, 0) / spgPoints.length).toFixed(1);
+        const spgMax = Math.max(...spgPoints.map(p => p.total));
+        const spgMin = Math.min(...spgPoints.map(p => p.total));
+        spgHtml = `
+            <div class="trends-summary-row">
+                <span class="ts-label">Avg Shots/Game</span>
+                <span class="ts-value">${spgAvg}</span>
+            </div>
+            <div class="trends-summary-row">
+                <span class="ts-label">Most / Fewest Shots</span>
+                <span class="ts-value">${spgMax} / ${spgMin}</span>
+            </div>`;
+        if (spgPoints.length >= 6) {
+            const last5 = spgPoints.slice(-5);
+            const last5Avg = (last5.reduce((a, p) => a + p.total, 0) / last5.length).toFixed(1);
+            spgHtml += `
+            <div class="trends-summary-row">
+                <span class="ts-label">Last 5 Games Avg</span>
+                <span class="ts-value">${last5Avg} shots/game</span>
+            </div>`;
+        }
+    }
+
     container.innerHTML = `
         <div class="trends-progress-summary">
             <h3>Progress Summary</h3>
@@ -410,6 +453,7 @@ function renderProgressSummary(containerId, convPoints, ptsPoints) {
             </div>
             ${recentTrend}
             ${ptsHtml}
+            ${spgHtml}
         </div>`;
 }
 
@@ -425,11 +469,18 @@ function showTrendTooltip(event, index, containerId) {
     tooltip.id = 'activeTrendTooltip';
 
     let html = `<div class="tt-title">${point.label}</div>`;
-    html += `<div class="tt-row"><span class="tt-label">Date</span><span class="tt-value">${point.dateStr}</span></div>`;
-    html += `<div class="tt-row"><span class="tt-label">Scored</span><span class="tt-value">${point.scored}/${point.total}</span></div>`;
-    html += `<div class="tt-row"><span class="tt-label">Rate</span><span class="tt-value">${point.rate}%</span></div>`;
+    html += `<div class="tt-row"><span class="tt-label">Date</span><span class="tt-value">${formatTrendDateLong(point.date)}</span></div>`;
+    if (point.rate !== undefined) {
+        html += `<div class="tt-row"><span class="tt-label">Scored</span><span class="tt-value">${point.scored}/${point.total}</span></div>`;
+        html += `<div class="tt-row"><span class="tt-label">Rate</span><span class="tt-value">${point.rate}%</span></div>`;
+    }
     if (point.ptsPerShot !== undefined) {
         html += `<div class="tt-row"><span class="tt-label">Pts/Shot</span><span class="tt-value">${point.ptsPerShot.toFixed(2)}</span></div>`;
+    }
+    if (point.inPlay !== undefined) {
+        html += `<div class="tt-row"><span class="tt-label">Total Shots</span><span class="tt-value">${point.total}</span></div>`;
+        html += `<div class="tt-row"><span class="tt-label">In-Play</span><span class="tt-value">${point.inPlay}</span></div>`;
+        html += `<div class="tt-row"><span class="tt-label">Placed</span><span class="tt-value">${point.placed}</span></div>`;
     }
     tooltip.innerHTML = html;
 
@@ -460,4 +511,10 @@ function formatTrendDate(dateStr) {
     const parts = dateStr.split('-');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return parseInt(parts[2]) + ' ' + months[parseInt(parts[1]) - 1];
+}
+
+function formatTrendDateLong(dateStr) {
+    const parts = dateStr.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return parseInt(parts[2]) + ' ' + months[parseInt(parts[1]) - 1] + ' ' + parts[0];
 }
