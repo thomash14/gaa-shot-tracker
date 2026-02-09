@@ -936,6 +936,9 @@ function switchPlayerDataType(type) {
     resetMultiSelect('pd-matchTypeFilter');
     resetMultiSelect('pd-windDirectionFilter');
     resetMultiSelect('pd-windStrengthFilter');
+    pdTrendsViewActive = false;
+    pdSelectedTrendsDrillKey = null;
+    updateTrendsToggleUI('pd-');
     displayPlayerDataAnalytics();
 }
 
@@ -1090,6 +1093,12 @@ function displayPlayerDataAnalytics() {
     renderShotMapFromShots(allShots, 'playerDataPitchWrapper');
     renderPlayerDataStatsTable(filteredSessions);
     updatePdZoneStats(allShots);
+    if (pdTrendsViewActive) {
+        updateTrendsVisibility('pd-');
+        renderTrendsContent('pd-', filteredSessions, allShots, currentPlayerDataType);
+    } else {
+        updateTrendsVisibility('pd-');
+    }
 }
 
 function updatePdConversionStats(allShots) {

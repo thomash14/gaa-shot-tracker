@@ -668,11 +668,29 @@
                     </div>
                 </div>
             </div>
-            <div class="stat-card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                <div class="trends-toggle">
+                    <button class="trends-toggle-btn active" id="trendsStatsBtn" onclick="toggleTrendsView('')">Stats</button>
+                    <button class="trends-toggle-btn" id="trendsTrendsBtn" onclick="toggleTrendsView('')">Trends</button>
+                </div>
+            </div>
+            <div id="trendsContainer" style="display: none;">
+                <div class="stat-card" style="margin-bottom: 20px;">
+                    <div id="trendsDrillSelector" style="display: none;"></div>
+                    <h2 style="color: #2a5298; margin-bottom: 15px;" id="trendsChartTitle">Conversion Rate Trend</h2>
+                    <div id="trendsConversionChart"></div>
+                </div>
+                <div class="stat-card" style="margin-bottom: 20px;" id="trendsPtsPerShotCard">
+                    <h2 style="color: #2a5298; margin-bottom: 15px;">Points Per Shot Trend</h2>
+                    <div id="trendsPtsPerShotChart"></div>
+                </div>
+                <div id="trendsProgressSummary"></div>
+            </div>
+            <div class="stat-card" style="margin-bottom: 20px;" id="statsBreakdownCard">
                 <h2 style="color: #2a5298; margin-bottom: 15px;" id="statsTableHeading">Session Breakdown</h2>
                 <div class="stats-table-scroll" id="statsTableContainer"></div>
             </div>
-            <div class="stat-card" style="margin-bottom: 20px;">
+            <div class="stat-card" style="margin-bottom: 20px;" id="statsShotMapCard">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h2 style="color: #2a5298; margin: 0;">Shot Map</h2>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -751,7 +769,7 @@
                     <span>🔴 Missed</span>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="statsZoneCard">
                 <h2 style="color: #2a5298; margin-bottom: 20px;">Performance by Zone</h2>
                 <div class="zone-stats" id="zoneStats"></div>
             </div>
@@ -1392,13 +1410,31 @@
                             </div>
                         </div>
                     </div>
+                    <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                        <div class="trends-toggle">
+                            <button class="trends-toggle-btn active" id="pd-trendsStatsBtn" onclick="toggleTrendsView('pd-')">Stats</button>
+                            <button class="trends-toggle-btn" id="pd-trendsTrendsBtn" onclick="toggleTrendsView('pd-')">Trends</button>
+                        </div>
+                    </div>
+                    <div id="pd-trendsContainer" style="display: none;">
+                        <div class="stat-card" style="margin-bottom: 20px;">
+                            <div id="pd-trendsDrillSelector" style="display: none;"></div>
+                            <h2 style="color: #2a5298; margin-bottom: 15px;" id="pd-trendsChartTitle">Conversion Rate Trend</h2>
+                            <div id="pd-trendsConversionChart"></div>
+                        </div>
+                        <div class="stat-card" style="margin-bottom: 20px;" id="pd-trendsPtsPerShotCard">
+                            <h2 style="color: #2a5298; margin-bottom: 15px;">Points Per Shot Trend</h2>
+                            <div id="pd-trendsPtsPerShotChart"></div>
+                        </div>
+                        <div id="pd-trendsProgressSummary"></div>
+                    </div>
                     <!-- Breakdown Table -->
-                    <div class="stat-card" style="margin-bottom: 20px;">
+                    <div class="stat-card" style="margin-bottom: 20px;" id="pd-statsBreakdownCard">
                         <h2 style="color: #2a5298; margin-bottom: 15px;" id="pd-statsTableHeading">Session Breakdown</h2>
                         <div class="stats-table-scroll" id="pd-statsTableContainer"></div>
                     </div>
                     <!-- Shot Map -->
-                    <div class="stat-card" style="margin-bottom: 20px;">
+                    <div class="stat-card" style="margin-bottom: 20px;" id="pd-statsShotMapCard">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                             <h2 style="color: #2a5298; margin: 0;">Shot Map</h2>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -1463,7 +1499,7 @@
                         </div>
                     </div>
                     <!-- Zone Stats -->
-                    <div class="stat-card">
+                    <div class="stat-card" id="pd-statsZoneCard">
                         <h2 style="color: #2a5298; margin-bottom: 20px;">Performance by Zone</h2>
                         <div class="zone-stats" id="pd-zoneStats"></div>
                     </div>
@@ -1606,6 +1642,7 @@
     <script src="js/sessions.js"></script>
     <script src="js/pitch.js"></script>
     <script src="js/analytics.js"></script>
+    <script src="js/trends.js"></script>
     <script src="js/drills.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>

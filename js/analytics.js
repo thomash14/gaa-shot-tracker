@@ -209,6 +209,12 @@ function displayAnalytics() {
     renderShotMapFromShots(allShots, 'analyticsPitchWrapper');
     renderStatsTable(filteredSessions);
     updateZoneStats(allShots);
+    if (trendsViewActive) {
+        updateTrendsVisibility('');
+        renderTrendsContent('', filteredSessions, allShots, currentAnalyticsType);
+    } else {
+        updateTrendsVisibility('');
+    }
 }
 function toggleZoneOverlay() {
     const overlay = document.getElementById('zoneOverlays');
@@ -245,6 +251,9 @@ function switchAnalyticsType(type) {
     resetMultiSelect('windStrengthFilter');
     document.getElementById('windDirectionFilterContainer').style.display = 'flex';
     document.getElementById('windStrengthFilterContainer').style.display = 'flex';
+    trendsViewActive = false;
+    selectedTrendsDrillKey = null;
+    updateTrendsToggleUI('');
     if (type === 'practice') {
         populateDrillFilter();
         populateSkillsetFilter();
