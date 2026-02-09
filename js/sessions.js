@@ -285,11 +285,24 @@ function displaySessions() {
                 weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
             });
             let details = buildTrainingLogSummary(log);
+
+            // Build kicking sub-items for training sessions
+            let kickingHTML = '';
+            if (log.sessionType === 'training') {
+                if (log.kickingBefore) {
+                    kickingHTML += `<div class="session-stats" style="color:#4CAF50;">🏋️ Pre-Training Kicking — ${log.beforeDuration || '?'} mins</div>`;
+                }
+                if (log.kickingAfter) {
+                    kickingHTML += `<div class="session-stats" style="color:#4CAF50;">🏋️ Post-Training Kicking — ${log.afterDuration || '?'} mins</div>`;
+                }
+            }
+
             return `
                 <div class="session-item ${logClass}">
                     <div class="session-info">
                         <div class="session-type-header">${typeIcons[log.sessionType] || '📋'} ${typeLabels[log.sessionType] || log.sessionType}</div>
                         <div class="session-stats">${formattedDate}${details ? ' • ' + details : ''}</div>
+                        ${kickingHTML}
                         ${log.comments ? `<div class="session-stats" style="font-style:italic;color:#888;">${log.comments}</div>` : ''}
                     </div>
                     <div class="session-actions">
@@ -612,6 +625,8 @@ function buildSessionDateMap() {
         if (!dateMap[log.date]) dateMap[log.date] = { practice: false, match: false, training: false, gym: false, recovery: false };
         if (!trainingMap[log.date]) trainingMap[log.date] = [];
         dateMap[log.date][log.sessionType] = true;
+        // Kicking before/after counts as practice activity (green dot)
+        if (log.kickingBefore || log.kickingAfter) dateMap[log.date].practice = true;
         trainingMap[log.date].push(log);
     });
     return { dateMap, sessionMap, trainingMap };
@@ -669,6 +684,9 @@ function renderMonthlyCalendar(dateMap) {
             if (log.sessionType === 'training') trainingCount++;
             else if (log.sessionType === 'gym') gymCount++;
             else if (log.sessionType === 'recovery') recoveryCount++;
+            // Count kicking before/after as practice sessions
+            if (log.kickingBefore) practiceCount++;
+            if (log.kickingAfter) practiceCount++;
         }
     });
 
@@ -795,6 +813,9 @@ function renderWeeklyCalendar(dateMap, sessionMap, trainingMap) {
             if (t.sessionType === 'training') weekTrainingCount++;
             else if (t.sessionType === 'gym') weekGymCount++;
             else if (t.sessionType === 'recovery') weekRecoveryCount++;
+            // Count kicking before/after as practice sessions
+            if (t.kickingBefore) weekPracticeCount++;
+            if (t.kickingAfter) weekPracticeCount++;
         });
 
         let classes = 'cal-week-day';
@@ -828,12 +849,29 @@ function renderWeeklyCalendar(dateMap, sessionMap, trainingMap) {
         });
 
         dayTraining.forEach(t => {
+            // Kicking before training → separate green (practice) card
+            if (t.sessionType === 'training' && t.kickingBefore) {
+                html += `<div class="cal-week-session practice" onclick="event.stopPropagation();">`;
+                html += `<div class="cal-week-session-name">🏋️ Pre-Training Kicking</div>`;
+                html += `<div class="cal-week-session-stats">${t.beforeDuration || '?'} mins</div>`;
+                html += '</div>';
+            }
+
+            // Main training/gym/recovery card
             const typeLabels = { training: 'Training', gym: 'Gym', recovery: 'Recovery' };
             const typeIcons = { training: '🏃', gym: '💪', recovery: '🧊' };
             html += `<div class="cal-week-session ${t.sessionType}" onclick="event.stopPropagation();">`;
             html += `<div class="cal-week-session-name">${typeIcons[t.sessionType] || '📋'} ${typeLabels[t.sessionType] || t.sessionType}</div>`;
             if (t.comments) html += `<div class="cal-week-session-stats">${t.comments.substring(0, 30)}</div>`;
             html += '</div>';
+
+            // Kicking after training → separate green (practice) card
+            if (t.sessionType === 'training' && t.kickingAfter) {
+                html += `<div class="cal-week-session practice" onclick="event.stopPropagation();">`;
+                html += `<div class="cal-week-session-name">🏋️ Post-Training Kicking</div>`;
+                html += `<div class="cal-week-session-stats">${t.afterDuration || '?'} mins</div>`;
+                html += '</div>';
+            }
         });
 
         html += '</div></div>';
