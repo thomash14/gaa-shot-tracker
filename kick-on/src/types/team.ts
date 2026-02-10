@@ -1,35 +1,38 @@
 export type TeamRole = 'coach' | 'player';
 
-export interface Team {
+export interface Club {
   id: string;
   name: string;
   county: string;
-  club: string;
-  ageGroup: string;
-  inviteCode: string;
-  createdBy: string;
-  createdAt: string;
+}
+
+export interface Team {
+  id: string;
+  club_id: string;
+  age_group: string;
+  team_name: string | null;
+  season_year: number;
+  invite_code: string;
+  created_by: string;
+  clubs?: Club;
 }
 
 export interface TeamMembership {
   id: string;
-  teamId: string;
-  userId: string;
+  team_id: string;
+  user_id: string;
   role: TeamRole;
-  joinedAt: string;
-  sharePractice: boolean;
-  shareMatch: boolean;
-  team?: Team;
+  share_with_coach: boolean;
+  share_match_data: boolean;
+  teams?: Team;
 }
 
 export interface TeamMember {
   id: string;
-  userId: string;
+  user_id: string;
   role: TeamRole;
   displayName: string;
   email?: string;
-  club?: string;
-  position?: string;
-  sharePractice: boolean;
-  shareMatch: boolean;
+  share_with_coach: boolean;
+  share_match_data: boolean;
 }

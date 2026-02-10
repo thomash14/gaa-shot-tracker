@@ -11,8 +11,9 @@ export type {
   SpotScoreSingle,
   SpotScoreBothFeet,
   TeamDrill,
+  TeamDrillSettings,
   DrillCompletion,
 } from './drill';
-export type { Team, TeamMembership, TeamMember, TeamRole } from './team';
+export type { Club, Team, TeamMembership, TeamMember, TeamRole } from './team';
 export type { TrainingLog, TrainingSessionType } from './training';
 export type { UserProfile } from './profile';

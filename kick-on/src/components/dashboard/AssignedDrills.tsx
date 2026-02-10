@@ -35,13 +35,13 @@ export default function AssignedDrills({ drills }: AssignedDrillsProps) {
             className="flex items-center justify-between bg-grey-light rounded-lg p-3 hover:bg-grey transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-text">{drill.drillType}</p>
+              <p className="text-sm font-medium text-text">{drill.drill_type}</p>
               {drill.notes && (
                 <p className="text-xs text-text-muted mt-0.5">{drill.notes}</p>
               )}
             </div>
-            {drill.targetPct != null && (
-              <span className="text-xs text-text-muted">Target: {drill.targetPct}%</span>
+            {drill.target_percentage != null && (
+              <span className="text-xs text-text-muted">Target: {drill.target_percentage}%</span>
             )}
           </Link>
         ))}

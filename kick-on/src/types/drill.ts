@@ -65,30 +65,34 @@ export interface DrillSettings {
   totalShots: number;
 }
 
+export interface TeamDrillSettings {
+  distance: number;
+  shotType: string;
+  foot: string;
+  totalShots: number;
+}
+
 export interface TeamDrill {
   id: string;
-  teamId: string;
-  drillType: string;
-  distance?: string;
-  shotType?: string;
-  foot?: string;
-  totalShots?: number;
-  skillset?: string;
-  startDate?: string;
-  availableFor?: number;
-  targetPct?: number;
-  notes?: string;
-  assignedBy: string;
-  assignedAt: string;
-  sport: Sport;
+  team_id: string;
+  created_by: string;
+  created_at: string;
+  drill_type: string;
+  settings: TeamDrillSettings;
+  start_date: string;
+  due_date: string;
+  target_percentage: number | null;
+  notes: string | null;
+  status: string;
 }
 
 export interface DrillCompletion {
   id: string;
-  drillId: string;
-  userId: string;
+  drill_id: string;
+  user_id: string;
   scored: number;
   total: number;
-  completedAt: string;
-  sport: Sport;
+  score_percentage: number;
+  completed_at: string;
+  profiles?: { display_name?: string; email?: string };
 }
