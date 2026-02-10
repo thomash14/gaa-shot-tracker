@@ -1,4 +1,18 @@
 function getZone(x, y) {
+    if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+        return { zone: 0, name: 'Unknown', color: '#9E9E9E' };
+    }
+    // Mirror shots from the far end (y >= 50%) to the attacking half
+    // so zone classification is always relative to the top goal.
+    // Uses the same pitch-centre mirroring as renderShotMapWithFilters.
+    if (y >= 50) {
+        const PITCH_X_MIN = 25 / 500 * 100;   // 5%
+        const PITCH_X_MAX = 425 / 500 * 100;   // 85%
+        const PITCH_Y_MIN = 40 / 725 * 100;    // 5.52%
+        const PITCH_Y_MAX = 684 / 725 * 100;   // 94.34%
+        x = PITCH_X_MIN + PITCH_X_MAX - x;
+        y = PITCH_Y_MIN + PITCH_Y_MAX - y;
+    }
     const svgX = (x / 100) * 500;
     const svgY = (y / 100) * 725;
     const goalX = 225;
@@ -726,6 +740,7 @@ function updateZoneStats(allShots) {
     const zones = {};
     allShots.forEach(shot => {
         const zoneInfo = getZone(shot.x, shot.y);
+        if (!zoneInfo || zoneInfo.zone < 1) return;
         const zoneKey = zoneInfo.zone;
         if (!zones[zoneKey]) {
             zones[zoneKey] = { total: 0, scored: 0, name: zoneInfo.name, color: zoneInfo.color, zone: zoneInfo.zone };

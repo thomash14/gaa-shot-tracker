@@ -9,6 +9,8 @@
     <title>Kick On</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -191,6 +193,10 @@
                     <button class="profile-menu-item" onclick="switchSection('sessions'); closeProfileMenu();">
                         <span class="menu-icon">📋</span>
                         <span>Session History</span>
+                    </button>
+                    <button class="profile-menu-item" onclick="showReportModal(); closeProfileMenu();">
+                        <span class="menu-icon">📄</span>
+                        <span>Monthly Report</span>
                     </button>
                     <div class="profile-menu-divider"></div>
                     <button class="profile-menu-item danger" onclick="handleLogout(); closeProfileMenu();">
@@ -551,9 +557,12 @@
             </div>
         </div>
         <div id="analytics-tab" class="tab-content">
-            <div class="tabs" style="margin-bottom: 20px;">
-                <button class="tab active" onclick="switchAnalyticsType('match')" id="analyticsMatchSubTab">⚽ Match</button>
-                <button class="tab" onclick="switchAnalyticsType('practice')" id="analyticsPracticeSubTab">🏋️ Practice</button>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <div class="tabs" style="margin-bottom: 0; flex: 1;">
+                    <button class="tab active" onclick="switchAnalyticsType('match')" id="analyticsMatchSubTab">⚽ Match</button>
+                    <button class="tab" onclick="switchAnalyticsType('practice')" id="analyticsPracticeSubTab">🏋️ Practice</button>
+                </div>
+                <button onclick="showReportModal()" style="padding: 6px 12px; background: #1e3c72; color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer; white-space: nowrap;">📄 Report</button>
             </div>
             <div class="stat-card" style="margin-bottom: 20px;">
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center; font-size: 11px;">
@@ -1637,6 +1646,41 @@
         </div>
     </div>
 
+    <!-- Monthly Report Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">📄 Monthly Performance Report</div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Select Month</label>
+                <input type="month" id="reportMonthInput" onchange="updateReportPreview()" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;">
+                <div id="reportMonthFallback" style="display: none; gap: 8px;">
+                    <select id="reportFallbackMonth" onchange="updateReportPreview()" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                    <select id="reportFallbackYear" onchange="updateReportPreview()" style="width: 90px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                    </select>
+                </div>
+            </div>
+            <div id="reportPreview" style="margin-bottom: 16px;"></div>
+            <div id="reportError" style="display: none; color: #f44336; font-size: 12px; text-align: center; margin-bottom: 12px;"></div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="generateMonthlyReport()">Generate PDF</button>
+                <button class="btn-secondary" onclick="closeReportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/clubData.js"></script>
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
@@ -1651,6 +1695,7 @@
     <script src="js/pitch.js"></script>
     <script src="js/analytics.js"></script>
     <script src="js/trends.js"></script>
+    <script src="js/report.js"></script>
     <script src="js/drills.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>

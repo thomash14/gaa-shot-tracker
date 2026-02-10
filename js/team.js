@@ -1132,6 +1132,7 @@ function updatePdZoneStats(allShots) {
     const zones = {};
     allShots.forEach(shot => {
         const zoneInfo = getZone(shot.x, shot.y);
+        if (!zoneInfo || zoneInfo.zone < 1) return;
         const zoneKey = zoneInfo.zone;
         if (!zones[zoneKey]) {
             zones[zoneKey] = { total: 0, scored: 0, name: zoneInfo.name, color: zoneInfo.color, zone: zoneInfo.zone };

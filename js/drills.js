@@ -95,161 +95,271 @@ function filterBySkillset(value) {
     renderPracticeTemplates();
 }
 
+function toggleDrillExpand(templateId) {
+    if (expandedDrillId === templateId) {
+        expandedDrillId = null;
+    } else {
+        expandedDrillId = templateId;
+    }
+    renderPracticeTemplates();
+}
+
+function startDrillFromPanel(templateId, isCustom, drillId) {
+    expandedDrillId = null;
+    if (isCustom) {
+        startCustomDrill(drillId);
+    } else {
+        selectTemplate(templateId);
+    }
+}
+
 function renderPracticeTemplates() {
     const list = document.getElementById('templatesList');
     if (!list) return;
     let html = '';
     // Skillset filter dropdown
-    html += `<div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+    html += `<div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
         <label style="font-weight: 600; font-size: 14px; color: #333;">Skillset:</label>
         <select onchange="filterBySkillset(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 2px solid #e0e0e0; font-size: 14px; background: white;">
             ${SKILLSET_CATEGORIES.map(cat => `<option value="${cat.value}" ${currentSkillsetFilter === cat.value ? 'selected' : ''}>${cat.label}</option>`).join('')}
         </select>
     </div>`;
+
+    // Build unified drill list: built-in + custom
     const filteredBuiltIn = practiceTemplates.filter(t => !t.isCustom).filter(t => currentSkillsetFilter === 'all' || t.skillset === currentSkillsetFilter);
     const filteredCustom = customDrills.filter(d => currentSkillsetFilter === 'all' || (d.skillset || 'kicking-at-goal') === currentSkillsetFilter);
-    html += filteredBuiltIn.map(template => {
-        if (template.isDynamic) {
-            const progressKey = `${template.id}-${drillSettings.distance}-${drillSettings.shotType}-${drillSettings.footOption}-${drillSettings.totalShots}`;
+
+    const allDrills = [];
+    // Add built-in drills
+    filteredBuiltIn.forEach(template => {
+        allDrills.push({
+            templateId: template.id,
+            name: template.name,
+            description: template.description,
+            isDynamic: template.isDynamic,
+            isCustom: false,
+            hasInstructions: !!template.detailedInstructions,
+            spots: template.spots,
+            drillId: null
+        });
+    });
+    // Add custom drills
+    filteredCustom.forEach(drill => {
+        allDrills.push({
+            templateId: `custom-${drill.id}`,
+            name: drill.name,
+            description: drill.description || '',
+            isDynamic: false,
+            isCustom: true,
+            hasInstructions: false,
+            spots: drill.spots,
+            drillId: drill.id
+        });
+    });
+
+    // Render each drill as a compact row
+    allDrills.forEach(drill => {
+        const isActive = activeTemplate?.id === drill.templateId;
+        const isExpanded = expandedDrillId === drill.templateId && !isActive;
+        const rowClasses = ['drill-row'];
+        if (isActive) rowClasses.push('active');
+        else if (isExpanded) rowClasses.push('expanded');
+        if (drill.isCustom) rowClasses.push('custom');
+
+        // Build info text
+        let infoText = '';
+        if (drill.isDynamic) {
+            infoText = `5 spots &middot; ${drillSettings.distance}m &middot; dynamic`;
+        } else if (drill.spots) {
+            infoText = `${drill.spots.length} spots`;
+        } else {
+            infoText = drill.description;
+        }
+
+        // Build action buttons
+        let actionsHtml = '';
+        if (drill.hasInstructions) {
+            actionsHtml += `<button class="drill-row-btn" onclick="event.stopPropagation(); showDrillDescription('${drill.templateId}')" title="How to do this drill">?</button>`;
+        }
+        actionsHtml += `<button class="drill-row-btn" onclick="event.stopPropagation(); previewDrill('${drill.templateId}')" title="Preview on pitch">👁</button>`;
+
+        if (isActive) {
+            // Active drill: show green Active button that deactivates
+            if (drill.isCustom) {
+                const safeId = typeof drill.drillId === 'string' ? `'${drill.drillId}'` : drill.drillId;
+                actionsHtml += `<button class="drill-row-btn active-btn" onclick="event.stopPropagation(); startCustomDrill(${safeId})">✓ Active</button>`;
+            } else {
+                actionsHtml += `<button class="drill-row-btn active-btn" onclick="event.stopPropagation(); selectTemplate('${drill.templateId}')">✓ Active</button>`;
+            }
+        } else {
+            // Not active: show Select button to expand/collapse
+            actionsHtml += `<button class="drill-row-btn select-btn" onclick="event.stopPropagation(); toggleDrillExpand('${drill.templateId}')">${isExpanded ? 'Deselect' : 'Select'}</button>`;
+        }
+
+        if (drill.isCustom) {
+            const safeId = typeof drill.drillId === 'string' ? `'${drill.drillId}'` : drill.drillId;
+            actionsHtml += `<button class="drill-row-btn delete-btn" onclick="event.stopPropagation(); deleteCustomDrill(${safeId})" title="Delete drill">🗑</button>`;
+        }
+
+        html += `<div class="${rowClasses.join(' ')}">
+            <div class="drill-row-name">${drill.name}</div>
+            ${drill.isCustom ? '<span class="drill-row-badge">Custom</span>' : ''}
+            <div class="drill-row-info">${infoText}</div>
+            <div class="drill-row-actions">${actionsHtml}</div>
+        </div>`;
+
+        // Expanded config panel (shown when selected OR active)
+        if (isExpanded) {
+            const safeId = drill.isCustom ? (typeof drill.drillId === 'string' ? `'${drill.drillId}'` : drill.drillId) : null;
+            html += `<div class="drill-config-panel expanded-panel">`;
+            html += `<div class="config-inline-row">`;
+            if (drill.isDynamic) {
+                html += `
+                    <div>
+                        <label>Distance</label>
+                        <select id="drillDistance" onchange="updateDrillSettings()">
+                            <option value="15" ${drillSettings.distance === 15 ? 'selected' : ''}>15m</option>
+                            <option value="17" ${drillSettings.distance === 17 ? 'selected' : ''}>17m</option>
+                            <option value="20" ${drillSettings.distance === 20 ? 'selected' : ''}>20m</option>
+                            <option value="24" ${drillSettings.distance === 24 ? 'selected' : ''}>24m</option>
+                            <option value="30" ${drillSettings.distance === 30 ? 'selected' : ''}>30m</option>
+                            <option value="35" ${drillSettings.distance === 35 ? 'selected' : ''}>35m</option>
+                            <option value="40" ${drillSettings.distance === 40 ? 'selected' : ''}>40m</option>
+                            <option value="45" ${drillSettings.distance === 45 ? 'selected' : ''}>45m</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Shot Type</label>
+                        <select id="drillShotType" onchange="updateDrillSettings()">
+                            <option value="free-kick" ${drillSettings.shotType === 'free-kick' ? 'selected' : ''}>Free-Kick</option>
+                            <option value="standing" ${drillSettings.shotType === 'standing' ? 'selected' : ''}>Standing</option>
+                            <option value="on-the-run" ${drillSettings.shotType === 'on-the-run' ? 'selected' : ''}>On the Run</option>
+                            <option value="on-the-turn" ${drillSettings.shotType === 'on-the-turn' ? 'selected' : ''}>On the Turn</option>
+                            <option value="off-a-dummy" ${drillSettings.shotType === 'off-a-dummy' ? 'selected' : ''}>After a Dummy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Foot</label>
+                        <select id="drillFoot" onchange="updateDrillSettings()">
+                            <option value="right" ${drillSettings.footOption === 'right' ? 'selected' : ''}>Right Only</option>
+                            <option value="left" ${drillSettings.footOption === 'left' ? 'selected' : ''}>Left Only</option>
+                            <option value="both" ${drillSettings.footOption === 'both' ? 'selected' : ''}>Both (split)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Total Shots</label>
+                        <select id="drillTotalShots" onchange="updateDrillSettings()">
+                            <option value="10" ${drillSettings.totalShots === 10 ? 'selected' : ''}>10 (2/spot)</option>
+                            <option value="20" ${drillSettings.totalShots === 20 ? 'selected' : ''}>20 (4/spot)</option>
+                            <option value="30" ${drillSettings.totalShots === 30 ? 'selected' : ''}>30 (6/spot)</option>
+                            <option value="40" ${drillSettings.totalShots === 40 ? 'selected' : ''}>40 (8/spot)</option>
+                        </select>
+                    </div>`;
+            } else {
+                // Custom / non-dynamic: show brief info
+                const totalShots = drill.spots.reduce((sum, s) => sum + s.shots, 0);
+                html += `<div style="font-size: 13px; color: #555;"><strong>${drill.spots.length} spots</strong> &middot; ${totalShots} total shots</div>`;
+            }
+            // Start Drill button at end of row
+            if (drill.isCustom) {
+                html += `<button class="drill-row-btn go-btn" onclick="event.stopPropagation(); startDrillFromPanel('${drill.templateId}', true, ${safeId})">Start Drill</button>`;
+            } else {
+                html += `<button class="drill-row-btn go-btn" onclick="event.stopPropagation(); startDrillFromPanel('${drill.templateId}', false, null)">Start Drill</button>`;
+            }
+            html += `</div>`; // close config-inline-row
+            html += `</div>`; // close drill-config-panel
+        }
+
+        // Active drill: show progress panel
+        if (isActive) {
+            html += `<div class="drill-config-panel">`;
+            if (drill.isDynamic) {
+                html += `<div class="config-inline-row" style="margin-bottom: 8px;">
+                    <div>
+                        <label>Distance</label>
+                        <select id="drillDistance" onchange="updateDrillSettings()">
+                            <option value="15" ${drillSettings.distance === 15 ? 'selected' : ''}>15m</option>
+                            <option value="17" ${drillSettings.distance === 17 ? 'selected' : ''}>17m</option>
+                            <option value="20" ${drillSettings.distance === 20 ? 'selected' : ''}>20m</option>
+                            <option value="24" ${drillSettings.distance === 24 ? 'selected' : ''}>24m</option>
+                            <option value="30" ${drillSettings.distance === 30 ? 'selected' : ''}>30m</option>
+                            <option value="35" ${drillSettings.distance === 35 ? 'selected' : ''}>35m</option>
+                            <option value="40" ${drillSettings.distance === 40 ? 'selected' : ''}>40m</option>
+                            <option value="45" ${drillSettings.distance === 45 ? 'selected' : ''}>45m</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Shot Type</label>
+                        <select id="drillShotType" onchange="updateDrillSettings()">
+                            <option value="free-kick" ${drillSettings.shotType === 'free-kick' ? 'selected' : ''}>Free-Kick</option>
+                            <option value="standing" ${drillSettings.shotType === 'standing' ? 'selected' : ''}>Standing</option>
+                            <option value="on-the-run" ${drillSettings.shotType === 'on-the-run' ? 'selected' : ''}>On the Run</option>
+                            <option value="on-the-turn" ${drillSettings.shotType === 'on-the-turn' ? 'selected' : ''}>On the Turn</option>
+                            <option value="off-a-dummy" ${drillSettings.shotType === 'off-a-dummy' ? 'selected' : ''}>After a Dummy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Foot</label>
+                        <select id="drillFoot" onchange="updateDrillSettings()">
+                            <option value="right" ${drillSettings.footOption === 'right' ? 'selected' : ''}>Right Only</option>
+                            <option value="left" ${drillSettings.footOption === 'left' ? 'selected' : ''}>Left Only</option>
+                            <option value="both" ${drillSettings.footOption === 'both' ? 'selected' : ''}>Both (split)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Total Shots</label>
+                        <select id="drillTotalShots" onchange="updateDrillSettings()">
+                            <option value="10" ${drillSettings.totalShots === 10 ? 'selected' : ''}>10 (2/spot)</option>
+                            <option value="20" ${drillSettings.totalShots === 20 ? 'selected' : ''}>20 (4/spot)</option>
+                            <option value="30" ${drillSettings.totalShots === 30 ? 'selected' : ''}>30 (6/spot)</option>
+                            <option value="40" ${drillSettings.totalShots === 40 ? 'selected' : ''}>40 (8/spot)</option>
+                        </select>
+                    </div>
+                </div>`;
+                html += `<div class="config-summary">
+                    <strong>${drillSettings.totalShots / 5} kicks per spot</strong> ${drillSettings.footOption === 'both' ? `(${drillSettings.totalShots / 10} right + ${drillSettings.totalShots / 10} left)` : `(${drillSettings.footOption} foot)`} &middot;
+                    <strong>${drillSettings.totalShots} total</strong> &middot;
+                    <span style="color: #4CAF50;">Target: 80%+</span>
+                </div>`;
+            }
+
+            // Progress section
+            const progressKey = drill.isDynamic
+                ? `${drill.templateId}-${drillSettings.distance}-${drillSettings.shotType}-${drillSettings.footOption}-${drillSettings.totalShots}`
+                : drill.templateId;
             const progress = drillProgress[progressKey] || {};
             const completedSpots = Object.keys(progress).length;
-            const totalScored = Object.values(progress).reduce((sum, p) => sum + (p.scored || 0), 0);
-            const totalAttempted = Object.values(progress).reduce((sum, p) => sum + (p.total || 0), 0);
+            let totalScored = 0;
+            let totalAttempted = 0;
+            Object.values(progress).forEach(p => {
+                if (p.right || p.left) {
+                    totalScored += (p.right?.scored || 0) + (p.left?.scored || 0);
+                    totalAttempted += (p.right?.total || 0) + (p.left?.total || 0);
+                } else {
+                    totalScored += p.scored || 0;
+                    totalAttempted += p.total || 0;
+                }
+            });
             const percentage = totalAttempted > 0 ? Math.round((totalScored / totalAttempted) * 100) : 0;
-            return `
-                <div class="template-card ${activeTemplate?.id === template.id ? 'active' : ''}">
-                    <div class="template-header">
-                        <div class="template-name">${template.name}</div>
-                        <div class="template-author">${template.description}</div>
-                    </div>
-                    <div style="margin: 15px 0; padding: 15px; background: #f0f4f8; border-radius: 8px;">
-                        <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
-                            <div>
-                                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Distance:</label>
-                                <select id="drillDistance" onchange="updateDrillSettings()" style="padding: 6px 10px; border-radius: 5px; border: 1px solid #ccc;">
-                                    <option value="15" ${drillSettings.distance === 15 ? 'selected' : ''}>15m</option>
-                                    <option value="17" ${drillSettings.distance === 17 ? 'selected' : ''}>17m</option>
-                                    <option value="20" ${drillSettings.distance === 20 ? 'selected' : ''}>20m</option>
-                                    <option value="24" ${drillSettings.distance === 24 ? 'selected' : ''}>24m</option>
-                                    <option value="30" ${drillSettings.distance === 30 ? 'selected' : ''}>30m</option>
-                                    <option value="35" ${drillSettings.distance === 35 ? 'selected' : ''}>35m</option>
-                                    <option value="40" ${drillSettings.distance === 40 ? 'selected' : ''}>40m</option>
-                                    <option value="45" ${drillSettings.distance === 45 ? 'selected' : ''}>45m</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Shot Type:</label>
-                                <select id="drillShotType" onchange="updateDrillSettings()" style="padding: 6px 10px; border-radius: 5px; border: 1px solid #ccc;">
-                                    <option value="free-kick" ${drillSettings.shotType === 'free-kick' ? 'selected' : ''}>Free-Kick</option>
-                                    <option value="standing" ${drillSettings.shotType === 'standing' ? 'selected' : ''}>Standing</option>
-                                    <option value="on-the-run" ${drillSettings.shotType === 'on-the-run' ? 'selected' : ''}>On the Run</option>
-                                    <option value="on-the-turn" ${drillSettings.shotType === 'on-the-turn' ? 'selected' : ''}>On the Turn</option>
-                                    <option value="off-a-dummy" ${drillSettings.shotType === 'off-a-dummy' ? 'selected' : ''}>After a Dummy</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Foot:</label>
-                                <select id="drillFoot" onchange="updateDrillSettings()" style="padding: 6px 10px; border-radius: 5px; border: 1px solid #ccc;">
-                                    <option value="right" ${drillSettings.footOption === 'right' ? 'selected' : ''}>Right Only</option>
-                                    <option value="left" ${drillSettings.footOption === 'left' ? 'selected' : ''}>Left Only</option>
-                                    <option value="both" ${drillSettings.footOption === 'both' ? 'selected' : ''}>Both (split)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Total Shots:</label>
-                                <select id="drillTotalShots" onchange="updateDrillSettings()" style="padding: 6px 10px; border-radius: 5px; border: 1px solid #ccc;">
-                                    <option value="10" ${drillSettings.totalShots === 10 ? 'selected' : ''}>10 (2 per spot)</option>
-                                    <option value="20" ${drillSettings.totalShots === 20 ? 'selected' : ''}>20 (4 per spot)</option>
-                                    <option value="30" ${drillSettings.totalShots === 30 ? 'selected' : ''}>30 (6 per spot)</option>
-                                    <option value="40" ${drillSettings.totalShots === 40 ? 'selected' : ''}>40 (8 per spot)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div style="font-size: 12px; color: #666;">
-                            <strong>${drillSettings.totalShots / 5} kicks per spot</strong> ${drillSettings.footOption === 'both' ? `(${drillSettings.totalShots / 10} right + ${drillSettings.totalShots / 10} left)` : `(${drillSettings.footOption} foot)`} • 
-                            <strong>${drillSettings.totalShots} kicks total</strong> • 
-                            <span style="color: #4CAF50;">Target: 80%+ (${Math.round(drillSettings.totalShots * 0.8)}/${drillSettings.totalShots})</span>
-                        </div>
-                    </div>
-                    ${completedSpots > 0 ? `
-                        <div style="margin-bottom: 10px; padding: 10px; background: ${percentage >= 80 ? '#e8f5e9' : '#fff3e0'}; border-radius: 6px;">
-                            <strong>Current Progress:</strong> ${totalScored}/${totalAttempted} (${percentage}%)
-                            ${percentage >= 80 ? '<span style="color: #4CAF50; margin-left: 10px;">🎯 Great! Ready to move out?</span>' : ''}
-                        </div>
-                    ` : ''}
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-secondary" onclick="event.stopPropagation(); showDrillDescription('${template.id}')" style="flex: 0 0 auto; padding: 10px 12px;" title="How to do this drill">
-                            ❓ How To
-                        </button>
-                        <button class="btn-secondary" onclick="previewDrill('${template.id}')" style="flex: 1;">
-                            👁️ Preview on Pitch
-                        </button>
-                        <button class="btn-primary" onclick="selectTemplate('${template.id}')" style="flex: 1;">
-                            ${activeTemplate?.id === template.id ? '✓ Active - Click spots on pitch' : 'Start Drill'}
-                        </button>
-                    </div>
-                </div>
-            `;
-        } else {
-            const totalShots = template.spots.reduce((sum, s) => sum + s.shots, 0);
-            const progress = drillProgress[template.id] || {};
-            const completedSpots = Object.keys(progress).length;
-            const totalScored = Object.values(progress).reduce((sum, p) => sum + (p.scored || 0), 0);
-            const totalAttempted = Object.values(progress).reduce((sum, p) => sum + (p.total || 0), 0);
-            return `
-                <div class="template-card ${activeTemplate?.id === template.id ? 'active' : ''}" onclick="selectTemplate('${template.id}')">
-                    <div class="template-header">
-                        <div class="template-name">${template.name}</div>
-                        <div class="template-author">by ${template.author}</div>
-                    </div>
-                    <div class="template-description">${template.description}</div>
-                    <div class="template-drills">
-                        <strong>${template.spots.length} spots</strong> • ${totalShots} total shots
-                        ${completedSpots > 0 ? ` • <span style="color: #4CAF50;">${completedSpots}/${template.spots.length} done (${totalScored}/${totalAttempted})</span>` : ''}
-                    </div>
-                </div>
-            `;
+            const spotCount = drill.isDynamic ? 5 : drill.spots.length;
+
+            if (completedSpots > 0) {
+                const isGood = percentage >= 80;
+                html += `<div class="config-progress ${isGood ? 'good' : 'working'}">
+                    Progress: <strong>${completedSpots}/${spotCount} spots</strong> &middot;
+                    Score: <strong>${totalScored}/${totalAttempted}</strong> (${percentage}%)
+                    ${isGood ? ' 🎯' : ''}
+                </div>`;
+            } else {
+                html += `<div style="font-size: 12px; color: #999; margin-top: 4px;">Click spots on the pitch to record scores</div>`;
+            }
+
+            html += `</div>`;
         }
-    }).join('');
-    if (filteredCustom.length > 0) {
-        html += `
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #e0e0e0;">
-                <h4 style="color: #9C27B0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                    <span>💾</span> My Custom Drills
-                </h4>
-                ${filteredCustom.map(drill => {
-                    const totalShots = drill.spots.reduce((sum, s) => sum + s.shots, 0);
-                    const templateId = `custom-${drill.id}`;
-                    const progress = drillProgress[templateId] || {};
-                    const completedSpots = Object.keys(progress).length;
-                    const totalScored = Object.values(progress).reduce((sum, p) => sum + (p.scored || 0), 0);
-                    const totalAttempted = Object.values(progress).reduce((sum, p) => sum + (p.total || 0), 0);
-                    return `
-                        <div class="template-card ${activeTemplate?.id === templateId ? 'active' : ''}" style="border-left: 3px solid #9C27B0;">
-                            <div class="template-header">
-                                <div class="template-name">${drill.name}</div>
-                                <div class="template-author">by ${drill.author || 'Me'}</div>
-                            </div>
-                            ${drill.description ? `<div class="template-description">${drill.description}</div>` : ''}
-                            <div class="template-drills">
-                                <strong>${drill.spots.length} spots</strong> • ${totalShots} total shots
-                                ${completedSpots > 0 ? ` • <span style="color: #4CAF50;">${completedSpots}/${drill.spots.length} done (${totalScored}/${totalAttempted})</span>` : ''}
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button class="btn-primary" onclick="event.stopPropagation(); startCustomDrill(${drill.id})" style="flex: 1; background: #9C27B0;">
-                                    ${activeTemplate?.id === templateId ? '✓ Active' : 'Start Drill'}
-                                </button>
-                                <button class="btn-danger" onclick="event.stopPropagation(); deleteCustomDrill(${drill.id})" style="flex: 0 0 auto; padding: 10px 12px;" title="Delete drill">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }
-    if (filteredBuiltIn.length === 0 && filteredCustom.length === 0 && currentSkillsetFilter !== 'all') {
+    });
+
+    // Empty state
+    if (allDrills.length === 0 && currentSkillsetFilter !== 'all') {
         const label = SKILLSET_CATEGORIES.find(c => c.value === currentSkillsetFilter)?.label || currentSkillsetFilter;
         html += `<div style="text-align: center; padding: 30px 20px; color: #999;">
             <p>No drills found for <strong>${label}</strong>.</p>
@@ -426,7 +536,16 @@ function startCustomDrill(drillId) {
     selectTemplate(template.id);
 }
 function previewDrill(templateId) {
-    const template = practiceTemplates.find(t => t.id === templateId);
+    let template = practiceTemplates.find(t => t.id === templateId);
+    // For custom drills not yet started, build a temporary template
+    if (!template && templateId.startsWith('custom-')) {
+        const rawId = templateId.replace('custom-', '');
+        const drillId = isNaN(rawId) ? rawId : parseInt(rawId);
+        const drill = customDrills.find(d => d.id === drillId || String(d.id) === rawId);
+        if (drill) {
+            template = { id: templateId, name: drill.name, spots: drill.spots, isDynamic: false, isCustom: true };
+        }
+    }
     if (!template) return;
     if (previewingTemplate?.id === templateId) {
         document.querySelectorAll('.drill-preview-marker').forEach(m => m.remove());
@@ -476,6 +595,7 @@ function previewDrill(templateId) {
 function selectTemplate(templateId) {
     const template = practiceTemplates.find(t => t.id === templateId);
     if (!template) return;
+    expandedDrillId = null;
     previewingTemplate = null;
     document.querySelectorAll('.drill-preview-marker').forEach(m => m.remove());
     document.querySelectorAll('.drill-preview-line').forEach(l => l.remove());
@@ -967,6 +1087,7 @@ function resetDrillProgress() {
 }
 function clearTemplate() {
     activeTemplate = null;
+    expandedDrillId = null;
     document.querySelectorAll('.drill-spot').forEach(el => el.remove());
     document.querySelectorAll('.drill-distance-line').forEach(el => el.remove());
     document.querySelectorAll('.drill-distance-label').forEach(el => el.remove());

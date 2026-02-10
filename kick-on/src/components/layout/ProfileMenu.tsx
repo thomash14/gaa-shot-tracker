@@ -4,10 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { ReportModal } from '@/components/report';
 
 export default function ProfileMenu() {
   const { user, initialising, displayName, initials, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -60,6 +62,8 @@ export default function ProfileMenu() {
         {initials}
       </button>
 
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
+
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
@@ -91,7 +95,7 @@ export default function ProfileMenu() {
           <button
             className="w-full text-left px-4 py-2 text-sm text-text hover:bg-grey-light cursor-pointer"
             onClick={() => {
-              // TODO: showReportModal
+              setReportOpen(true);
               setIsOpen(false);
             }}
           >

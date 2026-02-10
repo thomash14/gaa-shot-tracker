@@ -923,6 +923,13 @@
         .modal-actions button {
             flex: 1;
         }
+        #reportMonthFallback select {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
         #drillDescriptionContent h4 {
             color: #2a5298;
             margin: 0 0 15px 0;
