@@ -7,6 +7,9 @@ export type {
   DrillProgress,
   DrillSpotProgress,
   DrillSettings,
+  SpotScore,
+  SpotScoreSingle,
+  SpotScoreBothFeet,
   TeamDrill,
   DrillCompletion,
 } from './drill';

@@ -4,7 +4,7 @@ export interface Shot {
   x: number;
   y: number;
   distance: number;
-  foot: 'left' | 'right';
+  foot: 'left' | 'right' | 'fisted';
   half: '1st' | '2nd' | null;
   shotFor: 'point' | 'goal';
   shotCategory: string;    // sport-specific: 'in-play', 'free-kick', '45', 'sideline', etc.
@@ -16,6 +16,7 @@ export interface Shot {
   batch: boolean;
   cloudId?: string;
   drillKey?: string;
+  drillSpotId?: number;
   // Miss details
   missResult?: string;
   missReason?: string;

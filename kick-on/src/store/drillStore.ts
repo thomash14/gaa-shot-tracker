@@ -4,11 +4,11 @@ import type { DrillTemplate, DrillProgress, DrillSettings } from '@/types';
 interface DrillState {
   customDrills: DrillTemplate[];
   activeTemplate: DrillTemplate | null;
-  previewingTemplate: boolean;
-  drillProgress: DrillProgress | null;
+  previewingTemplateId: string | null;
+  drillProgress: DrillProgress;
   drillSettings: DrillSettings;
   expandedDrillId: string | null;
-  currentSkillsetFilter: string | null;
+  currentSkillsetFilter: string;
   currentAssignedDrillId: string | null;
 
   // Actions
@@ -16,30 +16,33 @@ interface DrillState {
   addCustomDrill: (drill: DrillTemplate) => void;
   removeCustomDrill: (id: string) => void;
   setActiveTemplate: (template: DrillTemplate | null) => void;
-  setPreviewingTemplate: (previewing: boolean) => void;
-  setDrillProgress: (progress: DrillProgress | null) => void;
+  setPreviewingTemplateId: (id: string | null) => void;
+  setDrillProgress: (progress: DrillProgress) => void;
+  updateSpotProgress: (progressKey: string, spotId: string | number, score: DrillProgress[string][string | number]) => void;
+  clearSpotProgress: (progressKey: string, spotId: string | number) => void;
+  resetProgressForKey: (progressKey: string) => void;
   setDrillSettings: (settings: Partial<DrillSettings>) => void;
   setExpandedDrillId: (id: string | null) => void;
-  setCurrentSkillsetFilter: (skillset: string | null) => void;
+  setCurrentSkillsetFilter: (skillset: string) => void;
   setCurrentAssignedDrillId: (id: string | null) => void;
   resetDrill: () => void;
 }
 
 const defaultSettings: DrillSettings = {
-  distance: '20m',
-  shotType: 'standing',
-  foot: 'both',
-  totalShots: 10,
+  distance: 20,
+  shotType: 'free-kick',
+  footOption: 'right',
+  totalShots: 20,
 };
 
 export const useDrillStore = create<DrillState>((set) => ({
   customDrills: [],
   activeTemplate: null,
-  previewingTemplate: false,
-  drillProgress: null,
+  previewingTemplateId: null,
+  drillProgress: {},
   drillSettings: { ...defaultSettings },
   expandedDrillId: null,
-  currentSkillsetFilter: null,
+  currentSkillsetFilter: 'all',
   currentAssignedDrillId: null,
 
   setCustomDrills: (drills) => set({ customDrills: drills }),
@@ -53,9 +56,34 @@ export const useDrillStore = create<DrillState>((set) => ({
     })),
 
   setActiveTemplate: (template) => set({ activeTemplate: template }),
-  setPreviewingTemplate: (previewing) =>
-    set({ previewingTemplate: previewing }),
+  setPreviewingTemplateId: (id) => set({ previewingTemplateId: id }),
   setDrillProgress: (progress) => set({ drillProgress: progress }),
+
+  updateSpotProgress: (progressKey, spotId, score) =>
+    set((state) => {
+      const progress = { ...state.drillProgress };
+      if (!progress[progressKey]) progress[progressKey] = {};
+      progress[progressKey] = { ...progress[progressKey], [spotId]: score };
+      return { drillProgress: progress };
+    }),
+
+  clearSpotProgress: (progressKey, spotId) =>
+    set((state) => {
+      const progress = { ...state.drillProgress };
+      if (progress[progressKey]) {
+        const spots = { ...progress[progressKey] };
+        delete spots[spotId];
+        progress[progressKey] = spots;
+      }
+      return { drillProgress: progress };
+    }),
+
+  resetProgressForKey: (progressKey) =>
+    set((state) => {
+      const progress = { ...state.drillProgress };
+      progress[progressKey] = {};
+      return { drillProgress: progress };
+    }),
 
   setDrillSettings: (settings) =>
     set((state) => ({
@@ -70,9 +98,7 @@ export const useDrillStore = create<DrillState>((set) => ({
   resetDrill: () =>
     set({
       activeTemplate: null,
-      previewingTemplate: false,
-      drillProgress: null,
-      drillSettings: { ...defaultSettings },
+      previewingTemplateId: null,
       expandedDrillId: null,
       currentAssignedDrillId: null,
     }),

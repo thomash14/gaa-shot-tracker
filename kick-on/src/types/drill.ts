@@ -1,34 +1,54 @@
 import type { Sport } from './sport';
 
 export interface DrillSpot {
+  id: number | string;
+  name?: string;
+  description?: string;
   x: number;
   y: number;
-  label?: string;
+  shots: number;
+  foot?: string;
+  shotCategory?: string;
+  shotType?: string;
 }
 
 export interface DrillTemplate {
   id: string;
   name: string;
   description: string;
-  sport: Sport;
+  author?: string;
+  sport?: Sport;
   skillset: string;
-  spots: DrillSpot[];
-  shotsPerSpot: number;
-  distance?: string;
-  shotType?: string;
-  foot?: 'left' | 'right' | 'both';
-  videoUrl?: string;
+  spots?: DrillSpot[];
+  isDynamic: boolean;
   isCustom: boolean;
+  customDrillId?: string | number;
+  detailedInstructions?: string;
+  videoUrl?: string | null;
   userId?: string;
   cloudId?: string;
 }
 
-export interface DrillProgress {
-  templateId: string;
-  spots: DrillSpotProgress[];
-  startedAt: string;
-  completedAt?: string;
+/**
+ * Drill progress — flat Record matching original localStorage shape.
+ *
+ * Outer key is the progress key (e.g. "scoring-zones-20-standing-right-20" or "custom-123").
+ * Inner key is the spot ID (number).
+ * Value is either single-foot { scored, total } or both-feet { right, left }.
+ */
+export interface SpotScoreSingle {
+  scored: number;
+  total: number;
 }
+
+export interface SpotScoreBothFeet {
+  right: SpotScoreSingle;
+  left: SpotScoreSingle;
+}
+
+export type SpotScore = SpotScoreSingle | SpotScoreBothFeet;
+
+export type DrillProgress = Record<string, Record<string | number, SpotScore>>;
 
 export interface DrillSpotProgress {
   spotIndex: number;
@@ -39,9 +59,9 @@ export interface DrillSpotProgress {
 }
 
 export interface DrillSettings {
-  distance: string;
+  distance: number;
   shotType: string;
-  foot: 'left' | 'right' | 'both';
+  footOption: 'left' | 'right' | 'both';
   totalShots: number;
 }
 
