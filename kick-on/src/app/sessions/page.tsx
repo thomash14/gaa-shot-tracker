@@ -1,12 +1,154 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { useSessions } from '@/hooks/useSessions';
+import { useTrainingLogs } from '@/hooks/useTrainingLogs';
+import { useSessionStore } from '@/store/sessionStore';
+import {
+  SessionCalendar,
+  CalendarDateMenu,
+  TrainingLogModal,
+  SessionList,
+} from '@/components/sessions';
+import type { Session } from '@/types';
+
 export default function SessionsPage() {
+  const {
+    viewMode,
+    calendarYear,
+    calendarMonth,
+    weekStart,
+    selectedDate,
+    filter,
+    todayStr,
+    dateMap,
+    sessionMap,
+    trainingMap,
+    listItems,
+    monthlyCounts,
+    weeklyCounts,
+    changeMonth,
+    changeWeek,
+    selectDate,
+    switchView,
+    clearDate,
+    setFilterType,
+  } = useSessions();
+
+  const {
+    modalOpen,
+    modalDate,
+    form,
+    openModal: openTrainingModal,
+    closeModal: closeTrainingModal,
+    updateForm,
+    saveLog,
+    deleteLog,
+  } = useTrainingLogs();
+
+  const removeSession = useSessionStore((s) => s.removeSession);
+
+  // --- Date menu state ---
+  const [dateMenuOpen, setDateMenuOpen] = useState(false);
+  const [dateMenuDate, setDateMenuDate] = useState<string | null>(null);
+  const [dateMenuAnchor, setDateMenuAnchor] = useState<HTMLElement | null>(null);
+
+  const handleDateMenu = useCallback((dateStr: string, anchorEl: HTMLElement) => {
+    setDateMenuDate(dateStr);
+    setDateMenuAnchor(anchorEl);
+    setDateMenuOpen(true);
+  }, []);
+
+  const closeDateMenu = useCallback(() => {
+    setDateMenuOpen(false);
+    setDateMenuDate(null);
+    setDateMenuAnchor(null);
+  }, []);
+
+  // Check if date has shot sessions (for menu option)
+  const dateHasShotSessions = dateMenuDate ? !!(sessionMap[dateMenuDate]?.length) : false;
+
+  // --- Session actions ---
+  const handleViewSession = useCallback((_session: Session) => {
+    // TODO: navigate to track page with session loaded (viewSession equivalent)
+  }, []);
+
+  const handleDeleteSession = useCallback(
+    (id: string | number) => {
+      if (window.confirm('Delete this session? This cannot be undone.')) {
+        removeSession(id);
+      }
+    },
+    [removeSession],
+  );
+
+  const handleDeleteTrainingLog = useCallback(
+    (id: string | number) => {
+      if (window.confirm('Delete this training log?')) {
+        deleteLog(id);
+      }
+    },
+    [deleteLog],
+  );
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-surface">Sessions</h2>
-      <div className="bg-surface rounded-2xl p-6 shadow-sm">
-        <p className="text-text-muted">
-          Session history, calendar view, and training log will go here.
-        </p>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold text-primary">Sessions</h2>
+
+      {/* Calendar */}
+      <SessionCalendar
+        viewMode={viewMode}
+        calendarYear={calendarYear}
+        calendarMonth={calendarMonth}
+        weekStart={weekStart}
+        selectedDate={selectedDate}
+        todayStr={todayStr}
+        dateMap={dateMap}
+        sessionMap={sessionMap}
+        trainingMap={trainingMap}
+        monthlyCounts={monthlyCounts}
+        weeklyCounts={weeklyCounts}
+        onChangeMonth={changeMonth}
+        onChangeWeek={changeWeek}
+        onSelectDate={selectDate}
+        onSwitchView={switchView}
+        onClearDate={clearDate}
+        onDateMenu={handleDateMenu}
+        onViewSession={handleViewSession}
+      />
+
+      {/* Session list */}
+      <SessionList
+        items={listItems}
+        filter={filter}
+        selectedDate={selectedDate}
+        onFilterChange={setFilterType}
+        onViewSession={handleViewSession}
+        onDeleteSession={handleDeleteSession}
+        onDeleteTrainingLog={handleDeleteTrainingLog}
+      />
+
+      {/* Calendar date menu popup */}
+      {dateMenuOpen && dateMenuDate && (
+        <CalendarDateMenu
+          dateStr={dateMenuDate}
+          anchorEl={dateMenuAnchor}
+          hasShotSessions={dateHasShotSessions}
+          onViewSessions={() => selectDate(dateMenuDate)}
+          onLogTraining={() => openTrainingModal(dateMenuDate)}
+          onClose={closeDateMenu}
+        />
+      )}
+
+      {/* Training log modal */}
+      <TrainingLogModal
+        open={modalOpen}
+        dateStr={modalDate}
+        form={form}
+        onUpdate={updateForm}
+        onSave={saveLog}
+        onClose={closeTrainingModal}
+      />
     </div>
   );
 }
