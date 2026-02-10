@@ -1,0 +1,27 @@
+import type { Shot } from './shot';
+import type { Sport } from './sport';
+
+export type SessionType = 'practice' | 'match';
+export type MatchType = 'league' | 'championship' | 'friendly' | 'custom' | null;
+
+export interface Session {
+  id: number | string;
+  name: string;
+  date: string;
+  type: SessionType;
+  sport: Sport;
+  matchType: MatchType;
+  shots: Shot[];
+  startTime: string;
+  endTime?: string;
+  cloudId?: string;
+  // Session notes
+  notes?: string;
+  didWell?: string;
+  toImprove?: string;
+  windDirection?: string;
+  windStrength?: string;
+  // Drill reference (if session started from a drill)
+  drillId?: string;
+  drillName?: string;
+}

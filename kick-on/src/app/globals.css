@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary: #2a5298;
+  --color-primary-dark: #1e3c72;
+  --color-primary-light: #3a6bc5;
+  --color-success: #4CAF50;
+  --color-danger: #f44336;
+  --color-warning: #FF9800;
+  --color-pitch-green: #5a9d6f;
+  --color-yellow-green: #b4d23c;
+  --color-purple: #9C27B0;
+  --color-grey: #9E9E9E;
+  --color-grey-light: #f0f4f8;
+  --color-text: #333333;
+  --color-text-muted: #666666;
+  --color-border: #e0e0e0;
+  --color-surface: #ffffff;
+  --color-background: #f5f7fb;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* Base styles */
+body {
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
