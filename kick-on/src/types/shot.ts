@@ -15,6 +15,7 @@ export interface Shot {
   comment: string;
   batch: boolean;
   cloudId?: string;
+  drillKey?: string;
   // Miss details
   missResult?: string;
   missReason?: string;
@@ -26,5 +27,8 @@ export interface ShotWithContext extends Shot {
   sessionType: 'practice' | 'match';
   sessionDate: string;
   sessionName: string;
+  matchType?: string | null;
+  windDirection?: string | null;
+  windStrength?: string | null;
   sport?: Sport;
 }

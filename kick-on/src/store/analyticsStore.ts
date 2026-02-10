@@ -1,11 +1,16 @@
 import { create } from 'zustand';
 
-type AnalyticsType = 'match' | 'practice';
-type DateRangePreset = 'all' | 'last-month' | 'last-3-months' | 'last-6-months' | 'this-year' | 'custom' | 'sessions';
-
-interface MultiSelectValues {
-  [containerId: string]: string[];
-}
+export type AnalyticsType = 'match' | 'practice';
+export type DateRangePreset =
+  | 'all'
+  | 'today'
+  | 'last7'
+  | 'last30'
+  | 'thisMonth'
+  | 'lastMonth'
+  | 'thisYear'
+  | 'custom'
+  | 'customSessions';
 
 interface AnalyticsState {
   analyticsType: AnalyticsType;
@@ -14,8 +19,8 @@ interface AnalyticsState {
   dateTo: string | null;
   sessionCount: number;
   showZoneOverlay: boolean;
-  multiSelectValues: MultiSelectValues;
-  checkedSessionIds: Set<string | number>;
+  multiSelectValues: Record<string, string[]>;
+  uncheckedSessionIds: Set<string>;
   trendsViewActive: boolean;
   selectedTrendsDrillKey: string | null;
 
@@ -26,9 +31,10 @@ interface AnalyticsState {
   setDateTo: (date: string | null) => void;
   setSessionCount: (count: number) => void;
   setShowZoneOverlay: (show: boolean) => void;
-  setMultiSelectValues: (containerId: string, values: string[]) => void;
-  setCheckedSessionIds: (ids: Set<string | number>) => void;
-  toggleSessionId: (id: string | number) => void;
+  setMultiSelectValues: (filterId: string, values: string[]) => void;
+  clearUncheckedSessions: () => void;
+  toggleSessionChecked: (id: string) => void;
+  setAllSessionsUnchecked: (ids: string[]) => void;
   setTrendsViewActive: (active: boolean) => void;
   setSelectedTrendsDrillKey: (key: string | null) => void;
   resetFilters: () => void;
@@ -41,8 +47,8 @@ const initialState = {
   dateTo: null as string | null,
   sessionCount: 5,
   showZoneOverlay: false,
-  multiSelectValues: {} as MultiSelectValues,
-  checkedSessionIds: new Set<string | number>(),
+  multiSelectValues: {} as Record<string, string[]>,
+  uncheckedSessionIds: new Set<string>(),
   trendsViewActive: false,
   selectedTrendsDrillKey: null as string | null,
 };
@@ -50,28 +56,55 @@ const initialState = {
 export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   ...initialState,
 
-  setAnalyticsType: (type) => set({ analyticsType: type }),
-  setDateRangePreset: (preset) => set({ dateRangePreset: preset }),
-  setDateFrom: (date) => set({ dateFrom: date }),
-  setDateTo: (date) => set({ dateTo: date }),
-  setSessionCount: (count) => set({ sessionCount: count }),
+  setAnalyticsType: (type) =>
+    set({
+      analyticsType: type,
+      multiSelectValues: {},
+      uncheckedSessionIds: new Set(),
+      trendsViewActive: false,
+      selectedTrendsDrillKey: null,
+    }),
+
+  setDateRangePreset: (preset) =>
+    set({ dateRangePreset: preset, uncheckedSessionIds: new Set() }),
+
+  setDateFrom: (date) =>
+    set({ dateFrom: date, uncheckedSessionIds: new Set() }),
+
+  setDateTo: (date) =>
+    set({ dateTo: date, uncheckedSessionIds: new Set() }),
+
+  setSessionCount: (count) =>
+    set({ sessionCount: count, uncheckedSessionIds: new Set() }),
+
   setShowZoneOverlay: (show) => set({ showZoneOverlay: show }),
-  setMultiSelectValues: (containerId, values) =>
+
+  setMultiSelectValues: (filterId, values) =>
     set((state) => ({
-      multiSelectValues: { ...state.multiSelectValues, [containerId]: values },
+      multiSelectValues: { ...state.multiSelectValues, [filterId]: values },
+      uncheckedSessionIds: new Set(),
     })),
-  setCheckedSessionIds: (ids) => set({ checkedSessionIds: ids }),
-  toggleSessionId: (id) =>
+
+  clearUncheckedSessions: () => set({ uncheckedSessionIds: new Set() }),
+
+  toggleSessionChecked: (id) =>
     set((state) => {
-      const next = new Set(state.checkedSessionIds);
+      const next = new Set(state.uncheckedSessionIds);
       if (next.has(id)) {
         next.delete(id);
       } else {
         next.add(id);
       }
-      return { checkedSessionIds: next };
+      return { uncheckedSessionIds: next };
     }),
+
+  setAllSessionsUnchecked: (ids) =>
+    set({ uncheckedSessionIds: new Set(ids) }),
+
   setTrendsViewActive: (active) => set({ trendsViewActive: active }),
-  setSelectedTrendsDrillKey: (key) => set({ selectedTrendsDrillKey: key }),
-  resetFilters: () => set(initialState),
+
+  setSelectedTrendsDrillKey: (key) =>
+    set({ selectedTrendsDrillKey: key }),
+
+  resetFilters: () => set({ ...initialState, uncheckedSessionIds: new Set() }),
 }));
