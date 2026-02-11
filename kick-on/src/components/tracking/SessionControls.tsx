@@ -5,22 +5,24 @@ import { useSessionStore } from '@/store/sessionStore';
 import type { SessionType, MatchType, Session } from '@/types';
 
 interface SessionControlsProps {
+  /** Session type driven by the URL query param (?type=practice|match). */
+  sessionType?: SessionType;
   onSessionStarted?: () => void;
   onEndSession?: () => void;
   onDeleteSession?: () => void;
 }
 
-export default function SessionControls({ onSessionStarted, onEndSession, onDeleteSession }: SessionControlsProps) {
+export default function SessionControls({ sessionType: sessionTypeProp = 'practice', onSessionStarted, onEndSession, onDeleteSession }: SessionControlsProps) {
   const currentSession = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
   const addSession = useSessionStore((s) => s.addSession);
 
   const [sessionName, setSessionName] = useState('');
   const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [sessionType, setSessionType] = useState<SessionType>('practice');
   const [matchType, setMatchType] = useState<MatchType>('league');
   const [customMatchType, setCustomMatchType] = useState('');
 
+  const sessionType = sessionTypeProp;
   const isMatch = sessionType === 'match';
 
   const startSession = useCallback(() => {
@@ -97,25 +99,9 @@ export default function SessionControls({ onSessionStarted, onEndSession, onDele
   // Session start form
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm space-y-3">
-      {/* Practice/Match toggle */}
-      <div className="flex gap-1 bg-grey-light rounded-lg p-1 max-w-xs">
-        <button
-          onClick={() => setSessionType('practice')}
-          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors ${
-            !isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-          }`}
-        >
-          Practice
-        </button>
-        <button
-          onClick={() => setSessionType('match')}
-          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors ${
-            isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-          }`}
-        >
-          Match
-        </button>
-      </div>
+      <h3 className="text-sm font-bold text-text">
+        {isMatch ? 'New Match' : 'New Practice Session'}
+      </h3>
 
       <div className="grid grid-cols-2 gap-3">
         {/* Session name / Opponent */}

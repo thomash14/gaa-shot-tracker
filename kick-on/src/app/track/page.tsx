@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/store/sessionStore';
 import { useShots } from '@/hooks/useShots';
 import { useDrills, calculateScoringZoneSpots } from '@/hooks/useDrills';
@@ -26,6 +26,8 @@ import { SvgPitch } from '@/components/pitch';
 
 export default function TrackPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlSessionType = (searchParams.get('type') === 'match' ? 'match' : 'practice') as import('@/types').SessionType;
   const currentSession = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
   const addSession = useSessionStore((s) => s.addSession);
@@ -159,6 +161,7 @@ export default function TrackPage() {
     <div className="space-y-4">
       {/* Session controls (start form or active banner) */}
       <SessionControls
+        sessionType={urlSessionType}
         onSessionStarted={() => {}}
         onEndSession={handleEndSession}
         onDeleteSession={handleDeleteSession}
