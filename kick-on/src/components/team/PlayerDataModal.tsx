@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAnalyticsStore, type AnalyticsType } from '@/store/analyticsStore';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   FilterBar,
   ConversionStats,
@@ -11,7 +12,7 @@ import {
   TrendsView,
 } from '@/components/analytics';
 import { useSessionStore } from '@/store/sessionStore';
-import type { Session, Shot, ShotWithContext } from '@/types';
+import type { Session, Shot } from '@/types';
 
 interface PlayerDataModalProps {
   open: boolean;
@@ -62,8 +63,8 @@ interface RawShot {
  * PlayerDataModal — Full coach view of a player's analytics.
  *
  * Reuses the existing analytics components (FilterBar, ConversionStats,
- * StatsTable, AnalyticsShotMap, ZoneStats, TrendsView) instead of
- * duplicating the ~400 lines of analytics rendering from team.js.
+ * StatsTable, AnalyticsShotMap, ZoneStats, TrendsView) via the useAnalytics
+ * hook which reads from the session store.
  *
  * Strategy: temporarily inject the player's sessions into the session store,
  * then render the analytics components which read from the same store/hook.
@@ -72,7 +73,6 @@ interface RawShot {
 export default function PlayerDataModal({ open, playerName, playerUserId, onLoadData, onClose }: PlayerDataModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [playerSessions, setPlayerSessions] = useState<Session[]>([]);
   const [hasPractice, setHasPractice] = useState(false);
   const [hasMatch, setHasMatch] = useState(false);
 
@@ -88,6 +88,9 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
   // Keep a ref to the original sessions before we inject
   const [savedSessions, setSavedSessions] = useState<Session[]>([]);
   const [injected, setInjected] = useState(false);
+
+  // Use the same analytics hook as the Stats page — reads from session store
+  const analytics = useAnalytics();
 
   // Load player data when modal opens
   useEffect(() => {
@@ -136,7 +139,6 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
       const practiceExists = data.share_practice && sessions.some((s) => s.type === 'practice');
       const matchExists = data.share_match && sessions.some((s) => s.type === 'match');
 
-      setPlayerSessions(sessions);
       setHasPractice(practiceExists);
       setHasMatch(matchExists);
 
@@ -171,17 +173,12 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
       setInjected(false);
     }
     resetFilters();
-    setPlayerSessions([]);
     onClose();
   }, [injected, savedSessions, setSessions, resetFilters, onClose]);
 
-  // Compute filtered data using the same pipeline as analytics page
-  // (the components read from analyticsStore + sessionStore internally)
-  const filteredSessions = useMemo(() => {
-    return playerSessions.filter((s) => s.type === analyticsType);
-  }, [playerSessions, analyticsType]);
-
   if (!open) return null;
+
+  const isMatch = analyticsType === 'match';
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
@@ -232,7 +229,10 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
             )}
 
             {/* Filter bar */}
-            <FilterBar matchTypeOptions={[]} drillOptions={[]} />
+            <FilterBar
+              matchTypeOptions={analytics.matchTypeOptions}
+              drillOptions={analytics.drillOptions}
+            />
 
             {/* Stats / Trends toggle */}
             <div className="flex gap-1 bg-grey-light rounded-lg p-1 max-w-xs">
@@ -254,23 +254,23 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
               </button>
             </div>
 
-            {/* Analytics content — reuses same components as analytics page */}
+            {/* Analytics content — same order as Stats page */}
             {trendsViewActive ? (
               <TrendsView
-                sessions={filteredSessions}
-                allShots={[]}
+                sessions={analytics.filteredSessions}
+                allShots={analytics.allShots}
                 analyticsType={analyticsType}
               />
             ) : (
               <>
+                <StatsTable sessions={analytics.filteredSessions} analyticsType={analyticsType} />
+                <AnalyticsShotMap shots={analytics.checkedShots} />
                 <ConversionStats
-                  shots={[]}
-                  sessionCount={filteredSessions.length}
-                  sessionLabel={analyticsType === 'match' ? 'Matches' : 'Sessions'}
+                  shots={analytics.checkedShots}
+                  sessionCount={analytics.checkedSessionCount}
+                  sessionLabel={isMatch ? 'Matches' : 'Sessions'}
                 />
-                <AnalyticsShotMap shots={[]} />
-                <StatsTable sessions={filteredSessions} analyticsType={analyticsType} />
-                <ZoneStats shots={[]} />
+                <ZoneStats shots={analytics.checkedShots} />
               </>
             )}
           </>
