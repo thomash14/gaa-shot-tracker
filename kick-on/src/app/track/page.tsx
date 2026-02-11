@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessionStore';
 import { useShots } from '@/hooks/useShots';
 import { useDrills, calculateScoringZoneSpots } from '@/hooks/useDrills';
+import { createClient } from '@/lib/supabase/client';
 import { PitchInteraction } from '@/components/pitch';
 import {
   SessionControls,
@@ -23,6 +25,7 @@ import {
 import { SvgPitch } from '@/components/pitch';
 
 export default function TrackPage() {
+  const router = useRouter();
   const currentSession = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
   const addSession = useSessionStore((s) => s.addSession);
@@ -33,6 +36,28 @@ export default function TrackPage() {
   const isMatch = currentSession?.type === 'match';
   const isPractice = currentSession?.type === 'practice';
   const sessionActive = !!currentSession;
+
+  // -------------------------------------------------------------------------
+  // Delete current session
+  // -------------------------------------------------------------------------
+  const handleDeleteSession = useCallback(async () => {
+    if (!currentSession) return;
+    if (!window.confirm('Delete this session? This cannot be undone.')) return;
+
+    // Delete from Supabase if synced
+    if (currentSession.cloudId) {
+      try {
+        const supabase = createClient();
+        await supabase.from('sessions').delete().eq('id', currentSession.cloudId);
+      } catch (err) {
+        console.error('Failed to delete session from cloud:', err);
+      }
+    }
+
+    setCurrentSession(null);
+    drills.clearTemplate();
+    router.push('/');
+  }, [currentSession, setCurrentSession, drills, router]);
 
   // -------------------------------------------------------------------------
   // End session flow (opens notes modal, then saves)
@@ -136,6 +161,7 @@ export default function TrackPage() {
       <SessionControls
         onSessionStarted={() => {}}
         onEndSession={handleEndSession}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Main content: pitch + controls (only when session is active) */}

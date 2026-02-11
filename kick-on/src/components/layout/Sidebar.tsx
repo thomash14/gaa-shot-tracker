@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import ProfileMenu from './ProfileMenu';
 
 interface NavItem {
@@ -22,13 +22,23 @@ const navItems: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Hide sidebar on auth pages (login, signup, etc.)
   if (pathname.startsWith('/auth')) return null;
 
   function isActive(href: string): boolean {
     if (href === '/') return pathname === '/';
-    return pathname.startsWith(href.split('?')[0]);
+    const [path, query] = href.split('?');
+    if (!pathname.startsWith(path)) return false;
+    // If href has query params, they must match too
+    if (query) {
+      const hrefParams = new URLSearchParams(query);
+      for (const [key, value] of hrefParams) {
+        if (searchParams.get(key) !== value) return false;
+      }
+    }
+    return true;
   }
 
   return (

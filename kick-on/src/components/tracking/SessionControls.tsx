@@ -7,9 +7,10 @@ import type { SessionType, MatchType, Session } from '@/types';
 interface SessionControlsProps {
   onSessionStarted?: () => void;
   onEndSession?: () => void;
+  onDeleteSession?: () => void;
 }
 
-export default function SessionControls({ onSessionStarted, onEndSession }: SessionControlsProps) {
+export default function SessionControls({ onSessionStarted, onEndSession, onDeleteSession }: SessionControlsProps) {
   const currentSession = useSessionStore((s) => s.currentSession);
   const setCurrentSession = useSessionStore((s) => s.setCurrentSession);
   const addSession = useSessionStore((s) => s.addSession);
@@ -74,12 +75,20 @@ export default function SessionControls({ onSessionStarted, onEndSession }: Sess
               {typeDisplay} · {currentSession.date} · {(currentSession.shots ?? []).length} shots
             </div>
           </div>
-          <button
-            onClick={endSession}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors"
-          >
-            End Session
-          </button>
+          <div className="flex gap-1.5 shrink-0">
+            <button
+              onClick={endSession}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              End Session
+            </button>
+            <button
+              onClick={onDeleteSession}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/30 hover:bg-red-500/50 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     );
