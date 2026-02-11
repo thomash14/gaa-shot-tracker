@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import Sidebar from '@/components/layout/Sidebar';
@@ -23,7 +24,9 @@ export default function RootLayout({
         <SyncProvider />
         <div className="flex min-h-dvh">
           {/* Desktop sidebar */}
-          <Sidebar />
+          <Suspense>
+            <Sidebar />
+          </Suspense>
 
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-w-0">

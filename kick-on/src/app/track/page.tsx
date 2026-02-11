@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { Suspense, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/store/sessionStore';
 import { useShots } from '@/hooks/useShots';
@@ -25,6 +25,14 @@ import {
 import { SvgPitch } from '@/components/pitch';
 
 export default function TrackPage() {
+  return (
+    <Suspense>
+      <TrackPageContent />
+    </Suspense>
+  );
+}
+
+function TrackPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSessionType = (searchParams.get('type') === 'match' ? 'match' : 'practice') as import('@/types').SessionType;
