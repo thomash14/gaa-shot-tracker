@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
-import { SvgPitch, ShotMarker, HalfSelector } from '@/components/pitch';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
+import { SvgPitch, ShotMarker, BatchShotMarker, HalfSelector } from '@/components/pitch';
 import type { Shot } from '@/types';
 import type { PendingShot, HalfType } from '@/hooks/useShots';
 import { getGoalSvgCoords } from '@/hooks/useShots';
@@ -162,15 +162,42 @@ export default function PitchInteraction({
     clearTimeout(longPressTimerRef.current);
   }, []);
 
+  // Group batch shots by position, keep non-batch shots separate
+  const { singleShots, batchGroups } = useMemo(() => {
+    const singles: Shot[] = [];
+    const batchMap = new Map<string, Shot[]>();
+
+    for (const shot of shots) {
+      if (shot.batch) {
+        // Round to 1 decimal to group shots at the same position
+        const key = `${shot.x.toFixed(1)},${shot.y.toFixed(1)}`;
+        if (!batchMap.has(key)) batchMap.set(key, []);
+        batchMap.get(key)!.push(shot);
+      } else {
+        singles.push(shot);
+      }
+    }
+
+    return { singleShots: singles, batchGroups: Array.from(batchMap.values()) };
+  }, [shots]);
+
   return (
     <div ref={svgWrapperRef} className="relative">
       <SvgPitch onPitchClick={handlePitchClick}>
-        {/* Existing shot markers */}
-        {shots.map((shot, i) => (
+        {/* Individual (non-batch) shot markers */}
+        {singleShots.map((shot, i) => (
           <ShotMarker
             key={`shot-${shot.timestamp}-${i}`}
             shot={shot}
             mirror={false}
+          />
+        ))}
+
+        {/* Batch shot groups */}
+        {batchGroups.map((group, i) => (
+          <BatchShotMarker
+            key={`batch-${group[0].x.toFixed(1)}-${group[0].y.toFixed(1)}-${i}`}
+            shots={group}
           />
         ))}
 
