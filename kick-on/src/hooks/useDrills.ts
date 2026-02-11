@@ -312,6 +312,8 @@ export function useDrills() {
 
         const pointValue = is2PointZone(spot.x, spot.y) ? 2 : 1;
         const newShots = [...cleanedShots];
+        const activeDrill = useDrillStore.getState().currentDrill;
+        const drillIdTag = activeDrill ? { drillId: activeDrill.id } : {};
 
         if (isBothFeetScore(score)) {
           // Right foot shots
@@ -323,6 +325,7 @@ export function useDrills() {
               shotType: drillSettings.shotType, shotFor: 'point', pointValue,
               drillSpotId: spotId as number, drillKey: activeProgressKey,
               half: null, timestamp: new Date().toISOString(), comment: '', batch: false,
+              ...drillIdTag,
             });
           }
           // Left foot shots
@@ -334,6 +337,7 @@ export function useDrills() {
               shotType: drillSettings.shotType, shotFor: 'point', pointValue,
               drillSpotId: spotId as number, drillKey: activeProgressKey,
               half: null, timestamp: new Date().toISOString(), comment: '', batch: false,
+              ...drillIdTag,
             });
           }
         } else {
@@ -346,6 +350,7 @@ export function useDrills() {
               shotType: drillSettings.shotType, shotFor: 'point', pointValue,
               drillSpotId: spotId as number, drillKey: activeProgressKey,
               half: null, timestamp: new Date().toISOString(), comment: '', batch: false,
+              ...drillIdTag,
             });
           }
         }

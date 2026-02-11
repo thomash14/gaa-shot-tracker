@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUiStore } from '@/store/uiStore';
 import { createClient } from '@/lib/supabase/client';
-import type { Session, TrainingLog } from '@/types';
+import type { Session, TrainingLog, PracticeDrill } from '@/types';
 
 // ---------------------------------------------------------------------------
 // localStorage keys
@@ -103,6 +103,7 @@ export function useCloudSync() {
           cloudId: shot.id,
           missResult: shot.miss_result || undefined,
           missReason: shot.miss_reason || undefined,
+          drillCloudId: shot.drill_id || undefined,
         })),
         startTime: row.start_time || row.created_at,
         endTime: row.end_time || undefined,
@@ -130,6 +131,64 @@ export function useCloudSync() {
         comments: row.comments || undefined,
         cloudId: row.id,
       }));
+
+      // Load practice_drills for practice sessions
+      const practiceSessionIds = cloudSessions
+        .filter((s) => s.type === 'practice')
+        .map((s) => s.cloudId)
+        .filter(Boolean) as string[];
+
+      if (practiceSessionIds.length > 0) {
+        try {
+          const { data: drillsData } = await supabase
+            .from('practice_drills')
+            .select('*')
+            .in('session_id', practiceSessionIds)
+            .order('drill_order', { ascending: true });
+
+          if (drillsData && drillsData.length > 0) {
+            // Group drills by session_id
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const drillsBySession: Record<string, PracticeDrill[]> = {};
+            for (const d of drillsData as any[]) {
+              const sid = d.session_id;
+              if (!drillsBySession[sid]) drillsBySession[sid] = [];
+              drillsBySession[sid].push({
+                id: d.id,
+                cloudId: d.id,
+                drillOrder: d.drill_order || 1,
+                drillType: d.drill_type || 'free-form',
+                distance: d.distance ? parseFloat(d.distance) : null,
+                foot: d.foot || 'right',
+                stance: d.stance || 'standing',
+                shotCategory: d.shot_category || 'in-play',
+                shotCount: d.shot_count || 0,
+                scoredCount: d.scored_count || 0,
+                assignedDrillId: d.assigned_drill_id || null,
+                templateId: d.template_id || null,
+                shots: [],
+                startTime: d.start_time || null,
+                endTime: d.end_time || null,
+              });
+            }
+
+            // Attach drills to sessions and map shots to drills
+            for (const session of cloudSessions) {
+              if (session.cloudId && drillsBySession[session.cloudId]) {
+                session.drills = drillsBySession[session.cloudId];
+                // Map shots to their drill's shot array
+                for (const drill of session.drills) {
+                  drill.shots = (session.shots ?? []).filter(
+                    (s) => s.drillCloudId === drill.cloudId,
+                  );
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('practice_drills table not available:', e);
+        }
+      }
 
       // Merge with any local-only data (sessions without cloudId)
       const localSessions = loadFromLocalStorage<Session[]>(LS_SESSIONS) ?? [];

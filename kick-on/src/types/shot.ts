@@ -21,6 +21,9 @@ export interface Shot {
   missResult?: string;
   missReason?: string;
   customMissReason?: string;
+  // Multi-drill practice session
+  drillId?: number;
+  drillCloudId?: string;
 }
 
 export interface ShotWithContext extends Shot {

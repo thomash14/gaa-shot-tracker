@@ -103,7 +103,11 @@ function ShotSessionCard({
             {session.name || 'Unnamed Session'}
           </div>
           <div className="text-xs text-text-muted mt-0.5">
-            {formatDate(session.date)} · {total} shots · {rate}% success
+            {formatDate(session.date)}
+            {session.drills && session.drills.length > 0 && (
+              <> · {session.drills.length} drill{session.drills.length !== 1 ? 's' : ''}</>
+            )}
+            {' '}· {total} shots · {rate}% success
           </div>
         </div>
         <div className="flex gap-1.5 shrink-0">

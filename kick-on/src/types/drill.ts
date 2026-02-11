@@ -96,3 +96,29 @@ export interface DrillCompletion {
   completed_at: string;
   profiles?: { display_name?: string; email?: string };
 }
+
+// ---------------------------------------------------------------------------
+// Multi-drill practice session types
+// ---------------------------------------------------------------------------
+
+export type PracticeFlowState = 'add-drill' | 'tracking' | 'drill-summary' | 'session-summary' | null;
+
+export type PracticeDrillType = 'free-form' | 'scoring-arc';
+
+export interface PracticeDrill {
+  id: number;
+  cloudId?: string;
+  drillOrder: number;
+  drillType: PracticeDrillType;
+  distance: number | null;
+  foot: 'left' | 'right' | 'both';
+  stance: string;
+  shotCategory: string;
+  shotCount: number;
+  scoredCount: number;
+  assignedDrillId?: string | null;
+  templateId?: string | null;
+  shots: import('./shot').Shot[];
+  startTime: string | null;
+  endTime: string | null;
+}

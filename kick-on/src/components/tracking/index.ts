@@ -5,3 +5,6 @@ export { default as BatchModal } from './BatchModal';
 export { default as MissDetailsModal } from './MissDetailsModal';
 export { default as SessionNotesModal } from './SessionNotesModal';
 export { default as SpotScoreModal } from './SpotScoreModal';
+export { default as AddDrillScreen } from './AddDrillScreen';
+export { default as DrillSummaryScreen } from './DrillSummaryScreen';
+export { default as PracticeSessionSummary } from './PracticeSessionSummary';

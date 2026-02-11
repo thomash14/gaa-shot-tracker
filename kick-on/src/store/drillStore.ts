@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DrillTemplate, DrillProgress, DrillSettings } from '@/types';
+import type { DrillTemplate, DrillProgress, DrillSettings, PracticeDrill, PracticeFlowState } from '@/types';
 
 interface DrillState {
   customDrills: DrillTemplate[];
@@ -10,6 +10,11 @@ interface DrillState {
   expandedDrillId: string | null;
   currentSkillsetFilter: string;
   currentAssignedDrillId: string | null;
+
+  // Multi-drill practice state
+  currentDrills: PracticeDrill[];
+  currentDrill: PracticeDrill | null;
+  practiceFlowState: PracticeFlowState;
 
   // Actions
   setCustomDrills: (drills: DrillTemplate[]) => void;
@@ -26,6 +31,13 @@ interface DrillState {
   setCurrentSkillsetFilter: (skillset: string) => void;
   setCurrentAssignedDrillId: (id: string | null) => void;
   resetDrill: () => void;
+
+  // Multi-drill actions
+  setCurrentDrills: (drills: PracticeDrill[]) => void;
+  addCompletedDrill: (drill: PracticeDrill) => void;
+  setCurrentDrill: (drill: PracticeDrill | null) => void;
+  setPracticeFlowState: (state: PracticeFlowState) => void;
+  resetPracticeFlow: () => void;
 }
 
 const defaultSettings: DrillSettings = {
@@ -44,6 +56,11 @@ export const useDrillStore = create<DrillState>((set) => ({
   expandedDrillId: null,
   currentSkillsetFilter: 'all',
   currentAssignedDrillId: null,
+
+  // Multi-drill practice state
+  currentDrills: [],
+  currentDrill: null,
+  practiceFlowState: null,
 
   setCustomDrills: (drills) => set({ customDrills: drills }),
 
@@ -97,6 +114,23 @@ export const useDrillStore = create<DrillState>((set) => ({
 
   resetDrill: () =>
     set({
+      activeTemplate: null,
+      previewingTemplateId: null,
+      expandedDrillId: null,
+      currentAssignedDrillId: null,
+    }),
+
+  // Multi-drill actions
+  setCurrentDrills: (drills) => set({ currentDrills: drills }),
+  addCompletedDrill: (drill) =>
+    set((state) => ({ currentDrills: [...state.currentDrills, drill] })),
+  setCurrentDrill: (drill) => set({ currentDrill: drill }),
+  setPracticeFlowState: (state) => set({ practiceFlowState: state }),
+  resetPracticeFlow: () =>
+    set({
+      currentDrills: [],
+      currentDrill: null,
+      practiceFlowState: null,
       activeTemplate: null,
       previewingTemplateId: null,
       expandedDrillId: null,

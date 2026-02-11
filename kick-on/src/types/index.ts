@@ -13,6 +13,9 @@ export type {
   TeamDrill,
   TeamDrillSettings,
   DrillCompletion,
+  PracticeDrill,
+  PracticeDrillType,
+  PracticeFlowState,
 } from './drill';
 export type { Club, Team, TeamMembership, TeamMember, TeamRole } from './team';
 export type { TrainingLog, TrainingSessionType } from './training';

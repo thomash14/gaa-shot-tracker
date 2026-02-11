@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
+import { useDrillStore } from '@/store/drillStore';
 import type { Shot } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -210,6 +211,7 @@ export function useShots() {
   const markShot = useCallback(
     (result: 'scored' | 'missed', extraFields?: Partial<Shot>) => {
       if (!pendingShot || !currentSession) return;
+      const activeDrill = useDrillStore.getState().currentDrill;
       const shot: Shot = {
         x: pendingShot.x,
         y: pendingShot.y,
@@ -226,6 +228,7 @@ export function useShots() {
         batch: false,
         missResult: undefined,
         missReason: undefined,
+        ...(activeDrill ? { drillId: activeDrill.id } : {}),
         ...extraFields,
       };
 
@@ -243,6 +246,7 @@ export function useShots() {
     (leftTotal: number, leftScored: number, rightTotal: number, rightScored: number) => {
       if (!batchPending || !currentSession) return;
 
+      const activeDrill = useDrillStore.getState().currentDrill;
       const shots: Shot[] = [];
       const pointValue = getPointValue(batchPending);
       const base = {
@@ -256,6 +260,7 @@ export function useShots() {
         pointValue,
         batch: true,
         comment: '',
+        ...(activeDrill ? { drillId: activeDrill.id } : {}),
       };
 
       // Left foot shots
