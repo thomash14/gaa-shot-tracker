@@ -8,6 +8,7 @@ import {
   CreateTeamModal,
   JoinTeamModal,
   AssignDrillModal,
+  EditTeamModal,
   PlayerDataModal,
   CoachDrills,
   PlayerDrills,
@@ -20,6 +21,7 @@ export default function TeamPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string } | null>(null);
 
@@ -120,6 +122,7 @@ export default function TeamPage() {
           onCopyInviteCode={team.copyInviteCode}
           onLeaveTeam={async () => { await team.leaveTeam(); alert('You have left the team'); }}
           onMemberClick={handleMemberClick}
+          onEditTeam={() => setEditModalOpen(true)}
         />
 
         {/* Right: Drills */}
@@ -143,6 +146,13 @@ export default function TeamPage() {
       </div>
 
       {/* Modals */}
+      <EditTeamModal
+        open={editModalOpen}
+        team={team.currentTeam}
+        onSave={team.updateTeam}
+        onClose={() => setEditModalOpen(false)}
+      />
+
       <AssignDrillModal
         open={assignModalOpen}
         onAssign={team.assignDrill}

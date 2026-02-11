@@ -232,6 +232,33 @@ export function useTeam() {
   }, [loadTeamData]);
 
   // -------------------------------------------------------------------------
+  // Update team
+  // -------------------------------------------------------------------------
+  const updateTeam = useCallback(async (data: { ageGroup: string; teamName: string; seasonYear: number }) => {
+    if (!currentTeam) return;
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('teams')
+      .update({
+        age_group: data.ageGroup,
+        team_name: data.teamName || null,
+        season_year: data.seasonYear,
+      })
+      .eq('id', currentTeam.id);
+
+    if (error) throw error;
+
+    // Update store directly so the UI reflects the changes immediately
+    setCurrentTeam({
+      ...currentTeam,
+      age_group: data.ageGroup,
+      team_name: data.teamName || null,
+      season_year: data.seasonYear,
+    });
+  }, [currentTeam, setCurrentTeam]);
+
+  // -------------------------------------------------------------------------
   // Leave team
   // -------------------------------------------------------------------------
   const leaveTeam = useCallback(async () => {
@@ -363,6 +390,7 @@ export function useTeam() {
     lookupInviteCode,
     joinTeam,
     createTeam,
+    updateTeam,
     leaveTeam,
     assignDrill,
     deleteDrill,

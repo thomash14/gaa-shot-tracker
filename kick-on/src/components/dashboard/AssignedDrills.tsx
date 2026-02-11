@@ -39,9 +39,8 @@ function getDrillTemplate(drillType: string) {
 function getTeamDisplayName(team: Team | null): string {
   if (!team) return 'Your team';
   const clubName = team.clubs?.name ?? '';
-  const parts = [clubName, team.age_group].filter(Boolean);
-  if (team.team_name) parts.push(team.team_name);
-  return parts.join(' ') || 'Your team';
+  if (!clubName) return team.age_group || 'Your team';
+  return team.age_group ? `${clubName} (${team.age_group})` : clubName;
 }
 
 function getShotTypeLabel(value: string): string {

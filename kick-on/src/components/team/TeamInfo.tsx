@@ -12,6 +12,7 @@ interface TeamInfoProps {
   onCopyInviteCode: () => void;
   onLeaveTeam: () => void;
   onMemberClick?: (member: TeamMember) => void;
+  onEditTeam?: () => void;
 }
 
 export default function TeamInfo({
@@ -24,6 +25,7 @@ export default function TeamInfo({
   onCopyInviteCode,
   onLeaveTeam,
   onMemberClick,
+  onEditTeam,
 }: TeamInfoProps) {
   const clubName = team.clubs?.name ?? 'Unknown Club';
   const details = `${team.age_group}${team.team_name ? ' \u00b7 ' + team.team_name : ''} \u00b7 ${team.season_year} Season`;
@@ -31,7 +33,7 @@ export default function TeamInfo({
   return (
     <div className="bg-surface rounded-2xl shadow-sm overflow-hidden">
       {/* Team header */}
-      <div className="bg-primary text-white p-4">
+      <div className="bg-primary text-white p-4 relative">
         <h3 className="text-lg font-bold">{clubName}</h3>
         <p className="text-sm opacity-80 mt-0.5">{details}</p>
         <div className="flex items-center gap-2 mt-2">
@@ -39,6 +41,17 @@ export default function TeamInfo({
             {isCoach ? 'Coach' : 'Player'}
           </span>
         </div>
+        {isCoach && onEditTeam && (
+          <button
+            onClick={onEditTeam}
+            className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors"
+            title="Edit team details"
+          >
+            <svg className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="p-4 space-y-4">

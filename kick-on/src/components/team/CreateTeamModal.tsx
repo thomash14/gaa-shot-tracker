@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
-// Age group options matching the old app
 const AGE_GROUPS = [
-  'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'U19', 'U20', 'U21', 'Minor', 'Junior', 'Intermediate', 'Senior',
+  'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'U19', 'U20', 'U21', 'Minor', 'Junior', 'Intermediate', 'Senior',
 ];
+
+const CATEGORIES = ['Boys', 'Girls', "Men's", "Women's", 'Mixed'];
 
 interface CreateTeamModalProps {
   open: boolean;
@@ -101,14 +102,15 @@ export default function CreateTeamModal({ open, clubsByCounty, onCreateTeam, onC
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">Team Name (optional)</label>
-            <input
-              type="text"
+            <label className="block text-xs font-semibold text-text mb-1">Category (optional)</label>
+            <select
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
-              placeholder="e.g., A Team"
               className="w-full bg-surface border border-grey rounded-lg px-3 py-2 text-sm"
-            />
+            >
+              <option value="">Select category...</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           {error && <p className="text-xs text-[#f44336] font-semibold">{error}</p>}
