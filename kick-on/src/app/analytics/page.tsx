@@ -82,18 +82,18 @@ export default function AnalyticsPage() {
       {/* Stats view */}
       {!trendsViewActive && (
         <>
+          {/* Match/session breakdown table (has its own per-row filtering + checkboxes) */}
+          <StatsTable sessions={filteredSessions} analyticsType={analyticsType} />
+
+          {/* Shot map (uses checked shots) */}
+          <AnalyticsShotMap shots={checkedShots} />
+
           {/* Conversion stats (uses checked shots — reflects table checkbox state) */}
           <ConversionStats
             shots={checkedShots}
             sessionCount={checkedSessionCount}
             sessionLabel={isMatch ? 'Matches' : 'Sessions'}
           />
-
-          {/* Shot map (uses checked shots) */}
-          <AnalyticsShotMap shots={checkedShots} />
-
-          {/* Stats table (full sessions — has its own per-row filtering + checkboxes) */}
-          <StatsTable sessions={filteredSessions} analyticsType={analyticsType} />
 
           {/* Zone stats (uses checked shots) */}
           <ZoneStats shots={checkedShots} />
