@@ -77,14 +77,15 @@ export function useSessions() {
     const tm: TrainingMap = {};
 
     sessions.forEach((s) => {
-      if (!s.shots || s.shots.length === 0) return;
-      if (!dm[s.date])
-        dm[s.date] = { practice: false, match: false, training: false, gym: false, recovery: false };
-      if (!sm[s.date]) sm[s.date] = [];
+      if (!Array.isArray(s.shots) || s.shots.length === 0) return;
+      const date = s.date || 'unknown';
+      if (!dm[date])
+        dm[date] = { practice: false, match: false, training: false, gym: false, recovery: false };
+      if (!sm[date]) sm[date] = [];
       const t = s.type || 'practice';
-      if (t === 'match') dm[s.date].match = true;
-      else dm[s.date].practice = true;
-      sm[s.date].push(s);
+      if (t === 'match') dm[date].match = true;
+      else dm[date].practice = true;
+      sm[date].push(s);
     });
 
     trainingLogs.forEach((log) => {
@@ -127,7 +128,7 @@ export function useSessions() {
       logs.forEach((l) => items.push({ type: 'training', date: l.date, data: l }));
     }
 
-    items.sort((a, b) => b.date.localeCompare(a.date));
+    items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
     return items;
   }, [sessions, trainingLogs, filter, selectedDate]);
 

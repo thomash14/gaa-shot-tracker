@@ -140,18 +140,21 @@ export function useCloudSync() {
 
       if (practiceSessionIds.length > 0) {
         try {
-          const { data: drillsData } = await supabase
+          const { data: drillsData, error: drillsError } = await supabase
             .from('practice_drills')
             .select('*')
             .in('session_id', practiceSessionIds)
             .order('drill_order', { ascending: true });
 
-          if (drillsData && drillsData.length > 0) {
+          if (drillsError) {
+            console.warn('practice_drills query error:', drillsError.message);
+          } else if (Array.isArray(drillsData) && drillsData.length > 0) {
             // Group drills by session_id
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const drillsBySession: Record<string, PracticeDrill[]> = {};
             for (const d of drillsData as any[]) {
               const sid = d.session_id;
+              if (!sid) continue;
               if (!drillsBySession[sid]) drillsBySession[sid] = [];
               drillsBySession[sid].push({
                 id: d.id,

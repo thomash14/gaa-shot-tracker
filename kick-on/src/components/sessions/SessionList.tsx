@@ -1,8 +1,47 @@
 'use client';
 
+import { Component, type ReactNode } from 'react';
 import type { SessionFilter, SessionListItem } from '@/hooks/useSessions';
 import type { Session } from '@/types';
 import SessionCard from './SessionCard';
+
+// ---------------------------------------------------------------------------
+// Per-card error boundary so one bad card doesn't crash the whole list
+// ---------------------------------------------------------------------------
+
+interface CardErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface CardErrorBoundaryState {
+  hasError: boolean;
+}
+
+class CardErrorBoundary extends Component<CardErrorBoundaryProps, CardErrorBoundaryState> {
+  constructor(props: CardErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('SessionCard rendering error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-surface rounded-xl p-3 shadow-sm text-xs text-text-muted italic">
+          Unable to display this session.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Filter tabs
@@ -86,13 +125,14 @@ export default function SessionList({
                 ? `shot-${(item.data as Session).id}`
                 : `training-${item.data.id}`;
             return (
-              <SessionCard
-                key={key}
-                item={item}
-                onViewSession={onViewSession}
-                onDeleteSession={onDeleteSession}
-                onDeleteTrainingLog={onDeleteTrainingLog}
-              />
+              <CardErrorBoundary key={key}>
+                <SessionCard
+                  item={item}
+                  onViewSession={onViewSession}
+                  onDeleteSession={onDeleteSession}
+                  onDeleteTrainingLog={onDeleteTrainingLog}
+                />
+              </CardErrorBoundary>
             );
           })}
         </div>

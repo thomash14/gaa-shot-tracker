@@ -43,8 +43,11 @@ const RECOVERY_TYPE_LABELS: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IE', {
+function formatDate(dateStr: string | undefined | null): string {
+  if (!dateStr) return 'Unknown date';
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return 'Unknown date';
+  return d.toLocaleDateString('en-IE', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -80,8 +83,9 @@ function ShotSessionCard({
   onView: () => void;
   onDelete: () => void;
 }) {
-  const scored = (session.shots ?? []).filter((s) => s.result === 'scored').length;
-  const total = (session.shots ?? []).length;
+  const shots = Array.isArray(session.shots) ? session.shots : [];
+  const scored = shots.filter((s) => s?.result === 'scored').length;
+  const total = shots.length;
   const rate = total > 0 ? Math.round((scored / total) * 100) : 0;
   const sessionType = session.type || 'practice';
   const matchType = session.matchType || '';
@@ -104,7 +108,7 @@ function ShotSessionCard({
           </div>
           <div className="text-xs text-text-muted mt-0.5">
             {formatDate(session.date)}
-            {session.drills && session.drills.length > 0 && (
+            {Array.isArray(session.drills) && session.drills.length > 0 && (
               <> · {session.drills.length} drill{session.drills.length !== 1 ? 's' : ''}</>
             )}
             {' '}· {total} shots · {rate}% success
