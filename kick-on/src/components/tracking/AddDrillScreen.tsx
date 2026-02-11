@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { PracticeDrillType } from '@/types';
-import { DISTANCE_OPTIONS, DRILL_SHOT_TYPES, TOTAL_SHOTS_OPTIONS } from '@/hooks/useDrills';
+import { BUILT_IN_TEMPLATES, DISTANCE_OPTIONS, DRILL_SHOT_TYPES, TOTAL_SHOTS_OPTIONS } from '@/hooks/useDrills';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -17,6 +17,7 @@ interface AddDrillScreenProps {
     stance: string;
     shotCategory: string;
     totalShots?: number;
+    templateId?: string;
   }) => void;
   onEndSession: () => void;
 }
@@ -25,26 +26,61 @@ interface AddDrillScreenProps {
 // Component
 // ---------------------------------------------------------------------------
 
+type SelectionTier = 'type' | 'template';
+
 export default function AddDrillScreen({ drillNumber, onStartDrill, onEndSession }: AddDrillScreenProps) {
-  const [drillType, setDrillType] = useState<PracticeDrillType>('free-form');
+  const [selectionTier, setSelectionTier] = useState<SelectionTier>('type');
+  const [drillType, setDrillType] = useState<PracticeDrillType | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [distance, setDistance] = useState(20);
   const [foot, setFoot] = useState<'left' | 'right' | 'both'>('right');
-  const [shotCategory, setShotCategory] = useState('in-play');
   const [stance, setStance] = useState('standing');
   const [totalShots, setTotalShots] = useState(20);
 
-  const handleStart = () => {
-    onStartDrill({
-      drillType,
-      distance: drillType === 'free-form' ? distance : distance,
-      foot,
-      stance,
-      shotCategory: drillType === 'scoring-arc'
-        ? (stance === 'free-kick' ? 'free-kick' : 'in-play')
-        : shotCategory,
-      totalShots: drillType === 'scoring-arc' ? totalShots : undefined,
-    });
+  const handleSelectFreeForm = () => {
+    setDrillType('free-form');
+    setSelectedTemplateId(null);
+    setSelectionTier('type');
   };
+
+  const handleSelectStructured = () => {
+    setSelectionTier('template');
+  };
+
+  const handleSelectTemplate = (templateId: string) => {
+    // For now only scoring-arc maps from 'scoring-zones' template
+    setDrillType('scoring-arc');
+    setSelectedTemplateId(templateId);
+    setSelectionTier('type');
+  };
+
+  const handleBackToType = () => {
+    setSelectionTier('type');
+  };
+
+  const handleStart = () => {
+    if (drillType === 'free-form') {
+      onStartDrill({
+        drillType: 'free-form',
+        distance: null,
+        foot: 'right',
+        stance: 'standing',
+        shotCategory: 'in-play',
+      });
+    } else if (drillType === 'scoring-arc') {
+      onStartDrill({
+        drillType: 'scoring-arc',
+        distance,
+        foot,
+        stance,
+        shotCategory: stance === 'free-kick' ? 'free-kick' : 'in-play',
+        totalShots,
+        templateId: selectedTemplateId || 'scoring-zones',
+      });
+    }
+  };
+
+  const isStructuredSelected = drillType === 'scoring-arc';
 
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm space-y-4">
@@ -62,122 +98,150 @@ export default function AddDrillScreen({ drillNumber, onStartDrill, onEndSession
         )}
       </div>
 
-      {/* Drill type choice */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setDrillType('free-form')}
-          className={`p-3 rounded-xl border-2 text-center transition-all ${
-            drillType === 'free-form'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-grey bg-surface text-text-muted hover:border-primary/50'
-          }`}
-        >
-          <div className="text-lg mb-1">🎯</div>
-          <div className="text-xs font-semibold">Free-Form</div>
-          <div className="text-[10px] opacity-70 mt-0.5">Tap shots on pitch</div>
-        </button>
-        <button
-          onClick={() => setDrillType('scoring-arc')}
-          className={`p-3 rounded-xl border-2 text-center transition-all ${
-            drillType === 'scoring-arc'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-grey bg-surface text-text-muted hover:border-primary/50'
-          }`}
-        >
-          <div className="text-lg mb-1">🏟️</div>
-          <div className="text-xs font-semibold">Scoring Arc</div>
-          <div className="text-[10px] opacity-70 mt-0.5">5 fixed spots</div>
-        </button>
-      </div>
+      {/* Template selection tier */}
+      {selectionTier === 'template' && (
+        <>
+          <button
+            onClick={handleBackToType}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-dark transition-colors"
+          >
+            <span>&larr;</span> Back
+          </button>
 
-      {/* Configuration */}
-      <div className="space-y-3">
-        {/* Shot Category - free-form only */}
-        {drillType === 'free-form' && (
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">Shot Category</label>
-            <select
-              value={shotCategory}
-              onChange={(e) => setShotCategory(e.target.value)}
-              className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
-            >
-              <option value="in-play">In-Play</option>
-              <option value="free-kick">Free-Kick</option>
-              <option value="45">45</option>
-              <option value="sideline">Sideline</option>
-            </select>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {/* Distance */}
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">Distance</label>
-            <select
-              value={distance}
-              onChange={(e) => setDistance(Number(e.target.value))}
-              className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
-            >
-              {DISTANCE_OPTIONS.map((d) => (
-                <option key={d} value={d}>{d}m</option>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-text-muted">Choose a drill template</div>
+            <div className="grid grid-cols-1 gap-2">
+              {BUILT_IN_TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => handleSelectTemplate(template.id)}
+                  className="p-3 rounded-xl border-2 border-grey bg-surface text-left hover:border-primary/50 transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="text-lg">🏟️</div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-text">{template.name}</div>
+                      <div className="text-[10px] text-text-muted mt-0.5">{template.description}</div>
+                    </div>
+                  </div>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
+        </>
+      )}
 
-          {/* Foot */}
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">Foot</label>
-            <select
-              value={foot}
-              onChange={(e) => setFoot(e.target.value as 'left' | 'right' | 'both')}
-              className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+      {/* Type selection tier */}
+      {selectionTier === 'type' && (
+        <>
+          {/* Drill type choice */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleSelectFreeForm}
+              className={`p-3 rounded-xl border-2 text-center transition-all ${
+                drillType === 'free-form'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-grey bg-surface text-text-muted hover:border-primary/50'
+              }`}
             >
-              <option value="right">Right</option>
-              <option value="left">Left</option>
-              <option value="both">Both</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {/* Shot Type / Stance */}
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">Shot Type</label>
-            <select
-              value={stance}
-              onChange={(e) => setStance(e.target.value)}
-              className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+              <div className="text-lg mb-1">🎯</div>
+              <div className="text-xs font-semibold">Free-Form</div>
+              <div className="text-[10px] opacity-70 mt-0.5">Tap shots on pitch</div>
+            </button>
+            <button
+              onClick={handleSelectStructured}
+              className={`p-3 rounded-xl border-2 text-center transition-all ${
+                isStructuredSelected
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-grey bg-surface text-text-muted hover:border-primary/50'
+              }`}
             >
-              {DRILL_SHOT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+              <div className="text-lg mb-1">📋</div>
+              <div className="text-xs font-semibold">Structured Drills</div>
+              <div className="text-[10px] opacity-70 mt-0.5">
+                {isStructuredSelected
+                  ? BUILT_IN_TEMPLATES.find((t) => t.id === selectedTemplateId)?.name || 'Drill selected'
+                  : 'Choose a template'}
+              </div>
+            </button>
           </div>
 
-          {/* Total Shots - scoring-arc only */}
-          {drillType === 'scoring-arc' && (
-            <div>
-              <label className="block text-xs font-medium text-text-muted mb-1">Total Shots</label>
-              <select
-                value={totalShots}
-                onChange={(e) => setTotalShots(Number(e.target.value))}
-                className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
-              >
-                {TOTAL_SHOTS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+          {/* Configuration — only for structured drills */}
+          {isStructuredSelected && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Distance */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">Distance</label>
+                  <select
+                    value={distance}
+                    onChange={(e) => setDistance(Number(e.target.value))}
+                    className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    {DISTANCE_OPTIONS.map((d) => (
+                      <option key={d} value={d}>{d}m</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Foot */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">Foot</label>
+                  <select
+                    value={foot}
+                    onChange={(e) => setFoot(e.target.value as 'left' | 'right' | 'both')}
+                    className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    <option value="right">Right</option>
+                    <option value="left">Left</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Shot Type / Stance */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">Shot Type</label>
+                  <select
+                    value={stance}
+                    onChange={(e) => setStance(e.target.value)}
+                    className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    {DRILL_SHOT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Total Shots */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-1">Total Shots</label>
+                  <select
+                    value={totalShots}
+                    onChange={(e) => setTotalShots(Number(e.target.value))}
+                    className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    {TOTAL_SHOTS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      <button
-        onClick={handleStart}
-        className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary-dark transition-colors"
-      >
-        Start Drill
-      </button>
+          {/* Start button — only when a type is selected */}
+          {drillType && (
+            <button
+              onClick={handleStart}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary-dark transition-colors"
+            >
+              Start Drill
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -126,6 +126,7 @@ function TrackPageContent() {
       stance: string;
       shotCategory: string;
       totalShots?: number;
+      templateId?: string;
     }) => {
       // If scoring-arc, also activate the template
       if (config.drillType === 'scoring-arc') {
@@ -147,7 +148,7 @@ function TrackPageContent() {
         foot: config.foot,
         stance: config.stance,
         shotCategory: config.shotCategory,
-        templateId: config.drillType === 'scoring-arc' ? 'scoring-zones' : null,
+        templateId: config.templateId || (config.drillType === 'scoring-arc' ? 'scoring-zones' : null),
       });
     },
     [drills, practiceFlow],
@@ -260,6 +261,11 @@ function TrackPageContent() {
             >
               Start Session
             </button>
+          </div>
+
+          {/* Empty pitch preview */}
+          <div className="opacity-60 pointer-events-none">
+            <SvgPitch />
           </div>
         </div>
       );
@@ -482,6 +488,13 @@ function TrackPageContent() {
         onEndSession={handleEndSession}
         onDeleteSession={handleDeleteSession}
       />
+
+      {/* Empty pitch preview before session starts */}
+      {!sessionActive && (
+        <div className="opacity-60 pointer-events-none">
+          <SvgPitch />
+        </div>
+      )}
 
       {/* Main content: pitch + controls (only when session is active) */}
       {sessionActive && (

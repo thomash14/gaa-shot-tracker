@@ -10,6 +10,7 @@ import {
   CalendarDateMenu,
   TrainingLogModal,
   SessionList,
+  SessionDetailModal,
 } from '@/components/sessions';
 import type { Session } from '@/types';
 
@@ -50,6 +51,9 @@ export default function SessionsPage() {
   const sessions = useSessionStore((s) => s.sessions);
   const removeSession = useSessionStore((s) => s.removeSession);
 
+  // --- Session detail modal state ---
+  const [viewingSession, setViewingSession] = useState<Session | null>(null);
+
   // --- Date menu state ---
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [dateMenuDate, setDateMenuDate] = useState<string | null>(null);
@@ -71,8 +75,8 @@ export default function SessionsPage() {
   const dateHasShotSessions = dateMenuDate ? !!(sessionMap[dateMenuDate]?.length) : false;
 
   // --- Session actions ---
-  const handleViewSession = useCallback((_session: Session) => {
-    // TODO: navigate to track page with session loaded (viewSession equivalent)
+  const handleViewSession = useCallback((session: Session) => {
+    setViewingSession(session);
   }, []);
 
   const handleDeleteSession = useCallback(
@@ -162,6 +166,14 @@ export default function SessionsPage() {
         onSave={saveLog}
         onClose={closeTrainingModal}
       />
+
+      {/* Session detail modal */}
+      {viewingSession && (
+        <SessionDetailModal
+          session={viewingSession}
+          onClose={() => setViewingSession(null)}
+        />
+      )}
     </div>
   );
 }
