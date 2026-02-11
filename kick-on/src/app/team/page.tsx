@@ -23,7 +23,7 @@ export default function TeamPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string } | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string; sharePractice: boolean; shareMatch: boolean } | null>(null);
 
   // Load team data on mount
   useEffect(() => {
@@ -42,7 +42,12 @@ export default function TeamPage() {
 
   // Coach: open player data modal
   const handleMemberClick = useCallback((member: TeamMember) => {
-    setSelectedPlayer({ userId: member.user_id, name: member.displayName });
+    setSelectedPlayer({
+      userId: member.user_id,
+      name: member.displayName,
+      sharePractice: member.share_with_coach,
+      shareMatch: member.share_match_data,
+    });
     setPlayerModalOpen(true);
   }, []);
 
@@ -164,6 +169,8 @@ export default function TeamPage() {
           open={playerModalOpen}
           playerName={selectedPlayer.name}
           playerUserId={selectedPlayer.userId}
+          sharePractice={selectedPlayer.sharePractice}
+          shareMatch={selectedPlayer.shareMatch}
           onLoadData={team.loadPlayerData}
           onClose={() => { setPlayerModalOpen(false); setSelectedPlayer(null); }}
         />

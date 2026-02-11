@@ -18,6 +18,8 @@ interface PlayerDataModalProps {
   open: boolean;
   playerName: string;
   playerUserId: string;
+  sharePractice: boolean;
+  shareMatch: boolean;
   onLoadData: (userId: string) => Promise<PlayerDataResponse>;
   onClose: () => void;
 }
@@ -70,7 +72,7 @@ interface RawShot {
  * then render the analytics components which read from the same store/hook.
  * On close, restore the original sessions.
  */
-export default function PlayerDataModal({ open, playerName, playerUserId, onLoadData, onClose }: PlayerDataModalProps) {
+export default function PlayerDataModal({ open, playerName, playerUserId, sharePractice, shareMatch, onLoadData, onClose }: PlayerDataModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasPractice, setHasPractice] = useState(false);
@@ -136,22 +138,30 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
         })),
       }));
 
-      const practiceExists = data.share_practice && sessions.some((s) => s.type === 'practice');
-      const matchExists = data.share_match && sessions.some((s) => s.type === 'match');
+      // Use permission props from team_members table (not RPC response)
+      // Only include sessions the player has granted permission for
+      const allowedSessions = sessions.filter((s) => {
+        if (s.type === 'practice') return sharePractice;
+        if (s.type === 'match') return shareMatch;
+        return false;
+      });
+
+      const practiceExists = sharePractice && allowedSessions.some((s) => s.type === 'practice');
+      const matchExists = shareMatch && allowedSessions.some((s) => s.type === 'match');
 
       setHasPractice(practiceExists);
       setHasMatch(matchExists);
 
-      // Inject into session store
+      // Inject only permitted sessions into session store
       setSavedSessions(originalSessions);
-      setSessions(sessions);
+      setSessions(allowedSessions);
       setInjected(true);
 
-      // Reset analytics filters and set type
+      // Reset analytics filters — always default to match view
       resetFilters();
       if (matchExists) {
         setAnalyticsType('match');
-      } else {
+      } else if (practiceExists) {
         setAnalyticsType('practice');
       }
 
@@ -206,32 +216,11 @@ export default function PlayerDataModal({ open, playerName, playerUserId, onLoad
         {/* Data loaded */}
         {!loading && !error && injected && (
           <>
-            {/* Practice/Match tabs */}
-            {hasPractice && hasMatch && (
-              <div className="flex gap-1 bg-grey-light rounded-lg p-1 max-w-xs">
-                <button
-                  onClick={() => { resetFilters(); setAnalyticsType('practice'); }}
-                  className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors ${
-                    analyticsType === 'practice' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Practice
-                </button>
-                <button
-                  onClick={() => { resetFilters(); setAnalyticsType('match'); }}
-                  className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors ${
-                    analyticsType === 'match' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Match
-                </button>
-              </div>
-            )}
-
-            {/* Filter bar */}
+            {/* Filter bar — hide type toggle unless both practice and match data exist */}
             <FilterBar
               matchTypeOptions={analytics.matchTypeOptions}
               drillOptions={analytics.drillOptions}
+              hideTypeToggle={!(hasPractice && hasMatch)}
             />
 
             {/* Stats / Trends toggle */}

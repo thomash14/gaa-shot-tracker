@@ -23,6 +23,7 @@ import {
 interface FilterBarProps {
   matchTypeOptions: FilterOption[];
   drillOptions: FilterOption[];
+  hideTypeToggle?: boolean;
 }
 
 const DATE_RANGE_OPTIONS: { value: DateRangePreset; label: string; matchLabel?: string }[] = [
@@ -37,7 +38,7 @@ const DATE_RANGE_OPTIONS: { value: DateRangePreset; label: string; matchLabel?: 
   { value: 'customSessions', label: 'Custom Practice Range...', matchLabel: 'Custom Game Range...' },
 ];
 
-export default function FilterBar({ matchTypeOptions, drillOptions }: FilterBarProps) {
+export default function FilterBar({ matchTypeOptions, drillOptions, hideTypeToggle }: FilterBarProps) {
   const {
     analyticsType,
     dateRangePreset,
@@ -65,24 +66,26 @@ export default function FilterBar({ matchTypeOptions, drillOptions }: FilterBarP
   return (
     <div className="space-y-3">
       {/* Type toggle */}
-      <div className="flex gap-1 bg-grey-light rounded-lg p-1">
-        <button
-          onClick={() => setAnalyticsType('practice')}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
-            !isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-          }`}
-        >
-          Practice
-        </button>
-        <button
-          onClick={() => setAnalyticsType('match')}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
-            isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
-          }`}
-        >
-          Match
-        </button>
-      </div>
+      {!hideTypeToggle && (
+        <div className="flex gap-1 bg-grey-light rounded-lg p-1">
+          <button
+            onClick={() => setAnalyticsType('practice')}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
+              !isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+            }`}
+          >
+            Practice
+          </button>
+          <button
+            onClick={() => setAnalyticsType('match')}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-semibold transition-colors ${
+              isMatch ? 'bg-primary text-white' : 'text-text-muted hover:text-text'
+            }`}
+          >
+            Match
+          </button>
+        </div>
+      )}
 
       {/* Date range */}
       <div className="flex flex-wrap items-center gap-2">

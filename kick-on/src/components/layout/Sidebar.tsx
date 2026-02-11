@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useTeamStore } from '@/store/teamStore';
 import ProfileMenu from './ProfileMenu';
 
 interface NavItem {
@@ -23,9 +24,14 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const currentMembership = useTeamStore((s) => s.currentMembership);
 
   // Hide sidebar on auth pages (login, signup, etc.)
   if (pathname.startsWith('/auth')) return null;
+
+  // Coach-only accounts see only the Team nav item
+  const isCoachOnly = currentMembership?.role === 'coach';
+  const visibleItems = isCoachOnly ? navItems.filter((item) => item.href === '/team') : navItems;
 
   function isActive(href: string): boolean {
     if (href === '/') return pathname === '/';
@@ -50,7 +56,7 @@ export default function Sidebar() {
           <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -72,7 +78,7 @@ export default function Sidebar() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-border flex justify-around py-1 z-30">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
