@@ -58,7 +58,7 @@ const SCORING_ZONES_DRILL: DrillTemplate = {
   `,
 };
 
-const BUILT_IN_TEMPLATES: DrillTemplate[] = [SCORING_ZONES_DRILL];
+export const BUILT_IN_TEMPLATES: DrillTemplate[] = [SCORING_ZONES_DRILL];
 
 // ---------------------------------------------------------------------------
 // Scoring zone spot calculation (from drills.js)
