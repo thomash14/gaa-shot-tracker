@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import GoogleOAuthButton from './GoogleOAuthButton';
 
 export default function LoginForm() {
+  const router = useRouter();
   const { login, loginWithGoogle, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +22,7 @@ export default function LoginForm() {
     }
     try {
       await login(email, password);
+      router.push('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }

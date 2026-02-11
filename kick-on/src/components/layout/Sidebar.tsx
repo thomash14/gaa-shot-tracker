@@ -22,6 +22,9 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
 
+  // Hide sidebar on auth pages (login, signup, etc.)
+  if (pathname.startsWith('/auth')) return null;
+
   function isActive(href: string): boolean {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href.split('?')[0]);
