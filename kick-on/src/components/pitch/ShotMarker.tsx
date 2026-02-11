@@ -10,8 +10,11 @@ import { mirrorToAttackingHalf } from '@/lib/shotMap';
  * - Circle for points, square (rect) for goals.
  * - White fill = scored, red (#f44336) fill = missed.
  * - Dark stroke (#333) 1.5px.
- * - Includes <title> tooltip with shot details.
  * - Automatically mirrors far-half shots to the attacking half.
+ *
+ * Tooltip handling is delegated to the parent via onMouseEnter/onMouseLeave
+ * (desktop hover) and onClick (mobile tap). The parent renders the tooltip
+ * as an HTML element outside the SVG.
  *
  * Ported from analytics.js renderShotMapFromShots() marker logic.
  */
@@ -24,6 +27,10 @@ interface ShotMarkerProps {
   size?: number;
   /** Optional click handler. */
   onClick?: (shot: Shot, e: React.MouseEvent) => void;
+  /** Desktop hover enter. */
+  onMouseEnter?: (shot: Shot, e: React.MouseEvent<SVGElement>) => void;
+  /** Desktop hover leave. */
+  onMouseLeave?: (e: React.MouseEvent<SVGElement>) => void;
 }
 
 export default function ShotMarker({
@@ -31,6 +38,8 @@ export default function ShotMarker({
   mirror = true,
   size = 6,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
 }: ShotMarkerProps) {
   const { displayX, displayY } = useMemo(() => {
     if (mirror && shot.y >= 50) {
@@ -48,26 +57,25 @@ export default function ShotMarker({
   const isGoal = shot.shotFor === 'goal';
   const fill = isScored ? 'white' : '#f44336';
 
-  // Build tooltip text matching original format
-  const tooltipParts: string[] = [isScored ? 'Scored' : 'Missed'];
-  if (shot.shotFor) tooltipParts.push(`[${shot.shotFor}]`);
-  if (shot.foot) tooltipParts.push(`(${shot.foot} foot)`);
-  if (shot.half) tooltipParts.push(`${shot.half} half`);
-  if (shot.distance != null) tooltipParts.push(`${shot.distance.toFixed(1)}m`);
-  if (shot.comment) tooltipParts.push(shot.comment);
-  const tooltip = tooltipParts.join(' - ');
-
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.(shot, e);
   };
 
+  const handleMouseEnter = (e: React.MouseEvent<SVGElement>) => {
+    onMouseEnter?.(shot, e);
+  };
+
+  const interactive = !!(onClick || onMouseEnter);
+
   const commonProps = {
     fill,
     stroke: '#333',
     strokeWidth: 1.5,
-    style: { cursor: onClick ? 'pointer' : 'default' } as React.CSSProperties,
-    onClick: onClick ? handleClick : undefined,
+    style: { cursor: interactive ? 'pointer' : 'default' } as React.CSSProperties,
+    onClick: interactive ? handleClick : undefined,
+    onMouseEnter: onMouseEnter ? handleMouseEnter : undefined,
+    onMouseLeave: onMouseLeave || undefined,
   };
 
   if (isGoal) {
@@ -78,9 +86,7 @@ export default function ShotMarker({
         width={size * 2}
         height={size * 2}
         {...commonProps}
-      >
-        <title>{tooltip}</title>
-      </rect>
+      />
     );
   }
 
@@ -90,8 +96,6 @@ export default function ShotMarker({
       cy={svgY}
       r={size}
       {...commonProps}
-    >
-      <title>{tooltip}</title>
-    </circle>
+    />
   );
 }
