@@ -4,6 +4,7 @@ import type { Team, TeamMembership, TeamMember, TeamDrill, DrillCompletion } fro
 interface TeamState {
   currentTeam: Team | null;
   currentMembership: TeamMembership | null;
+  hasPlayerMembership: boolean;
   teamMembers: TeamMember[];
   teamDrills: TeamDrill[];
   drillCompletions: DrillCompletion[];
@@ -11,6 +12,7 @@ interface TeamState {
   // Actions
   setCurrentTeam: (team: Team | null) => void;
   setCurrentMembership: (membership: TeamMembership | null) => void;
+  setHasPlayerMembership: (value: boolean) => void;
   setTeamMembers: (members: TeamMember[]) => void;
   setTeamDrills: (drills: TeamDrill[]) => void;
   addTeamDrill: (drill: TeamDrill) => void;
@@ -23,6 +25,7 @@ interface TeamState {
 export const useTeamStore = create<TeamState>((set) => ({
   currentTeam: null,
   currentMembership: null,
+  hasPlayerMembership: false,
   teamMembers: [],
   teamDrills: [],
   drillCompletions: [],
@@ -30,6 +33,7 @@ export const useTeamStore = create<TeamState>((set) => ({
   setCurrentTeam: (team) => set({ currentTeam: team }),
   setCurrentMembership: (membership) =>
     set({ currentMembership: membership }),
+  setHasPlayerMembership: (value) => set({ hasPlayerMembership: value }),
   setTeamMembers: (members) => set({ teamMembers: members }),
   setTeamDrills: (drills) => set({ teamDrills: drills }),
 
@@ -54,6 +58,7 @@ export const useTeamStore = create<TeamState>((set) => ({
     set({
       currentTeam: null,
       currentMembership: null,
+      hasPlayerMembership: false,
       teamMembers: [],
       teamDrills: [],
       drillCompletions: [],

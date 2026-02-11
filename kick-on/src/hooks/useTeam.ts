@@ -23,6 +23,7 @@ export function useTeam() {
   const removeTeamDrill = useTeamStore((s) => s.removeTeamDrill);
   const setDrillCompletions = useTeamStore((s) => s.setDrillCompletions);
   const updateMembershipStore = useTeamStore((s) => s.updateMembership);
+  const setHasPlayerMembership = useTeamStore((s) => s.setHasPlayerMembership);
   const clearTeam = useTeamStore((s) => s.clearTeam);
 
   const isCoach = currentMembership?.role === 'coach';
@@ -57,10 +58,18 @@ export function useTeam() {
       } else {
         clearTeam();
       }
+
+      // Check if the user has any player-role membership (across all teams)
+      const { count } = await supabase
+        .from('team_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('role', 'player');
+      setHasPlayerMembership((count ?? 0) > 0);
     } catch {
       clearTeam();
     }
-  }, [setCurrentTeam, setCurrentMembership, clearTeam]);
+  }, [setCurrentTeam, setCurrentMembership, setHasPlayerMembership, clearTeam]);
 
   // -------------------------------------------------------------------------
   // Load team members

@@ -25,12 +25,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMembership = useTeamStore((s) => s.currentMembership);
+  const hasPlayerMembership = useTeamStore((s) => s.hasPlayerMembership);
 
   // Hide sidebar on auth pages (login, signup, etc.)
   if (pathname.startsWith('/auth')) return null;
 
-  // Coach-only accounts see only the Team nav item
-  const isCoachOnly = currentMembership?.role === 'coach';
+  // Coach-only accounts (no player membership on any team) see only the Team nav item
+  const isCoachOnly = currentMembership?.role === 'coach' && !hasPlayerMembership;
   const visibleItems = isCoachOnly ? navItems.filter((item) => item.href === '/team') : navItems;
 
   function isActive(href: string): boolean {

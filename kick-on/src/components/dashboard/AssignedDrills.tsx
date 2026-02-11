@@ -256,7 +256,7 @@ export default function AssignedDrills({ drills, completions, currentTeam, curre
   return (
     <div className="bg-surface rounded-2xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-primary m-0">Assigned Drills</h3>
+        <h3 className="text-lg font-semibold text-primary m-0">Ready to Improve?</h3>
         {incompleteDrills.length > 0 && (
           <span className="bg-success text-white text-xs font-bold px-2.5 py-1 rounded-full">
             {incompleteDrills.length} to do
