@@ -1,1 +1,4 @@
 tmpclaude-*
+node_modules/
+.claude/settings.local.json
+nul
