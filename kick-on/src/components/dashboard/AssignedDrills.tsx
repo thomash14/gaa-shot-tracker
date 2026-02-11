@@ -238,9 +238,9 @@ export default function AssignedDrills({ drills, completions, currentTeam, curre
   if (activeDrills.length === 0) {
     return (
       <div className="bg-surface rounded-2xl p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-primary mb-2">Assigned Drills</h3>
+        <h3 className="text-lg font-semibold text-primary mb-2">Ready to Improve?</h3>
         <p className="text-sm text-text-muted">
-          No drills assigned &mdash; <Link href="/track?type=practice" className="text-primary hover:underline">start a practice session</Link> to keep improving!
+          <Link href="/track?type=practice" className="text-primary hover:underline">Start a practice session</Link> to keep improving!
         </p>
       </div>
     );
