@@ -22,7 +22,7 @@
 
 /* Base styles */
 body {
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-sans);
   min-height: 100dvh;

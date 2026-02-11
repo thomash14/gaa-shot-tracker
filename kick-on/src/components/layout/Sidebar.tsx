@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ProfileMenu from './ProfileMenu';
 
 interface NavItem {
   href: string;
@@ -54,6 +55,9 @@ export default function Sidebar() {
             </Link>
           ))}
         </nav>
+        <div className="px-4 py-3 border-t border-border">
+          <ProfileMenu />
+        </div>
       </aside>
 
       {/* Mobile bottom nav */}

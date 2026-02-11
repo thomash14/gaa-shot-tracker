@@ -61,11 +61,11 @@ export function useCloudSync() {
     setLoading(true, 'Loading your data...');
 
     try {
-      // Attempt cloud load
+      // Attempt cloud load — join shots via foreign key (shots table is separate)
       const [sessionsRes, logsRes] = await Promise.all([
         supabase
           .from('sessions')
-          .select('*')
+          .select('*, shots(*)')
           .eq('user_id', user.id)
           .order('date', { ascending: false }),
         supabase
@@ -78,18 +78,36 @@ export function useCloudSync() {
       if (sessionsRes.error) throw sessionsRes.error;
       if (logsRes.error) throw logsRes.error;
 
-      const cloudSessions: Session[] = (sessionsRes.data ?? []).map(row => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cloudSessions: Session[] = (sessionsRes.data ?? []).map((row: any) => ({
         id: row.id,
         name: row.name || '',
         date: row.date,
-        type: row.session_type || row.type || 'practice',
+        type: row.type || 'practice',
         sport: row.sport || 'football',
         matchType: row.match_type || null,
-        shots: row.shots || [],
+        shots: (row.shots || []).map((shot: any) => ({
+          x: parseFloat(shot.x),
+          y: parseFloat(shot.y),
+          result: shot.result,
+          distance: shot.distance ? parseFloat(shot.distance) : 0,
+          foot: shot.foot || 'right',
+          shotCategory: shot.shot_category || 'in-play',
+          shotType: shot.shot_type || 'standing',
+          shotFor: shot.shot_for || 'point',
+          pointValue: shot.point_value || 1,
+          half: shot.half || null,
+          comment: shot.comment || '',
+          timestamp: shot.timestamp || '',
+          batch: false,
+          cloudId: shot.id,
+          missResult: shot.miss_result || undefined,
+          missReason: shot.miss_reason || undefined,
+        })),
         startTime: row.start_time || row.created_at,
         endTime: row.end_time || undefined,
         cloudId: row.id,
-        notes: row.notes || undefined,
+        notes: row.session_notes || undefined,
         didWell: row.did_well || undefined,
         toImprove: row.to_improve || undefined,
         windDirection: row.wind_direction || undefined,
@@ -164,6 +182,26 @@ export function useCloudSync() {
     initialised.current = true;
     loadData();
   }, [loadData]);
+
+  // -----------------------------------------------------------------------
+  // Re-load when auth state changes (e.g. user logs in)
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        loadData();
+      }
+      if (event === 'SIGNED_OUT') {
+        setSessions([]);
+        setTrainingLogs([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadData, setSessions, setTrainingLogs]);
 
   // -----------------------------------------------------------------------
   // Online/offline detection

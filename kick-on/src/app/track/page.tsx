@@ -202,10 +202,13 @@ export default function TrackPage() {
                 onBatchOpen={() => shots.setBatchModalOpen(true)}
               />
             )}
+          </div>
 
+          {/* Right column: Shot controls + Drills */}
+          <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-140px)]">
             {/* Shot controls + result buttons (only in non-drill mode) */}
             {!drills.activeTemplate && (
-              <div className="bg-surface rounded-2xl p-3 shadow-sm space-y-3">
+              <div className="bg-surface rounded-2xl p-3 shadow-sm space-y-3 shrink-0">
                 <ShotControls
                   isMatch={isMatch}
                   foot={shots.foot}
@@ -232,30 +235,30 @@ export default function TrackPage() {
                 />
               </div>
             )}
-          </div>
 
-          {/* Right column: Drill templates (practice mode only) */}
-          {isPractice && (
-            <div className="bg-surface rounded-2xl p-3 shadow-sm overflow-y-auto max-h-[calc(100vh-200px)]">
-              <h3 className="text-sm font-bold text-text mb-2">Practice Drills</h3>
-              <DrillTemplateList
-                drillList={drills.drillList}
-                activeTemplate={drills.activeTemplate}
-                expandedDrillId={drills.expandedDrillId}
-                previewingTemplateId={drills.previewingTemplateId}
-                drillSettings={drills.drillSettings}
-                drillProgress={drills.drillProgress}
-                currentSkillsetFilter={drills.currentSkillsetFilter}
-                onFilterChange={drills.setCurrentSkillsetFilter}
-                onToggleExpand={drills.toggleDrillExpand}
-                onSelectTemplate={drills.selectTemplate}
-                onTogglePreview={drills.togglePreview}
-                onSettingsChange={drills.setDrillSettings}
-                onDeleteCustomDrill={handleDeleteCustomDrill}
-                onOpenSaveDrill={() => drills.setSaveDrillModalOpen(true)}
-              />
-            </div>
-          )}
+            {/* Drill templates (practice mode only) */}
+            {isPractice && (
+              <div className="bg-surface rounded-2xl p-3 shadow-sm overflow-y-auto flex-1 min-h-0">
+                <h3 className="text-sm font-bold text-text mb-2">Practice Drills</h3>
+                <DrillTemplateList
+                  drillList={drills.drillList}
+                  activeTemplate={drills.activeTemplate}
+                  expandedDrillId={drills.expandedDrillId}
+                  previewingTemplateId={drills.previewingTemplateId}
+                  drillSettings={drills.drillSettings}
+                  drillProgress={drills.drillProgress}
+                  currentSkillsetFilter={drills.currentSkillsetFilter}
+                  onFilterChange={drills.setCurrentSkillsetFilter}
+                  onToggleExpand={drills.toggleDrillExpand}
+                  onSelectTemplate={drills.selectTemplate}
+                  onTogglePreview={drills.togglePreview}
+                  onSettingsChange={drills.setDrillSettings}
+                  onDeleteCustomDrill={handleDeleteCustomDrill}
+                  onOpenSaveDrill={() => drills.setSaveDrillModalOpen(true)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
 

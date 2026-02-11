@@ -53,20 +53,27 @@ export default function ProfileMenu() {
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* Avatar button */}
+      {/* Avatar button + name (sidebar shows inline, header shows circle only) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold cursor-pointer hover:bg-primary-dark transition-colors"
+        className="flex items-center gap-2.5 cursor-pointer group"
         aria-label="Profile menu"
       >
-        {initials}
+        <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold shrink-0 group-hover:bg-primary-dark transition-colors">
+          {initials}
+        </div>
+        {/* Show name beside avatar on desktop sidebar */}
+        <div className="hidden md:block text-left min-w-0">
+          <p className="text-sm font-medium text-text truncate">{displayName}</p>
+          <p className="text-xs text-text-muted truncate">{user.email}</p>
+        </div>
       </button>
 
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
 
-      {/* Dropdown */}
+      {/* Dropdown — opens upward in sidebar (bottom), downward in header (top) */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
+        <div className="absolute right-0 md:left-0 md:right-auto md:bottom-full md:mb-2 top-full md:top-auto mt-2 md:mt-0 w-52 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
           <div className="px-4 py-2 border-b border-border">
             <p className="text-sm font-semibold text-text truncate">{displayName}</p>
             <p className="text-xs text-text-muted truncate">{user.email}</p>
