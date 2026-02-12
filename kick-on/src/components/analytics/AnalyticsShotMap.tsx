@@ -264,6 +264,9 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
                 <p><span className="text-text font-medium">Shot:</span> {formatLabel(first.shotFor)}</p>
                 <p><span className="text-text font-medium">Foot:</span> {footLabel}</p>
                 <p><span className="text-text font-medium">Category:</span> {formatLabel(first.shotCategory)}</p>
+                {first.distance != null && (
+                  <p><span className="text-text font-medium">Distance:</span> {first.distance}m</p>
+                )}
                 {first.sessionName && (
                   <p><span className="text-text font-medium">Session:</span> {first.sessionName}</p>
                 )}
