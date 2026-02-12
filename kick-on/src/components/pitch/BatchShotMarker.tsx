@@ -1,6 +1,7 @@
 'use client';
 
 import type { Shot } from '@/types';
+import { mirrorToAttackingHalf } from '@/lib/shotMap';
 
 /**
  * Composite marker for a group of batch shots at the same position.
@@ -17,6 +18,8 @@ interface BatchShotMarkerProps {
   shots: Shot[];
   /** Marker radius (SVG units). Default 8 (slightly larger than single). */
   size?: number;
+  /** Mirror far-half shots to attacking half. Default false. */
+  mirror?: boolean;
   onClick?: (shots: Shot[], e: React.MouseEvent) => void;
   /** Desktop hover enter. */
   onMouseEnter?: (shots: Shot[], e: React.MouseEvent<SVGElement>) => void;
@@ -27,6 +30,7 @@ interface BatchShotMarkerProps {
 export default function BatchShotMarker({
   shots,
   size = 8,
+  mirror = false,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -34,8 +38,15 @@ export default function BatchShotMarker({
   if (shots.length === 0) return null;
 
   const first = shots[0];
-  const svgX = (first.x / 100) * 500;
-  const svgY = (first.y / 100) * 725;
+  let displayX = first.x;
+  let displayY = first.y;
+  if (mirror && first.y >= 50) {
+    const mirrored = mirrorToAttackingHalf(first.x, first.y);
+    displayX = mirrored.x;
+    displayY = mirrored.y;
+  }
+  const svgX = (displayX / 100) * 500;
+  const svgY = (displayY / 100) * 725;
 
   const total = shots.length;
   const scored = shots.filter((s) => s.result === 'scored').length;

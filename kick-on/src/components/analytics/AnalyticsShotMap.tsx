@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAnalyticsStore } from '@/store/analyticsStore';
-import { SvgPitch, ShotMarker, ZoneOverlay } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay } from '@/components/pitch';
 import type { Shot, ShotWithContext } from '@/types';
 
 /** Capitalise hyphenated labels: "free-kick" → "Free Kick" */
@@ -13,11 +13,25 @@ function formatLabel(value: string): string {
     .join(' ');
 }
 
-interface TooltipState {
+// ---------------------------------------------------------------------------
+// Tooltip types (discriminated union for single vs batch)
+// ---------------------------------------------------------------------------
+
+interface SingleTooltipState {
+  kind: 'single';
   shot: ShotWithContext;
   x: number;
   y: number;
 }
+
+interface BatchTooltipState {
+  kind: 'batch';
+  shots: ShotWithContext[];
+  x: number;
+  y: number;
+}
+
+type TooltipState = SingleTooltipState | BatchTooltipState;
 
 interface AnalyticsShotMapProps {
   shots: ShotWithContext[];
@@ -26,6 +40,25 @@ interface AnalyticsShotMapProps {
 export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
   const showZoneOverlay = useAnalyticsStore((s) => s.showZoneOverlay);
   const setShowZoneOverlay = useAnalyticsStore((s) => s.setShowZoneOverlay);
+
+  // Split shots into singles and batch groups
+  const { singleShots, batchGroups } = useMemo(() => {
+    const singles: ShotWithContext[] = [];
+    const batchMap = new Map<string, ShotWithContext[]>();
+
+    for (const shot of shots) {
+      if (shot.batch) {
+        // Group by session + position so batches from different sessions don't merge
+        const key = `${shot.sessionId}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
+        if (!batchMap.has(key)) batchMap.set(key, []);
+        batchMap.get(key)!.push(shot);
+      } else {
+        singles.push(shot);
+      }
+    }
+
+    return { singleShots: singles, batchGroups: Array.from(batchMap.values()) };
+  }, [shots]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -38,11 +71,20 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }, []);
 
-  // Desktop: show tooltip on hover
+  // Desktop: show tooltip on hover (single shot)
   const handleMarkerEnter = useCallback(
     (shot: Shot, e: React.MouseEvent<SVGElement>) => {
       const pos = posFromEvent(e as unknown as React.MouseEvent);
-      if (pos) setTooltip({ shot: shot as ShotWithContext, ...pos });
+      if (pos) setTooltip({ kind: 'single', shot: shot as ShotWithContext, ...pos });
+    },
+    [posFromEvent],
+  );
+
+  // Desktop: show tooltip on hover (batch)
+  const handleBatchEnter = useCallback(
+    (batchShots: Shot[], e: React.MouseEvent<SVGElement>) => {
+      const pos = posFromEvent(e as unknown as React.MouseEvent);
+      if (pos) setTooltip({ kind: 'batch', shots: batchShots as ShotWithContext[], ...pos });
     },
     [posFromEvent],
   );
@@ -51,17 +93,32 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
     setTooltip(null);
   }, []);
 
-  // Mobile: toggle tooltip on tap
+  // Mobile: toggle tooltip on tap (single shot)
   const handleMarkerClick = useCallback(
     (shot: Shot, e: React.MouseEvent) => {
       const pos = posFromEvent(e);
       if (!pos) return;
       const ctx = shot as ShotWithContext;
       setTooltip((prev) => {
-        if (prev && prev.shot.timestamp === ctx.timestamp && prev.shot.sessionId === ctx.sessionId) {
+        if (prev && prev.kind === 'single' && prev.shot.timestamp === ctx.timestamp && prev.shot.sessionId === ctx.sessionId) {
           return null;
         }
-        return { shot: ctx, ...pos };
+        return { kind: 'single', shot: ctx, ...pos };
+      });
+    },
+    [posFromEvent],
+  );
+
+  // Mobile: toggle tooltip on tap (batch)
+  const handleBatchClick = useCallback(
+    (batchShots: Shot[], e: React.MouseEvent) => {
+      const pos = posFromEvent(e);
+      if (!pos) return;
+      setTooltip((prev) => {
+        if (prev && prev.kind === 'batch' && prev.shots === batchShots) {
+          return null;
+        }
+        return { kind: 'batch', shots: batchShots as ShotWithContext[], ...pos };
       });
     },
     [posFromEvent],
@@ -103,8 +160,6 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
       })()
     : null;
 
-  const s = tooltip?.shot;
-
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
@@ -123,7 +178,7 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
       <div className="relative" ref={containerRef}>
         <SvgPitch attackingHalfOnly onPitchClick={handlePitchClick}>
           <ZoneOverlay visible={showZoneOverlay} />
-          {shots.map((shot, i) => (
+          {singleShots.map((shot, i) => (
             <ShotMarker
               key={`${shot.sessionId}-${shot.timestamp}-${i}`}
               shot={shot}
@@ -133,38 +188,77 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
               onMouseLeave={handleMarkerLeave}
             />
           ))}
+          {batchGroups.map((group, i) => (
+            <BatchShotMarker
+              key={`batch-${i}`}
+              shots={group}
+              mirror
+              onClick={handleBatchClick}
+              onMouseEnter={handleBatchEnter}
+              onMouseLeave={handleMarkerLeave}
+            />
+          ))}
         </SvgPitch>
 
-        {/* Shot tooltip */}
-        {tooltip && s && tooltipStyle && (
-          <div
-            className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
-            style={tooltipStyle}
-          >
-            <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
-              {s.result === 'scored' ? 'Scored' : 'Missed'}
-              {' '}
-              <span className="font-normal text-text-muted">({formatLabel(s.shotFor)})</span>
-            </p>
-            <div className="space-y-0.5 text-text-muted">
-              <p><span className="text-text font-medium">Foot:</span> {formatLabel(s.foot)}</p>
-              <p><span className="text-text font-medium">Category:</span> {formatLabel(s.shotCategory)}</p>
-              <p><span className="text-text font-medium">Type:</span> {formatLabel(s.shotType)}</p>
-              {s.distance != null && (
-                <p><span className="text-text font-medium">Distance:</span> {s.distance.toFixed(1)}m</p>
-              )}
-              {s.result === 'missed' && s.missResult && (
-                <p><span className="text-text font-medium">Miss:</span> {formatLabel(s.missResult)}</p>
-              )}
-              {s.result === 'missed' && s.missReason && (
-                <p><span className="text-text font-medium">Reason:</span> {formatLabel(s.missReason)}</p>
-              )}
-              {s.comment && (
-                <p><span className="text-text font-medium">Comment:</span> {s.comment}</p>
-              )}
+        {/* Single shot tooltip */}
+        {tooltip && tooltip.kind === 'single' && tooltipStyle && (() => {
+          const s = tooltip.shot;
+          return (
+            <div
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              style={tooltipStyle}
+            >
+              <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
+                {s.result === 'scored' ? 'Scored' : 'Missed'}
+                {' '}
+                <span className="font-normal text-text-muted">({formatLabel(s.shotFor)})</span>
+              </p>
+              <div className="space-y-0.5 text-text-muted">
+                <p><span className="text-text font-medium">Foot:</span> {formatLabel(s.foot)}</p>
+                <p><span className="text-text font-medium">Category:</span> {formatLabel(s.shotCategory)}</p>
+                <p><span className="text-text font-medium">Type:</span> {formatLabel(s.shotType)}</p>
+                {s.distance != null && (
+                  <p><span className="text-text font-medium">Distance:</span> {s.distance.toFixed(1)}m</p>
+                )}
+                {s.result === 'missed' && s.missResult && (
+                  <p><span className="text-text font-medium">Miss:</span> {formatLabel(s.missResult)}</p>
+                )}
+                {s.result === 'missed' && s.missReason && (
+                  <p><span className="text-text font-medium">Reason:</span> {formatLabel(s.missReason)}</p>
+                )}
+                {s.comment && (
+                  <p><span className="text-text font-medium">Comment:</span> {s.comment}</p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
+        {/* Batch shot tooltip */}
+        {tooltip && tooltip.kind === 'batch' && tooltipStyle && (() => {
+          const batchShots = tooltip.shots;
+          const first = batchShots[0];
+          const batchTotal = batchShots.length;
+          const batchScored = batchShots.filter((s) => s.result === 'scored').length;
+          return (
+            <div
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              style={tooltipStyle}
+            >
+              <p className="font-semibold mb-1.5 text-text">
+                Batch: {batchScored}/{batchTotal} scored
+              </p>
+              <div className="space-y-0.5 text-text-muted">
+                <p><span className="text-text font-medium">Shot:</span> {formatLabel(first.shotFor)}</p>
+                <p><span className="text-text font-medium">Foot:</span> {formatLabel(first.foot)}</p>
+                <p><span className="text-text font-medium">Category:</span> {formatLabel(first.shotCategory)}</p>
+                {first.sessionName && (
+                  <p><span className="text-text font-medium">Session:</span> {first.sessionName}</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
