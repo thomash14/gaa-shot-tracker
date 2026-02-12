@@ -1,8 +1,35 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Session, Shot } from '@/types';
 import { SvgPitch } from '@/components/pitch';
+
+// ---------------------------------------------------------------------------
+// Tooltip helpers
+// ---------------------------------------------------------------------------
+
+function formatLabel(value: string): string {
+  return value
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+interface SingleTooltipState {
+  kind: 'single';
+  shot: Shot;
+  x: number;
+  y: number;
+}
+
+interface BatchTooltipState {
+  kind: 'batch';
+  shots: Shot[];
+  x: number;
+  y: number;
+}
+
+type TooltipState = SingleTooltipState | BatchTooltipState | null;
 
 /**
  * Recent-sessions carousel for the dashboard.
@@ -140,16 +167,17 @@ function computeSessionStats(session: Session) {
 
 /** Group shots by rounded location for batch-style display on the dashboard pitch. */
 function groupShotsByLocation(shots: Shot[]) {
-  const map = new Map<string, { x: number; y: number; scored: number; total: number }>();
+  const map = new Map<string, { x: number; y: number; scored: number; total: number; shots: Shot[] }>();
 
   shots.forEach((shot) => {
     const key = `${Math.round(shot.x)}-${Math.round(shot.y)}`;
     if (!map.has(key)) {
-      map.set(key, { x: shot.x, y: shot.y, scored: 0, total: 0 });
+      map.set(key, { x: shot.x, y: shot.y, scored: 0, total: 0, shots: [] });
     }
     const loc = map.get(key)!;
     loc.total++;
     if (shot.result === 'scored') loc.scored++;
+    loc.shots.push(shot);
   });
 
   return Array.from(map.values());
@@ -291,6 +319,60 @@ function CarouselContent({ session }: { session: Session }) {
     [session]
   );
 
+  // Tooltip state
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const posFromEvent = useCallback((e: React.MouseEvent): { x: number; y: number } | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const rect = container.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }, []);
+
+  const handleMarkerEnter = useCallback((e: React.MouseEvent, shots: Shot[]) => {
+    const pos = posFromEvent(e);
+    if (!pos) return;
+    if (shots.length === 1) {
+      setTooltip({ kind: 'single', shot: shots[0], ...pos });
+    } else {
+      setTooltip({ kind: 'batch', shots, ...pos });
+    }
+  }, [posFromEvent]);
+
+  const handleMarkerLeave = useCallback(() => {
+    setTooltip(null);
+  }, []);
+
+  const handleMarkerClick = useCallback((e: React.MouseEvent, shots: Shot[]) => {
+    const pos = posFromEvent(e);
+    if (!pos) return;
+    // Toggle on tap (mobile)
+    setTooltip((prev) => {
+      if (prev && prev.kind === 'single' && shots.length === 1 && prev.shot === shots[0]) return null;
+      if (prev && prev.kind === 'batch' && shots.length > 1 && prev.shots === shots) return null;
+      if (shots.length === 1) return { kind: 'single', shot: shots[0], ...pos };
+      return { kind: 'batch', shots, ...pos };
+    });
+  }, [posFromEvent]);
+
+  // Tooltip positioning with clamping
+  const tooltipStyle = tooltip
+    ? (() => {
+        const cw = containerRef.current?.clientWidth ?? 300;
+        const ch = containerRef.current?.clientHeight ?? 400;
+        const tw = 200;
+        const th = 150;
+        let left = tooltip.x + 12;
+        let top = tooltip.y - 10;
+        if (left + tw > cw) left = tooltip.x - tw - 12;
+        if (top + th > ch) top = tooltip.y - th;
+        if (top < 0) top = 4;
+        if (left < 0) left = 4;
+        return { left, top };
+      })()
+    : null;
+
   // Build title
   const matchType = session.matchType || '';
   const capitalised = matchType ? matchType.charAt(0).toUpperCase() + matchType.slice(1) : '';
@@ -334,7 +416,7 @@ function CarouselContent({ session }: { session: Session }) {
       </div>
 
       {/* Pitch with shots */}
-      <div className="max-w-[500px] mx-auto">
+      <div className="max-w-[500px] mx-auto relative" ref={containerRef}>
         <SvgPitch showLabels={false}>
           {/* Half-end labels for match sessions */}
           {halfInfo?.topLabel && (
@@ -366,7 +448,13 @@ function CarouselContent({ session }: { session: Session }) {
                   : loc.scored === 0 ? '#dc3545'
                     : '#ffc107';
               return (
-                <g key={i}>
+                <g
+                  key={i}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => handleMarkerEnter(e, loc.shots)}
+                  onMouseLeave={handleMarkerLeave}
+                  onClick={(e) => handleMarkerClick(e, loc.shots)}
+                >
                   <circle cx={cx} cy={cy} r="8" fill={fill} stroke="#333" strokeWidth="2" />
                   <rect x={cx - 12} y={cy + 12} width="24" height="14" fill="rgba(0,0,0,0.7)" rx="3" />
                   <text x={cx} y={cy + 23} textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">
@@ -379,10 +467,92 @@ function CarouselContent({ session }: { session: Session }) {
             // Single shot marker
             const fill = loc.scored === 1 ? 'white' : '#dc3545';
             return (
-              <circle key={i} cx={cx} cy={cy} r="6" fill={fill} stroke="#333" strokeWidth="2" />
+              <circle
+                key={i}
+                cx={cx}
+                cy={cy}
+                r="6"
+                fill={fill}
+                stroke="#333"
+                strokeWidth="2"
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={(e) => handleMarkerEnter(e, loc.shots)}
+                onMouseLeave={handleMarkerLeave}
+                onClick={(e) => handleMarkerClick(e, loc.shots)}
+              />
             );
           })}
         </SvgPitch>
+
+        {/* Tooltip */}
+        {tooltip && tooltipStyle && tooltip.kind === 'single' && (() => {
+          const s = tooltip.shot;
+          return (
+            <div
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              style={tooltipStyle}
+            >
+              <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
+                {s.result === 'scored' ? 'Scored' : 'Missed'}
+                {' '}
+                <span className="font-normal text-text-muted">({formatLabel(s.shotFor)})</span>
+              </p>
+              <div className="space-y-0.5 text-text-muted">
+                <p><span className="text-text font-medium">Foot:</span> {formatLabel(s.foot)}</p>
+                <p><span className="text-text font-medium">Category:</span> {formatLabel(s.shotCategory)}</p>
+                {s.shotType && (
+                  <p><span className="text-text font-medium">Type:</span> {formatLabel(s.shotType)}</p>
+                )}
+                {s.distance != null && (
+                  <p><span className="text-text font-medium">Distance:</span> {s.distance.toFixed(1)}m</p>
+                )}
+                {s.result === 'missed' && s.missResult && (
+                  <p><span className="text-text font-medium">Miss:</span> {formatLabel(s.missResult)}</p>
+                )}
+                {s.result === 'missed' && s.missReason && (
+                  <p><span className="text-text font-medium">Reason:</span> {formatLabel(s.missReason)}</p>
+                )}
+                {s.comment && (
+                  <p><span className="text-text font-medium">Comment:</span> {s.comment}</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {tooltip && tooltipStyle && tooltip.kind === 'batch' && (() => {
+          const shots = tooltip.shots;
+          const batchScored = shots.filter((s) => s.result === 'scored').length;
+          const batchTotal = shots.length;
+          const first = shots[0];
+          const rightShots = shots.filter((s) => s.foot === 'right');
+          const leftShots = shots.filter((s) => s.foot !== 'right');
+          const rightScoredCount = rightShots.filter((s) => s.result === 'scored').length;
+          const leftScoredCount = leftShots.filter((s) => s.result === 'scored').length;
+          const footParts: string[] = [];
+          if (rightShots.length > 0) footParts.push(`${rightScoredCount}/${rightShots.length} Right`);
+          if (leftShots.length > 0) footParts.push(`${leftScoredCount}/${leftShots.length} Left`);
+          const footLabel = footParts.join(' \u00b7 ');
+
+          return (
+            <div
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              style={tooltipStyle}
+            >
+              <p className="font-semibold mb-1.5 text-text">
+                {batchScored}/{batchTotal} scored
+              </p>
+              <div className="space-y-0.5 text-text-muted">
+                <p><span className="text-text font-medium">Shot:</span> {formatLabel(first.shotFor)}</p>
+                <p><span className="text-text font-medium">Foot:</span> {footLabel}</p>
+                <p><span className="text-text font-medium">Category:</span> {formatLabel(first.shotCategory)}</p>
+                {first.distance != null && (
+                  <p><span className="text-text font-medium">Distance:</span> {first.distance.toFixed(1)}m</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Legend */}
