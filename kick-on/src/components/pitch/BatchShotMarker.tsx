@@ -29,7 +29,7 @@ interface BatchShotMarkerProps {
 
 export default function BatchShotMarker({
   shots,
-  size = 8,
+  size = 6,
   mirror = false,
   onClick,
   onMouseEnter,

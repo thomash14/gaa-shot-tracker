@@ -432,7 +432,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                       key={`s-${i}`}
                       shot={shot}
                       mirror={false}
-                      size={5}
+                      size={4}
                       onClick={handleMarkerClick}
                       onMouseEnter={handleMarkerEnter}
                       onMouseLeave={handleMarkerLeave}
@@ -442,7 +442,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                     <BatchShotMarker
                       key={`b-${i}`}
                       shots={group}
-                      size={7}
+                      size={5}
                       onClick={handleBatchClick}
                       onMouseEnter={handleBatchEnter}
                       onMouseLeave={handleMarkerLeave}

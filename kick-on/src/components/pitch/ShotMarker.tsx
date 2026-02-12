@@ -36,7 +36,7 @@ interface ShotMarkerProps {
 export default function ShotMarker({
   shot,
   mirror = true,
-  size = 6,
+  size = 5,
   onClick,
   onMouseEnter,
   onMouseLeave,
