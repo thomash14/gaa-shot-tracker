@@ -5,7 +5,6 @@ import { useAnalyticsStore } from '@/store/analyticsStore';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   FilterBar,
-  ConversionStats,
   AnalyticsShotMap,
   ZoneStats,
   StatsTable,
@@ -23,12 +22,9 @@ export default function AnalyticsPage() {
     filteredSessions,
     allShots,
     checkedShots,
-    checkedSessionCount,
     matchTypeOptions,
     drillOptions,
   } = useAnalytics();
-
-  const isMatch = analyticsType === 'match';
 
   return (
     <div className="space-y-4">
@@ -87,13 +83,6 @@ export default function AnalyticsPage() {
 
           {/* Shot map (uses checked shots) */}
           <AnalyticsShotMap shots={checkedShots} />
-
-          {/* Conversion stats (uses checked shots — reflects table checkbox state) */}
-          <ConversionStats
-            shots={checkedShots}
-            sessionCount={checkedSessionCount}
-            sessionLabel={isMatch ? 'Matches' : 'Sessions'}
-          />
 
           {/* Zone stats (uses checked shots) */}
           <ZoneStats shots={checkedShots} />
