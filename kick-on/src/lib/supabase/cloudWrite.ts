@@ -111,14 +111,18 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       assigned_drill_id: drill.assignedDrillId || null,
     }));
 
-    console.log('[cloudWrite] inserting', drillPayloads.length, 'drills for session', sessionCloudId, drillPayloads);
-    const { data: drillRows, error: drillError, status: drillStatus, statusText: drillStatusText } = await supabase
+    console.log('[cloudWrite] inserting drills — session_id:', sessionCloudId, '(type:', typeof sessionCloudId, ') payloads:', JSON.stringify(drillPayloads, null, 2));
+    const drillResult = await supabase
       .from('practice_drills')
       .insert(drillPayloads)
       .select('id');
 
+    console.log('[cloudWrite] drill insert result:', JSON.stringify(drillResult, null, 2));
+
+    const { data: drillRows, error: drillError } = drillResult;
+
     if (drillError) {
-      console.error('[cloudWrite] drill insert error:', { message: drillError.message, code: drillError.code, details: drillError.details, hint: drillError.hint, status: drillStatus, statusText: drillStatusText });
+      console.error('[cloudWrite] drill insert error:', JSON.stringify(drillError, null, 2), 'status:', drillResult.status, 'statusText:', drillResult.statusText);
     } else if (drillRows) {
       // Map local drill ids to cloud UUIDs (insert preserves order)
       session.drills.forEach((drill, i) => {
@@ -156,14 +160,18 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       drill_id: shot.drillId ? (drillIdMap.get(shot.drillId) || null) : null,
     }));
 
-    console.log('[cloudWrite] inserting', shotPayloads.length, 'shots for session', sessionCloudId, shotPayloads);
-    const { data: shotRows, error: shotError, status: shotStatus, statusText: shotStatusText } = await supabase
+    console.log('[cloudWrite] inserting shots — session_id:', sessionCloudId, '(type:', typeof sessionCloudId, ') payloads:', JSON.stringify(shotPayloads, null, 2));
+    const shotResult = await supabase
       .from('shots')
       .insert(shotPayloads)
       .select('id');
 
+    console.log('[cloudWrite] shot insert result:', JSON.stringify(shotResult, null, 2));
+
+    const { data: shotRows, error: shotError } = shotResult;
+
     if (shotError) {
-      console.error('[cloudWrite] shot insert error:', { message: shotError.message, code: shotError.code, details: shotError.details, hint: shotError.hint, status: shotStatus, statusText: shotStatusText });
+      console.error('[cloudWrite] shot insert error:', JSON.stringify(shotError, null, 2), 'status:', shotResult.status, 'statusText:', shotResult.statusText);
     } else if (shotRows) {
       // Map shot cloudIds back — order is preserved by Supabase insert
       unsyncedShots.forEach((shot, i) => {
