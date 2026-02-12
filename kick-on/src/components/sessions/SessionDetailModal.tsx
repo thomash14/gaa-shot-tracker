@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import type { Session, Shot, PracticeDrill } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
 
 // ---------------------------------------------------------------------------
 // Label maps
@@ -530,6 +530,8 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   );
                 })()}
               </div>
+
+              <ShotMapLegend />
             </div>
           )}
 

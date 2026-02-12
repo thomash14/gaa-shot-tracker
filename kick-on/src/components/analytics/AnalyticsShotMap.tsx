@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAnalyticsStore } from '@/store/analyticsStore';
-import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend } from '@/components/pitch';
 import type { Shot, ShotWithContext } from '@/types';
 
 /** Capitalise hyphenated labels: "free-kick" → "Free Kick" */
@@ -275,6 +275,8 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           );
         })()}
       </div>
+
+      <ShotMapLegend />
     </div>
   );
 }

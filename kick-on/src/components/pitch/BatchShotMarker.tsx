@@ -62,6 +62,7 @@ export default function BatchShotMarker({
   }
 
   const isGoal = first.shotFor === 'goal';
+  const isPlacedBall = first.shotCategory !== 'in-play';
   const label = `${scored}/${total}`;
 
   // Label offset: place to the right of the marker, nudge up slightly
@@ -79,36 +80,52 @@ export default function BatchShotMarker({
 
   const interactive = !!(onClick || onMouseEnter);
 
+  const commonProps = {
+    fill,
+    stroke: '#333' as const,
+    strokeWidth: 1.5,
+    style: { cursor: interactive ? 'pointer' : 'default' } as React.CSSProperties,
+    onClick: interactive ? handleClick : undefined,
+    onMouseEnter: onMouseEnter ? handleMouseEnter : undefined,
+    onMouseLeave: onMouseLeave || undefined,
+  };
+
+  let marker: React.ReactNode;
+  if (isGoal) {
+    // Square for goals
+    marker = (
+      <rect
+        x={svgX - size}
+        y={svgY - size}
+        width={size * 2}
+        height={size * 2}
+        {...commonProps}
+      />
+    );
+  } else if (isPlacedBall) {
+    // Triangle for placed balls
+    const points = `${svgX},${svgY - size * 1.15} ${svgX - size},${svgY + size * 0.7} ${svgX + size},${svgY + size * 0.7}`;
+    marker = (
+      <polygon
+        points={points}
+        {...commonProps}
+      />
+    );
+  } else {
+    // Circle for in-play
+    marker = (
+      <circle
+        cx={svgX}
+        cy={svgY}
+        r={size}
+        {...commonProps}
+      />
+    );
+  }
+
   return (
     <g>
-      {isGoal ? (
-        <rect
-          x={svgX - size}
-          y={svgY - size}
-          width={size * 2}
-          height={size * 2}
-          fill={fill}
-          stroke="#333"
-          strokeWidth={1.5}
-          style={{ cursor: interactive ? 'pointer' : 'default' }}
-          onClick={interactive ? handleClick : undefined}
-          onMouseEnter={onMouseEnter ? handleMouseEnter : undefined}
-          onMouseLeave={onMouseLeave || undefined}
-        />
-      ) : (
-        <circle
-          cx={svgX}
-          cy={svgY}
-          r={size}
-          fill={fill}
-          stroke="#333"
-          strokeWidth={1.5}
-          style={{ cursor: interactive ? 'pointer' : 'default' }}
-          onClick={interactive ? handleClick : undefined}
-          onMouseEnter={onMouseEnter ? handleMouseEnter : undefined}
-          onMouseLeave={onMouseLeave || undefined}
-        />
-      )}
+      {marker}
       {/* Scored/total label */}
       <text
         x={labelX}

@@ -55,6 +55,7 @@ export default function ShotMarker({
 
   const isScored = shot.result === 'scored';
   const isGoal = shot.shotFor === 'goal';
+  const isPlacedBall = shot.shotCategory !== 'in-play';
   const fill = isScored ? 'white' : '#f44336';
 
   const handleClick = (e: React.MouseEvent) => {
@@ -78,6 +79,7 @@ export default function ShotMarker({
     onMouseLeave: onMouseLeave || undefined,
   };
 
+  // Square for goals
   if (isGoal) {
     return (
       <rect
@@ -90,6 +92,18 @@ export default function ShotMarker({
     );
   }
 
+  // Triangle for placed balls (free kicks, 45s/65s, sidelines)
+  if (isPlacedBall) {
+    const points = `${svgX},${svgY - size * 1.15} ${svgX - size},${svgY + size * 0.7} ${svgX + size},${svgY + size * 0.7}`;
+    return (
+      <polygon
+        points={points}
+        {...commonProps}
+      />
+    );
+  }
+
+  // Circle for in-play
   return (
     <circle
       cx={svgX}

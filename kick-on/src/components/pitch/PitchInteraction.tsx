@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
-import { SvgPitch, ShotMarker, BatchShotMarker, HalfSelector } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, HalfSelector, ShotMapLegend } from '@/components/pitch';
 import type { Shot } from '@/types';
 import type { PendingShot, HalfType } from '@/hooks/useShots';
 import { getGoalSvgCoords } from '@/hooks/useShots';
@@ -263,6 +263,8 @@ export default function PitchInteraction({
           </circle>
         )}
       </SvgPitch>
+
+      <ShotMapLegend />
 
       {/* Half selector overlay (match mode) */}
       {isMatch && (
