@@ -18,12 +18,18 @@ interface BatchShotMarkerProps {
   /** Marker radius (SVG units). Default 8 (slightly larger than single). */
   size?: number;
   onClick?: (shots: Shot[], e: React.MouseEvent) => void;
+  /** Desktop hover enter. */
+  onMouseEnter?: (shots: Shot[], e: React.MouseEvent<SVGElement>) => void;
+  /** Desktop hover leave. */
+  onMouseLeave?: (e: React.MouseEvent<SVGElement>) => void;
 }
 
 export default function BatchShotMarker({
   shots,
   size = 8,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
 }: BatchShotMarkerProps) {
   if (shots.length === 0) return null;
 
@@ -56,7 +62,11 @@ export default function BatchShotMarker({
     onClick?.(shots, e);
   };
 
-  const interactive = !!onClick;
+  const handleMouseEnter = (e: React.MouseEvent<SVGElement>) => {
+    onMouseEnter?.(shots, e);
+  };
+
+  const interactive = !!(onClick || onMouseEnter);
 
   return (
     <g>
@@ -71,6 +81,8 @@ export default function BatchShotMarker({
           strokeWidth={1.5}
           style={{ cursor: interactive ? 'pointer' : 'default' }}
           onClick={interactive ? handleClick : undefined}
+          onMouseEnter={onMouseEnter ? handleMouseEnter : undefined}
+          onMouseLeave={onMouseLeave || undefined}
         />
       ) : (
         <circle
@@ -82,6 +94,8 @@ export default function BatchShotMarker({
           strokeWidth={1.5}
           style={{ cursor: interactive ? 'pointer' : 'default' }}
           onClick={interactive ? handleClick : undefined}
+          onMouseEnter={onMouseEnter ? handleMouseEnter : undefined}
+          onMouseLeave={onMouseLeave || undefined}
         />
       )}
       {/* Scored/total label */}
