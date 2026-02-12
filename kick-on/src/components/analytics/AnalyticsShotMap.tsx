@@ -47,7 +47,7 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
     const batchMap = new Map<string, ShotWithContext[]>();
 
     for (const shot of shots) {
-      if (shot.batch) {
+      if (shot.batch || shot.drillSpotId != null) {
         // Group by session + position so batches from different sessions don't merge
         const key = `${shot.sessionId}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
         if (!batchMap.has(key)) batchMap.set(key, []);
@@ -240,17 +240,26 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           const first = batchShots[0];
           const batchTotal = batchShots.length;
           const batchScored = batchShots.filter((s) => s.result === 'scored').length;
+          const feet = new Set(batchShots.map((s) => s.foot));
+          let footLabel: string;
+          if (feet.size > 1) {
+            const rc = batchShots.filter((s) => s.foot === 'right').length;
+            const lc = batchShots.filter((s) => s.foot === 'left').length;
+            footLabel = `Both (${rc}R, ${lc}L)`;
+          } else {
+            footLabel = formatLabel(first.foot);
+          }
           return (
             <div
               className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
               style={tooltipStyle}
             >
               <p className="font-semibold mb-1.5 text-text">
-                Batch: {batchScored}/{batchTotal} scored
+                {batchScored}/{batchTotal} scored
               </p>
               <div className="space-y-0.5 text-text-muted">
                 <p><span className="text-text font-medium">Shot:</span> {formatLabel(first.shotFor)}</p>
-                <p><span className="text-text font-medium">Foot:</span> {formatLabel(first.foot)}</p>
+                <p><span className="text-text font-medium">Foot:</span> {footLabel}</p>
                 <p><span className="text-text font-medium">Category:</span> {formatLabel(first.shotCategory)}</p>
                 {first.sessionName && (
                   <p><span className="text-text font-medium">Session:</span> {first.sessionName}</p>
