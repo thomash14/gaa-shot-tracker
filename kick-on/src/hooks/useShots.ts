@@ -212,16 +212,18 @@ export function useShots() {
     (result: 'scored' | 'missed', extraFields?: Partial<Shot>) => {
       if (!pendingShot || !currentSession) return;
       const activeDrill = useDrillStore.getState().currentDrill;
+      // Use current sidebar state for shot details (not the pending snapshot),
+      // so changes made after placing the marker are respected.
       const shot: Shot = {
         x: pendingShot.x,
         y: pendingShot.y,
         distance: pendingShot.distance,
-        foot: pendingShot.foot,
-        half: pendingShot.half,
-        shotFor: pendingShot.shotFor,
-        shotCategory: pendingShot.shotCategory,
-        shotType: pendingShot.shotType,
-        pointValue: getPointValue(pendingShot),
+        foot,
+        half,
+        shotFor,
+        shotCategory,
+        shotType,
+        pointValue: getPointValue({ x: pendingShot.x, y: pendingShot.y, shotCategory }),
         result,
         timestamp: new Date().toISOString(),
         comment: '',
@@ -236,7 +238,7 @@ export function useShots() {
       updateSession(currentSession.id, { shots: updatedShots });
       setPendingShot(null);
     },
-    [pendingShot, currentSession, updateSession],
+    [pendingShot, currentSession, updateSession, foot, half, shotFor, shotCategory, shotType],
   );
 
   // -------------------------------------------------------------------------
