@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import type { Session, Shot, PracticeDrill } from '@/types';
 import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
+import { groupShotsByPosition } from '@/lib/shotMap';
 
 // ---------------------------------------------------------------------------
 // Label maps
@@ -205,22 +206,10 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     });
   }, [shots, hasDrills, visibleDrillIds, allDrillIds]);
 
-  const { singleShots, batchGroups } = useMemo(() => {
-    const singles: Shot[] = [];
-    const batchMap = new Map<string, Shot[]>();
-
-    for (const shot of filteredShots) {
-      if (shot.batch || shot.drillSpotId != null) {
-        const key = `${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
-        if (!batchMap.has(key)) batchMap.set(key, []);
-        batchMap.get(key)!.push(shot);
-      } else {
-        singles.push(shot);
-      }
-    }
-
-    return { singleShots: singles, batchGroups: Array.from(batchMap.values()) };
-  }, [filteredShots]);
+  const { singleShots, batchGroups } = useMemo(
+    () => groupShotsByPosition(filteredShots),
+    [filteredShots],
+  );
 
   // -------------------------------------------------------------------------
   // Tooltip state + handlers

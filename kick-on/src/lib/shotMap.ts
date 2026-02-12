@@ -143,6 +143,50 @@ export function clampPct(xPct: number, yPct: number): { x: number; y: number } {
 }
 
 // ---------------------------------------------------------------------------
+// Batch grouping
+// ---------------------------------------------------------------------------
+
+/**
+ * Group shots by position for batch marker rendering. Shots at the same
+ * position (rounded to 2 decimal places) within the same logical group are
+ * merged. Groups with 2+ shots are returned as `batchGroups`; single-shot
+ * groups are returned as `singleShots`.
+ *
+ * This is position-based rather than flag-based so it works correctly for
+ * cloud-loaded data where the local-only `batch` / `drillSpotId` fields
+ * are not persisted.
+ *
+ * @param sessionKey Optional function to derive a grouping prefix per shot
+ *   (e.g. sessionId). Defaults to empty string (all shots in one namespace).
+ */
+export function groupShotsByPosition<T extends { x: number; y: number }>(
+  shots: T[],
+  sessionKey?: (shot: T) => string,
+): { singleShots: T[]; batchGroups: T[][] } {
+  const posMap = new Map<string, T[]>();
+
+  for (const shot of shots) {
+    const prefix = sessionKey ? sessionKey(shot) : '';
+    const key = `${prefix}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
+    if (!posMap.has(key)) posMap.set(key, []);
+    posMap.get(key)!.push(shot);
+  }
+
+  const singles: T[] = [];
+  const batches: T[][] = [];
+
+  for (const group of posMap.values()) {
+    if (group.length > 1) {
+      batches.push(group);
+    } else {
+      singles.push(group[0]);
+    }
+  }
+
+  return { singleShots: singles, batchGroups: batches };
+}
+
+// ---------------------------------------------------------------------------
 // SVG goal coordinates (for distance lines)
 // ---------------------------------------------------------------------------
 

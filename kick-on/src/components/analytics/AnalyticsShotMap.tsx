@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAnalyticsStore } from '@/store/analyticsStore';
 import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend } from '@/components/pitch';
+import { groupShotsByPosition } from '@/lib/shotMap';
 import type { Shot, ShotWithContext } from '@/types';
 
 /** Capitalise hyphenated labels: "free-kick" → "Free Kick" */
@@ -41,33 +42,11 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
   const showZoneOverlay = useAnalyticsStore((s) => s.showZoneOverlay);
   const setShowZoneOverlay = useAnalyticsStore((s) => s.setShowZoneOverlay);
 
-  // Split shots into singles and batch groups.
-  // Group by session + position (rounded to 2dp). Groups with 2+ shots render
-  // as BatchShotMarker; single-shot groups render as ShotMarker. This is
-  // position-based rather than flag-based so it works for cloud-loaded data
-  // where the local-only `batch` / `drillSpotId` fields aren't persisted.
-  const { singleShots, batchGroups } = useMemo(() => {
-    const posMap = new Map<string, ShotWithContext[]>();
-
-    for (const shot of shots) {
-      const key = `${shot.sessionId}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
-      if (!posMap.has(key)) posMap.set(key, []);
-      posMap.get(key)!.push(shot);
-    }
-
-    const singles: ShotWithContext[] = [];
-    const batches: ShotWithContext[][] = [];
-
-    for (const group of posMap.values()) {
-      if (group.length > 1) {
-        batches.push(group);
-      } else {
-        singles.push(group[0]);
-      }
-    }
-
-    return { singleShots: singles, batchGroups: batches };
-  }, [shots]);
+  // Split shots into singles and batch groups using shared position-based logic.
+  const { singleShots, batchGroups } = useMemo(
+    () => groupShotsByPosition(shots, (s) => String(s.sessionId)),
+    [shots],
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
