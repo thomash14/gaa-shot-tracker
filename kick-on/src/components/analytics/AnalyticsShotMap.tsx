@@ -241,11 +241,14 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           const batchTotal = batchShots.length;
           const batchScored = batchShots.filter((s) => s.result === 'scored').length;
           const feet = new Set(batchShots.map((s) => s.foot));
+          const hasMixedFeet = feet.size > 1;
           let footLabel: string;
-          if (feet.size > 1) {
-            const rc = batchShots.filter((s) => s.foot === 'right').length;
-            const lc = batchShots.filter((s) => s.foot === 'left').length;
-            footLabel = `Both (${rc}R, ${lc}L)`;
+          if (hasMixedFeet) {
+            const rShots = batchShots.filter((s) => s.foot === 'right');
+            const lShots = batchShots.filter((s) => s.foot === 'left');
+            const rScored = rShots.filter((s) => s.result === 'scored').length;
+            const lScored = lShots.filter((s) => s.result === 'scored').length;
+            footLabel = `${rScored}/${rShots.length} Right · ${lScored}/${lShots.length} Left`;
           } else {
             footLabel = formatLabel(first.foot);
           }
