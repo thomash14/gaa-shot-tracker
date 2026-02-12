@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import { useSessions } from '@/hooks/useSessions';
 import { useTrainingLogs } from '@/hooks/useTrainingLogs';
 import { useSessionStore } from '@/store/sessionStore';
-import { createClient } from '@/lib/supabase/client';
 import {
   SessionCalendar,
   CalendarDateMenu,
@@ -48,7 +47,6 @@ export default function SessionsPage() {
     deleteLog,
   } = useTrainingLogs();
 
-  const sessions = useSessionStore((s) => s.sessions);
   const removeSession = useSessionStore((s) => s.removeSession);
 
   // --- Session detail modal state ---
@@ -80,23 +78,11 @@ export default function SessionsPage() {
   }, []);
 
   const handleDeleteSession = useCallback(
-    async (id: string | number) => {
+    (id: string | number) => {
       if (!window.confirm('Delete this session? This cannot be undone.')) return;
-
-      // Find session to check for cloudId
-      const session = sessions.find((s) => s.id === id);
-      if (session?.cloudId) {
-        try {
-          const supabase = createClient();
-          await supabase.from('sessions').delete().eq('id', session.cloudId);
-        } catch (err) {
-          console.error('Failed to delete session from cloud:', err);
-        }
-      }
-
       removeSession(id);
     },
-    [sessions, removeSession],
+    [removeSession],
   );
 
   const handleDeleteTrainingLog = useCallback(

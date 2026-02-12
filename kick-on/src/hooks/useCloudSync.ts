@@ -4,6 +4,13 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUiStore } from '@/store/uiStore';
 import { createClient } from '@/lib/supabase/client';
+import {
+  syncSessionToCloud,
+  deleteSessionFromCloud,
+  syncTrainingLogToCloud,
+  deleteTrainingLogFromCloud,
+  syncBacklog,
+} from '@/lib/supabase/cloudWrite';
 import type { Session, TrainingLog, PracticeDrill } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -209,6 +216,9 @@ export function useCloudSync() {
       // Cache to localStorage
       saveToLocalStorage(LS_SESSIONS, merged);
       saveToLocalStorage(LS_TRAINING_LOGS, mergedLogs);
+
+      // Sync any local-only data up to Supabase
+      syncBacklog();
     } catch (err) {
       console.warn('Cloud sync failed, using local data:', err);
       setOfflineMode(true);
@@ -264,6 +274,64 @@ export function useCloudSync() {
 
     return () => subscription.unsubscribe();
   }, [loadData, setSessions, setTrainingLogs]);
+
+  // -----------------------------------------------------------------------
+  // Auto-sync: subscribe to Zustand store for session/log changes
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    let prevSessions: Session[] = useSessionStore.getState().sessions;
+    let prevLogs: TrainingLog[] = useSessionStore.getState().trainingLogs;
+
+    const unsub = useSessionStore.subscribe((state) => {
+      const nextSessions = state.sessions;
+      const nextLogs = state.trainingLogs;
+
+      // --- Detect added sessions (new item without cloudId) ---
+      if (nextSessions.length > prevSessions.length) {
+        const prevIds = new Set(prevSessions.map((s) => s.id));
+        for (const s of nextSessions) {
+          if (!prevIds.has(s.id) && !s.cloudId) {
+            syncSessionToCloud(s);
+          }
+        }
+      }
+
+      // --- Detect removed sessions (item with cloudId disappeared) ---
+      if (nextSessions.length < prevSessions.length) {
+        const nextIds = new Set(nextSessions.map((s) => s.id));
+        for (const s of prevSessions) {
+          if (!nextIds.has(s.id) && s.cloudId) {
+            deleteSessionFromCloud(s.cloudId);
+          }
+        }
+      }
+
+      // --- Detect added training logs ---
+      if (nextLogs.length > prevLogs.length) {
+        const prevLogIds = new Set(prevLogs.map((l) => l.id));
+        for (const l of nextLogs) {
+          if (!prevLogIds.has(l.id) && !l.cloudId) {
+            syncTrainingLogToCloud(l);
+          }
+        }
+      }
+
+      // --- Detect removed training logs ---
+      if (nextLogs.length < prevLogs.length) {
+        const nextLogIds = new Set(nextLogs.map((l) => l.id));
+        for (const l of prevLogs) {
+          if (!nextLogIds.has(l.id) && l.cloudId) {
+            deleteTrainingLogFromCloud(l.cloudId);
+          }
+        }
+      }
+
+      prevSessions = nextSessions;
+      prevLogs = nextLogs;
+    });
+
+    return () => unsub();
+  }, []);
 
   // -----------------------------------------------------------------------
   // Online/offline detection

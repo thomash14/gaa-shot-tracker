@@ -7,7 +7,6 @@ import { useDrillStore } from '@/store/drillStore';
 import { useShots } from '@/hooks/useShots';
 import { useDrills, calculateScoringZoneSpots, BUILT_IN_TEMPLATES } from '@/hooks/useDrills';
 import { usePracticeFlow } from '@/hooks/usePracticeFlow';
-import { createClient } from '@/lib/supabase/client';
 import { PitchInteraction } from '@/components/pitch';
 import {
   SessionControls,
@@ -61,17 +60,14 @@ function TrackPageContent() {
   // -------------------------------------------------------------------------
   // Delete current session
   // -------------------------------------------------------------------------
-  const handleDeleteSession = useCallback(async () => {
+  const handleDeleteSession = useCallback(() => {
     if (!currentSession) return;
     if (!window.confirm('Delete this session? This cannot be undone.')) return;
 
-    if (currentSession.cloudId) {
-      try {
-        const supabase = createClient();
-        await supabase.from('sessions').delete().eq('id', currentSession.cloudId);
-      } catch (err) {
-        console.error('Failed to delete session from cloud:', err);
-      }
+    // removeSession triggers cloud delete via subscription in useCloudSync
+    if (currentSession.cloudId || currentSession.id) {
+      const store = useSessionStore.getState();
+      store.removeSession(currentSession.id);
     }
 
     setCurrentSession(null);
