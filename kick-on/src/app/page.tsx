@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useSessionStore } from '@/store/sessionStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,8 +13,14 @@ export default function HomePage() {
   const teamDrills = useTeamStore((s) => s.teamDrills);
   const drillCompletions = useTeamStore((s) => s.drillCompletions);
   const currentTeam = useTeamStore((s) => s.currentTeam);
+  const currentMembership = useTeamStore((s) => s.currentMembership);
+  const hasPlayerMembership = useTeamStore((s) => s.hasPlayerMembership);
+  const teamMembers = useTeamStore((s) => s.teamMembers);
   const { user } = useAuth();
   const team = useTeam();
+
+  // Coach-only: no player membership on any team
+  const isCoachOnly = currentMembership?.role === 'coach' && !hasPlayerMembership;
 
   // Load team data on mount so assigned drills are available immediately
   useEffect(() => {
@@ -21,14 +28,44 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load drills once team data is available
+  // Load drills (and members for coaches) once team data is available
   useEffect(() => {
     if (currentTeam) {
       team.loadTeamDrills();
+      if (isCoachOnly) {
+        team.loadTeamMembers();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTeam?.id]);
+  }, [currentTeam?.id, isCoachOnly]);
 
+  // Coach-only view: show coach dashboard instead of player content
+  if (isCoachOnly) {
+    const playerCount = teamMembers.filter((m) => m.role === 'player').length;
+    return (
+      <div className="space-y-5">
+        <h2 className="text-2xl font-bold text-primary">Coach Dashboard</h2>
+        <div className="bg-surface rounded-2xl shadow-card p-5 space-y-3">
+          {currentTeam ? (
+            <>
+              <h3 className="font-semibold text-lg">{currentTeam.team_name || currentTeam.age_group}</h3>
+              <p className="text-sm text-text-muted">{playerCount} player{playerCount !== 1 ? 's' : ''} on the team</p>
+              <Link
+                href="/team"
+                className="inline-block mt-1 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary-dark transition-colors"
+              >
+                Manage Team
+              </Link>
+            </>
+          ) : (
+            <p className="text-sm text-text-muted">No team set up yet. Head to the Team page to create or join one.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Player / coach+player view: normal dashboard
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-bold text-primary">Dashboard</h2>

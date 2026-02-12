@@ -12,7 +12,8 @@ import {
   TrendsView,
 } from '@/components/analytics';
 import { useSessionStore } from '@/store/sessionStore';
-import type { Session, Shot } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+import type { Session, Shot, PracticeDrill } from '@/types';
 
 interface PlayerDataModalProps {
   open: boolean;
@@ -59,6 +60,7 @@ interface RawShot {
   comment: string;
   miss_result?: string;
   miss_reason?: string;
+  drill_id?: string;
 }
 
 /**
@@ -102,75 +104,141 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
     setLoading(true);
     setError('');
 
-    onLoadData(playerUserId).then((data) => {
-      if (cancelled) return;
+    (async () => {
+      try {
+        const data = await onLoadData(playerUserId);
+        if (cancelled) return;
 
-      // Convert raw sessions to Session type
-      const sessions: Session[] = (data.sessions || []).map((s) => ({
-        id: s.id,
-        name: s.name,
-        date: s.date,
-        type: s.type as 'practice' | 'match',
-        sport: 'football' as const,
-        matchType: (s.match_type ?? null) as Session['matchType'],
-        notes: s.session_notes,
-        didWell: s.did_well,
-        toImprove: s.to_improve,
-        windDirection: s.wind_direction,
-        windStrength: s.wind_strength,
-        startTime: '',
-        shots: (s.shots || []).map((sh) => ({
-          x: sh.x,
-          y: sh.y,
-          distance: sh.distance,
-          foot: sh.foot as Shot['foot'],
-          half: sh.half as Shot['half'],
-          shotFor: sh.shot_for as Shot['shotFor'],
-          shotCategory: sh.shot_category,
-          shotType: sh.shot_type,
-          pointValue: sh.point_value,
-          result: sh.result as Shot['result'],
-          timestamp: sh.timestamp,
-          comment: sh.comment ?? '',
-          batch: false,
-          missResult: sh.miss_result,
-          missReason: sh.miss_reason,
-        })),
-      }));
+        // Convert raw sessions to Session type
+        const sessions: Session[] = (data.sessions || []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          date: s.date,
+          type: s.type as 'practice' | 'match',
+          sport: 'football' as const,
+          matchType: (s.match_type ?? null) as Session['matchType'],
+          notes: s.session_notes,
+          didWell: s.did_well,
+          toImprove: s.to_improve,
+          windDirection: s.wind_direction,
+          windStrength: s.wind_strength,
+          startTime: '',
+          shots: (s.shots || []).map((sh) => ({
+            x: sh.x,
+            y: sh.y,
+            distance: sh.distance,
+            foot: sh.foot as Shot['foot'],
+            half: sh.half as Shot['half'],
+            shotFor: sh.shot_for as Shot['shotFor'],
+            shotCategory: sh.shot_category,
+            shotType: sh.shot_type,
+            pointValue: sh.point_value,
+            result: sh.result as Shot['result'],
+            timestamp: sh.timestamp,
+            comment: sh.comment ?? '',
+            batch: false,
+            missResult: sh.miss_result,
+            missReason: sh.miss_reason,
+            drillCloudId: sh.drill_id || undefined,
+          })),
+        }));
 
-      // Use permission props from team_members table (not RPC response)
-      // Only include sessions the player has granted permission for
-      const allowedSessions = sessions.filter((s) => {
-        if (s.type === 'practice') return sharePractice;
-        if (s.type === 'match') return shareMatch;
-        return false;
-      });
+        // Load practice_drills for practice sessions so StatsTable shows per-drill rows
+        const practiceSessionIds = sessions
+          .filter((s) => s.type === 'practice')
+          .map((s) => String(s.id))
+          .filter(Boolean);
 
-      const practiceExists = sharePractice && allowedSessions.some((s) => s.type === 'practice');
-      const matchExists = shareMatch && allowedSessions.some((s) => s.type === 'match');
+        if (practiceSessionIds.length > 0) {
+          try {
+            const supabase = createClient();
+            const { data: drillsData } = await supabase
+              .from('practice_drills')
+              .select('*')
+              .in('session_id', practiceSessionIds)
+              .order('drill_order', { ascending: true });
 
-      setHasPractice(practiceExists);
-      setHasMatch(matchExists);
+            if (cancelled) return;
 
-      // Inject only permitted sessions into session store
-      setSavedSessions(originalSessions);
-      setSessions(allowedSessions);
-      setInjected(true);
+            if (Array.isArray(drillsData) && drillsData.length > 0) {
+              // Group drills by session_id
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const drillsBySession: Record<string, PracticeDrill[]> = {};
+              for (const d of drillsData as any[]) {
+                const sid = d.session_id;
+                if (!sid) continue;
+                if (!drillsBySession[sid]) drillsBySession[sid] = [];
+                drillsBySession[sid].push({
+                  id: d.id,
+                  cloudId: d.id,
+                  drillOrder: d.drill_order || 1,
+                  drillType: d.drill_type || 'free-form',
+                  distance: d.distance ? parseFloat(d.distance) : null,
+                  foot: d.foot || 'right',
+                  stance: d.stance || 'standing',
+                  shotCategory: d.shot_category || 'in-play',
+                  shotCount: d.shot_count || 0,
+                  scoredCount: d.scored_count || 0,
+                  assignedDrillId: d.assigned_drill_id || null,
+                  templateId: d.template_id || null,
+                  shots: [],
+                  startTime: d.start_time || null,
+                  endTime: d.end_time || null,
+                });
+              }
 
-      // Reset analytics filters — always default to match view
-      resetFilters();
-      if (matchExists) {
-        setAnalyticsType('match');
-      } else if (practiceExists) {
-        setAnalyticsType('practice');
+              // Attach drills to sessions and map shots to drills
+              for (const session of sessions) {
+                const sid = String(session.id);
+                if (drillsBySession[sid]) {
+                  session.drills = drillsBySession[sid];
+                  for (const drill of session.drills) {
+                    drill.shots = (session.shots ?? []).filter(
+                      (s) => s.drillCloudId === drill.cloudId,
+                    );
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to load practice_drills for player:', e);
+          }
+        }
+
+        // Use permission props from team_members table (not RPC response)
+        // Only include sessions the player has granted permission for
+        const allowedSessions = sessions.filter((s) => {
+          if (s.type === 'practice') return sharePractice;
+          if (s.type === 'match') return shareMatch;
+          return false;
+        });
+
+        const practiceExists = sharePractice && allowedSessions.some((s) => s.type === 'practice');
+        const matchExists = shareMatch && allowedSessions.some((s) => s.type === 'match');
+
+        setHasPractice(practiceExists);
+        setHasMatch(matchExists);
+
+        // Inject only permitted sessions into session store
+        setSavedSessions(originalSessions);
+        setSessions(allowedSessions);
+        setInjected(true);
+
+        // Reset analytics filters — always default to match view
+        resetFilters();
+        if (matchExists) {
+          setAnalyticsType('match');
+        } else if (practiceExists) {
+          setAnalyticsType('practice');
+        }
+
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        setError('Failed to load player data: ' + (err instanceof Error ? err.message : String(err)));
+        setLoading(false);
       }
-
-      setLoading(false);
-    }).catch((err) => {
-      if (cancelled) return;
-      setError('Failed to load player data: ' + (err instanceof Error ? err.message : String(err)));
-      setLoading(false);
-    });
+    })();
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

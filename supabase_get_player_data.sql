@@ -78,7 +78,8 @@ BEGIN
                                 'timestamp', sh.timestamp,
                                 'comment', sh.comment,
                                 'miss_result', sh.miss_result,
-                                'miss_reason', sh.miss_reason
+                                'miss_reason', sh.miss_reason,
+                                'drill_id', sh.drill_id
                             )
                         )
                         FROM shots sh
