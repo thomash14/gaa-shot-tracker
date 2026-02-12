@@ -39,12 +39,12 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
   const supabase = createClient();
 
   // 1. Upsert session
+  // Note: 'sport' is NOT a column in the sessions table — do not include it
   const sessionPayload = {
     user_id: user.id,
     name: session.name || '',
     date: session.date,
     type: session.type || 'practice',
-    sport: session.sport || 'football',
     match_type: session.matchType || null,
     start_time: session.startTime || new Date().toISOString(),
     end_time: session.endTime || null,
@@ -59,26 +59,29 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
 
   if (sessionCloudId) {
     // Update existing
-    const { error } = await supabase
+    console.log('[cloudWrite] updating session', sessionCloudId, sessionPayload);
+    const { error, status, statusText } = await supabase
       .from('sessions')
       .update(sessionPayload)
       .eq('id', sessionCloudId);
     if (error) {
-      console.error('[cloudWrite] session update error:', error);
+      console.error('[cloudWrite] session update error:', { message: error.message, code: error.code, details: error.details, hint: error.hint, status, statusText });
       return;
     }
   } else {
     // Insert new
-    const { data, error } = await supabase
+    console.log('[cloudWrite] inserting session', sessionPayload);
+    const { data, error, status, statusText } = await supabase
       .from('sessions')
       .insert(sessionPayload)
       .select('id')
       .single();
     if (error || !data) {
-      console.error('[cloudWrite] session insert error:', error);
+      console.error('[cloudWrite] session insert error:', { message: error?.message, code: error?.code, details: error?.details, hint: error?.hint, status, statusText });
       return;
     }
     sessionCloudId = data.id;
+    console.log('[cloudWrite] session inserted, cloudId:', sessionCloudId);
   }
 
   // 2. Insert drills (for practice sessions)
@@ -108,13 +111,14 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       end_time: drill.endTime || null,
     }));
 
-    const { data: drillRows, error: drillError } = await supabase
+    console.log('[cloudWrite] inserting', drillPayloads.length, 'drills for session', sessionCloudId);
+    const { data: drillRows, error: drillError, status: drillStatus, statusText: drillStatusText } = await supabase
       .from('practice_drills')
       .insert(drillPayloads)
       .select('id');
 
     if (drillError) {
-      console.error('[cloudWrite] drill insert error:', drillError);
+      console.error('[cloudWrite] drill insert error:', { message: drillError.message, code: drillError.code, details: drillError.details, hint: drillError.hint, status: drillStatus, statusText: drillStatusText });
     } else if (drillRows) {
       // Map local drill ids to cloud UUIDs (insert preserves order)
       session.drills.forEach((drill, i) => {
@@ -149,13 +153,14 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       drill_id: shot.drillId ? (drillIdMap.get(shot.drillId) || null) : null,
     }));
 
-    const { data: shotRows, error: shotError } = await supabase
+    console.log('[cloudWrite] inserting', shotPayloads.length, 'shots for session', sessionCloudId);
+    const { data: shotRows, error: shotError, status: shotStatus, statusText: shotStatusText } = await supabase
       .from('shots')
       .insert(shotPayloads)
       .select('id');
 
     if (shotError) {
-      console.error('[cloudWrite] shot insert error:', shotError);
+      console.error('[cloudWrite] shot insert error:', { message: shotError.message, code: shotError.code, details: shotError.details, hint: shotError.hint, status: shotStatus, statusText: shotStatusText });
     } else if (shotRows) {
       // Map shot cloudIds back — order is preserved by Supabase insert
       unsyncedShots.forEach((shot, i) => {
@@ -248,25 +253,28 @@ async function _syncTrainingLogToCloud(log: TrainingLog): Promise<void> {
   let logCloudId = log.cloudId;
 
   if (logCloudId) {
-    const { error } = await supabase
+    console.log('[cloudWrite] updating training log', logCloudId, payload);
+    const { error, status, statusText } = await supabase
       .from('training_logs')
       .update(payload)
       .eq('id', logCloudId);
     if (error) {
-      console.error('[cloudWrite] training log update error:', error);
+      console.error('[cloudWrite] training log update error:', { message: error.message, code: error.code, details: error.details, hint: error.hint, status, statusText });
       return;
     }
   } else {
-    const { data, error } = await supabase
+    console.log('[cloudWrite] inserting training log', payload);
+    const { data, error, status, statusText } = await supabase
       .from('training_logs')
       .insert(payload)
       .select('id')
       .single();
     if (error || !data) {
-      console.error('[cloudWrite] training log insert error:', error);
+      console.error('[cloudWrite] training log insert error:', { message: error?.message, code: error?.code, details: error?.details, hint: error?.hint, status, statusText });
       return;
     }
     logCloudId = data.id;
+    console.log('[cloudWrite] training log inserted, cloudId:', logCloudId);
   }
 
   // Update store with cloudId
