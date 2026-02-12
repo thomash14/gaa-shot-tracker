@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
+import { useTeamStore } from '@/store/teamStore';
 import { useUiStore } from '@/store/uiStore';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -51,6 +52,7 @@ export function useCloudSync() {
   const trainingLogs = useSessionStore((s) => s.trainingLogs);
   const setSessions = useSessionStore((s) => s.setSessions);
   const setTrainingLogs = useSessionStore((s) => s.setTrainingLogs);
+  const clearTeam = useTeamStore((s) => s.clearTeam);
   const setLoading = useUiStore((s) => s.setLoading);
   const setOfflineMode = useUiStore((s) => s.setOfflineMode);
 
@@ -269,11 +271,12 @@ export function useCloudSync() {
       if (event === 'SIGNED_OUT') {
         setSessions([]);
         setTrainingLogs([]);
+        clearTeam();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [loadData, setSessions, setTrainingLogs]);
+  }, [loadData, setSessions, setTrainingLogs, clearTeam]);
 
   // -----------------------------------------------------------------------
   // Auto-sync: subscribe to Zustand store for session/log changes

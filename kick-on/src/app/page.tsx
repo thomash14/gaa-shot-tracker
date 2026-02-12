@@ -15,6 +15,7 @@ export default function HomePage() {
   const currentTeam = useTeamStore((s) => s.currentTeam);
   const currentMembership = useTeamStore((s) => s.currentMembership);
   const hasPlayerMembership = useTeamStore((s) => s.hasPlayerMembership);
+  const teamDataLoaded = useTeamStore((s) => s.teamDataLoaded);
   const teamMembers = useTeamStore((s) => s.teamMembers);
   const { user } = useAuth();
   const team = useTeam();
@@ -38,6 +39,19 @@ export default function HomePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTeam?.id, isCoachOnly]);
+
+  // Show loading until we know the user's role (prevents flash of wrong dashboard)
+  if (!teamDataLoaded) {
+    return (
+      <div className="space-y-5">
+        <div className="h-8 w-40 bg-grey-light rounded-lg animate-pulse" />
+        <div className="bg-surface rounded-2xl shadow-card p-5 space-y-3">
+          <div className="h-5 w-48 bg-grey-light rounded animate-pulse" />
+          <div className="h-4 w-32 bg-grey-light rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   // Coach-only view: show coach dashboard instead of player content
   if (isCoachOnly) {

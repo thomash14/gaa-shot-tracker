@@ -24,6 +24,7 @@ export function useTeam() {
   const setDrillCompletions = useTeamStore((s) => s.setDrillCompletions);
   const updateMembershipStore = useTeamStore((s) => s.updateMembership);
   const setHasPlayerMembership = useTeamStore((s) => s.setHasPlayerMembership);
+  const setTeamDataLoaded = useTeamStore((s) => s.setTeamDataLoaded);
   const clearTeam = useTeamStore((s) => s.clearTeam);
 
   const isCoach = currentMembership?.role === 'coach';
@@ -35,7 +36,10 @@ export function useTeam() {
   const loadTeamData = useCallback(async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setTeamDataLoaded(true);
+      return;
+    }
 
     try {
       const { data: membership, error } = await supabase
@@ -57,6 +61,7 @@ export function useTeam() {
         setCurrentTeam(membership.teams as unknown as Team);
       } else {
         clearTeam();
+        return;
       }
 
       // Check if the user has any player-role membership (across all teams)
@@ -68,8 +73,10 @@ export function useTeam() {
       setHasPlayerMembership((count ?? 0) > 0);
     } catch {
       clearTeam();
+    } finally {
+      setTeamDataLoaded(true);
     }
-  }, [setCurrentTeam, setCurrentMembership, setHasPlayerMembership, clearTeam]);
+  }, [setCurrentTeam, setCurrentMembership, setHasPlayerMembership, setTeamDataLoaded, clearTeam]);
 
   // -------------------------------------------------------------------------
   // Load team members
