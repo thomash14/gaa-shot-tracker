@@ -41,23 +41,32 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
   const showZoneOverlay = useAnalyticsStore((s) => s.showZoneOverlay);
   const setShowZoneOverlay = useAnalyticsStore((s) => s.setShowZoneOverlay);
 
-  // Split shots into singles and batch groups
+  // Split shots into singles and batch groups.
+  // Group by session + position (rounded to 2dp). Groups with 2+ shots render
+  // as BatchShotMarker; single-shot groups render as ShotMarker. This is
+  // position-based rather than flag-based so it works for cloud-loaded data
+  // where the local-only `batch` / `drillSpotId` fields aren't persisted.
   const { singleShots, batchGroups } = useMemo(() => {
-    const singles: ShotWithContext[] = [];
-    const batchMap = new Map<string, ShotWithContext[]>();
+    const posMap = new Map<string, ShotWithContext[]>();
 
     for (const shot of shots) {
-      if (shot.batch || shot.drillSpotId != null) {
-        // Group by session + position so batches from different sessions don't merge
-        const key = `${shot.sessionId}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
-        if (!batchMap.has(key)) batchMap.set(key, []);
-        batchMap.get(key)!.push(shot);
+      const key = `${shot.sessionId}-${shot.x.toFixed(2)}-${shot.y.toFixed(2)}`;
+      if (!posMap.has(key)) posMap.set(key, []);
+      posMap.get(key)!.push(shot);
+    }
+
+    const singles: ShotWithContext[] = [];
+    const batches: ShotWithContext[][] = [];
+
+    for (const group of posMap.values()) {
+      if (group.length > 1) {
+        batches.push(group);
       } else {
-        singles.push(shot);
+        singles.push(group[0]);
       }
     }
 
-    return { singleShots: singles, batchGroups: Array.from(batchMap.values()) };
+    return { singleShots: singles, batchGroups: batches };
   }, [shots]);
 
   const containerRef = useRef<HTMLDivElement>(null);
