@@ -94,6 +94,10 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       .delete()
       .eq('session_id', sessionCloudId);
 
+    // practice_drills columns: id, session_id, user_id, drill_type, distance,
+    // foot, stance, shot_count, scored_count, drill_order, assigned_drill_id,
+    // notes, created_at, updated_at
+    // NOT in table: shot_category, template_id, start_time, end_time
     const drillPayloads = session.drills.map((drill) => ({
       session_id: sessionCloudId,
       user_id: user.id,
@@ -102,16 +106,12 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       distance: drill.distance,
       foot: drill.foot || 'right',
       stance: drill.stance || 'standing',
-      shot_category: drill.shotCategory || 'in-play',
       shot_count: drill.shotCount || 0,
       scored_count: drill.scoredCount || 0,
       assigned_drill_id: drill.assignedDrillId || null,
-      template_id: drill.templateId || null,
-      start_time: drill.startTime || null,
-      end_time: drill.endTime || null,
     }));
 
-    console.log('[cloudWrite] inserting', drillPayloads.length, 'drills for session', sessionCloudId);
+    console.log('[cloudWrite] inserting', drillPayloads.length, 'drills for session', sessionCloudId, drillPayloads);
     const { data: drillRows, error: drillError, status: drillStatus, statusText: drillStatusText } = await supabase
       .from('practice_drills')
       .insert(drillPayloads)
@@ -133,9 +133,12 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
   const unsyncedShots = (session.shots ?? []).filter((s) => !s.cloudId);
 
   if (unsyncedShots.length > 0) {
+    // shots columns: session_id, x, y, distance, foot, half, shot_for,
+    // shot_category, shot_type, point_value, result, timestamp, comment,
+    // miss_result, miss_reason, drill_id
+    // NOT in table: user_id
     const shotPayloads = unsyncedShots.map((shot) => ({
       session_id: sessionCloudId,
-      user_id: user.id,
       x: shot.x,
       y: shot.y,
       result: shot.result,
@@ -153,7 +156,7 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
       drill_id: shot.drillId ? (drillIdMap.get(shot.drillId) || null) : null,
     }));
 
-    console.log('[cloudWrite] inserting', shotPayloads.length, 'shots for session', sessionCloudId);
+    console.log('[cloudWrite] inserting', shotPayloads.length, 'shots for session', sessionCloudId, shotPayloads);
     const { data: shotRows, error: shotError, status: shotStatus, statusText: shotStatusText } = await supabase
       .from('shots')
       .insert(shotPayloads)
