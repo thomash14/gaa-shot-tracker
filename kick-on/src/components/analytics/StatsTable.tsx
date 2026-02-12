@@ -13,6 +13,9 @@ import { FILTER_IDS, SHOT_TYPE_LABELS, MISS_RESULT_LABELS, MISS_REASON_LABELS } 
  * Key behaviour: each row has a checkbox. Unchecking a row removes that
  * session's shots from the stats/shot map/zones (via uncheckedSessionIds).
  * The summary row updates to reflect only checked rows.
+ *
+ * For multi-drill practice sessions each drill gets its own row.
+ * The checkbox still toggles the entire session.
  */
 
 interface StatsTableProps {
@@ -26,6 +29,8 @@ interface StatsTableProps {
 // ---------------------------------------------------------------------------
 
 interface SessionRowData {
+  /** Unique key for this table row. */
+  rowKey: string;
   session: Session;
   shots: ShotWithContext[];
   scored: number;
@@ -61,6 +66,66 @@ function formatDate(dateStr: string): string {
   const parts = dateStr.split('-');
   const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
   return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+/** Build the numeric stats for a set of shots and collect column metadata. */
+function buildRowStats(
+  shots: ShotWithContext[],
+  shotTypesSet: Set<string>,
+  missResultsSet: Set<string>,
+  missReasonsSet: Set<string>,
+) {
+  const scored = shots.filter((s) => s.result === 'scored').length;
+  const total = shots.length;
+  const inPlay = shots.filter((s) => s.shotCategory === 'in-play');
+  const deadBall = shots.filter((s) => s.shotCategory === 'free-kick' || s.shotCategory === '45');
+  const onePt = shots.filter((s) => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
+  const twoPt = shots.filter((s) => s.pointValue === 2 && s.shotFor !== 'goal');
+  const goals = shots.filter((s) => s.shotFor === 'goal');
+
+  const shotTypeCounts: Record<string, { scored: number; total: number }> = {};
+  const missResultCounts: Record<string, number> = {};
+  const missReasonCounts: Record<string, number> = {};
+  const comments: string[] = [];
+
+  shots.forEach((s) => {
+    const st = s.shotType || 'not-defined';
+    shotTypesSet.add(st);
+    if (!shotTypeCounts[st]) shotTypeCounts[st] = { scored: 0, total: 0 };
+    shotTypeCounts[st].total++;
+    if (s.result === 'scored') shotTypeCounts[st].scored++;
+
+    if (s.result === 'missed') {
+      if (s.missResult) {
+        missResultsSet.add(s.missResult);
+        missResultCounts[s.missResult] = (missResultCounts[s.missResult] || 0) + 1;
+      }
+      if (s.missReason) {
+        missReasonsSet.add(s.missReason);
+        missReasonCounts[s.missReason] = (missReasonCounts[s.missReason] || 0) + 1;
+      }
+    }
+    if (s.comment) comments.push(s.comment);
+  });
+
+  return {
+    scored,
+    total,
+    inPlayScored: inPlay.filter((s) => s.result === 'scored').length,
+    inPlayTotal: inPlay.length,
+    deadBallScored: deadBall.filter((s) => s.result === 'scored').length,
+    deadBallTotal: deadBall.length,
+    onePtScored: onePt.filter((s) => s.result === 'scored').length,
+    onePtTotal: onePt.length,
+    twoPtScored: twoPt.filter((s) => s.result === 'scored').length,
+    twoPtTotal: twoPt.length,
+    goalsScored: goals.filter((s) => s.result === 'scored').length,
+    goalsTotal: goals.length,
+    shotTypeCounts,
+    missResultCounts,
+    missReasonCounts,
+    comments,
+  };
 }
 
 export default function StatsTable({ sessions, analyticsType }: StatsTableProps) {
@@ -150,7 +215,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
     [multiSelectValues, isMatch, customDrills]
   );
 
-  // Build row data
+  // Build row data — one row per drill for multi-drill sessions
   const { sessionRows, allShotTypes, allMissResults, allMissReasons } = useMemo(() => {
     const rows: SessionRowData[] = [];
     const shotTypes = new Set<string>();
@@ -158,74 +223,67 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
     const missReasons = new Set<string>();
 
     sessions.forEach((session) => {
-      const shots = filterSessionShots(session);
-      if (shots.length === 0) return;
+      const allSessionShots = filterSessionShots(session);
+      if (allSessionShots.length === 0) return;
 
-      const scored = shots.filter((s) => s.result === 'scored').length;
-      const total = shots.length;
-      const inPlay = shots.filter((s) => s.shotCategory === 'in-play');
-      const deadBall = shots.filter((s) => s.shotCategory === 'free-kick' || s.shotCategory === '45');
-      const onePt = shots.filter((s) => (s.pointValue === 1 || !s.pointValue) && s.shotFor !== 'goal');
-      const twoPt = shots.filter((s) => s.pointValue === 2 && s.shotFor !== 'goal');
-      const goals = shots.filter((s) => s.shotFor === 'goal');
+      const drills = session.drills ?? [];
+      const sid = String(session.id);
 
-      const shotTypeCounts: Record<string, { scored: number; total: number }> = {};
-      const missResultCounts: Record<string, number> = {};
-      const missReasonCounts: Record<string, number> = {};
-      const comments: string[] = [];
+      if (!isMatch && drills.length > 0) {
+        // Multi-drill session: one row per drill
+        for (const drill of drills) {
+          const drillShots = allSessionShots.filter((s) => s.drillId === drill.id);
+          if (drillShots.length === 0) continue;
 
-      shots.forEach((s) => {
-        const st = s.shotType || 'not-defined';
-        shotTypes.add(st);
-        if (!shotTypeCounts[st]) shotTypeCounts[st] = { scored: 0, total: 0 };
-        shotTypeCounts[st].total++;
-        if (s.result === 'scored') shotTypeCounts[st].scored++;
+          const typeLabel = drill.drillType === 'scoring-arc'
+            ? `Scoring Arc${drill.distance ? ` - ${drill.distance}m` : ''}`
+            : 'Free-Form';
 
-        if (s.result === 'missed') {
-          if (s.missResult) {
-            missResults.add(s.missResult);
-            missResultCounts[s.missResult] = (missResultCounts[s.missResult] || 0) + 1;
-          }
-          if (s.missReason) {
-            missReasons.add(s.missReason);
-            missReasonCounts[s.missReason] = (missReasonCounts[s.missReason] || 0) + 1;
+          const stats = buildRowStats(drillShots, shotTypes, missResults, missReasons);
+          rows.push({
+            rowKey: `${sid}-drill-${drill.id}`,
+            session,
+            shots: drillShots,
+            drillType: typeLabel,
+            ...stats,
+          });
+        }
+
+        // Edge case: shots without a drillId in a multi-drill session
+        const unassigned = allSessionShots.filter((s) => s.drillId == null);
+        if (unassigned.length > 0) {
+          const stats = buildRowStats(unassigned, shotTypes, missResults, missReasons);
+          rows.push({
+            rowKey: `${sid}-unassigned`,
+            session,
+            shots: unassigned,
+            drillType: 'Free-Form',
+            ...stats,
+          });
+        }
+      } else {
+        // Single session row (matches, or practice without multi-drill)
+        const stats = buildRowStats(allSessionShots, shotTypes, missResults, missReasons);
+
+        let drillType = 'Free-Form';
+        if (!isMatch) {
+          const drillShots = allSessionShots.filter((s) => s.drillKey);
+          if (drillShots.length > 0) {
+            const key = drillShots[0].drillKey!;
+            if (key.startsWith('scoring-zones')) drillType = 'Scoring Arc';
+            else if (key.startsWith('custom-')) drillType = 'Custom Drill';
+            else drillType = key;
           }
         }
-        if (s.comment) comments.push(s.comment);
-      });
 
-      let drillType = 'Free Practice';
-      if (!isMatch) {
-        const drillShots = shots.filter((s) => s.drillKey);
-        if (drillShots.length > 0) {
-          const key = drillShots[0].drillKey!;
-          if (key.startsWith('scoring-zones')) drillType = 'Scoring Arc';
-          else if (key.startsWith('custom-')) drillType = 'Custom Drill';
-          else drillType = key;
-        }
+        rows.push({
+          rowKey: sid,
+          session,
+          shots: allSessionShots,
+          drillType,
+          ...stats,
+        });
       }
-
-      rows.push({
-        session,
-        shots,
-        scored,
-        total,
-        inPlayScored: inPlay.filter((s) => s.result === 'scored').length,
-        inPlayTotal: inPlay.length,
-        deadBallScored: deadBall.filter((s) => s.result === 'scored').length,
-        deadBallTotal: deadBall.length,
-        onePtScored: onePt.filter((s) => s.result === 'scored').length,
-        onePtTotal: onePt.length,
-        twoPtScored: twoPt.filter((s) => s.result === 'scored').length,
-        twoPtTotal: twoPt.length,
-        goalsScored: goals.filter((s) => s.result === 'scored').length,
-        goalsTotal: goals.length,
-        shotTypeCounts,
-        missResultCounts,
-        missReasonCounts,
-        comments,
-        drillType,
-      });
     });
 
     return {
@@ -244,9 +302,15 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
   const showGoals = sessionRows.some((r) => r.goalsTotal > 0);
   const showComments = sessionRows.some((r) => r.comments.length > 0);
 
-  // Checked rows for summary
+  // Checked rows for summary (checkbox is per-session)
   const checkedRows = sessionRows.filter(
     (r) => !uncheckedSessionIds.has(String(r.session.id))
+  );
+
+  // Unique session IDs across all rows for select-all logic
+  const uniqueSessionIds = useMemo(
+    () => [...new Set(sessionRows.map((r) => String(r.session.id)))],
+    [sessionRows],
   );
 
   // Select-all state
@@ -258,10 +322,10 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
       if (checked) {
         clearUncheckedSessions();
       } else {
-        setAllSessionsUnchecked(sessionRows.map((r) => String(r.session.id)));
+        setAllSessionsUnchecked(uniqueSessionIds);
       }
     },
-    [clearUncheckedSessions, setAllSessionsUnchecked, sessionRows]
+    [clearUncheckedSessions, setAllSessionsUnchecked, uniqueSessionIds]
   );
 
   if (sessionRows.length === 0) {
@@ -305,7 +369,10 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                   <Th>Opponent</Th>
                 </>
               ) : (
-                <Th>Drill Type</Th>
+                <>
+                  <Th>Session</Th>
+                  <Th>Drill Type</Th>
+                </>
               )}
               <Th>Conv.</Th>
               <Th title="Points Per Shot: (1xPts + 2x2Pts + 3xGoals) / Total Shots">Pts/Shot</Th>
@@ -332,7 +399,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
               const checked = !uncheckedSessionIds.has(sid);
               return (
                 <tr
-                  key={sid}
+                  key={row.rowKey}
                   className={`border-b border-grey-light ${
                     !checked ? 'opacity-40' : ''
                   }`}
@@ -356,7 +423,10 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                       <Td>{row.session.name || '\u2014'}</Td>
                     </>
                   ) : (
-                    <Td>{row.drillType}</Td>
+                    <>
+                      <Td>{row.session.name || '\u2014'}</Td>
+                      <Td>{row.drillType}</Td>
+                    </>
                   )}
                   <Td>{convCell(row.scored, row.total)}</Td>
                   <Td>{ptsPerShot(row.onePtScored, row.twoPtScored, row.goalsScored, row.total)}</Td>
@@ -384,7 +454,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
               );
             })}
 
-            {/* Summary row (only if 2+ checked sessions) */}
+            {/* Summary row (only if 2+ checked rows) */}
             {checkedRows.length >= 2 && (
               <tr className="border-t-2 border-primary font-semibold bg-grey-light">
                 <Td />
@@ -395,7 +465,10 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                     <Td />
                   </>
                 ) : (
-                  <Td />
+                  <>
+                    <Td />
+                    <Td />
+                  </>
                 )}
                 <Td>{convCell(sum(checkedRows, 'scored'), sum(checkedRows, 'total'))}</Td>
                 <Td>
