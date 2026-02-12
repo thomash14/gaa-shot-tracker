@@ -163,10 +163,11 @@ export default function SessionCarousel({ sessions }: SessionCarouselProps) {
   const [dashboardType, setDashboardType] = useState<DashboardType>('match');
   const [index, setIndex] = useState(0);
 
-  // Filter sessions: must have shots, match current type, newest first
+  // Filter sessions: must have shots, match current type, sort newest first
   const filtered = useMemo(() => {
     const withShots = sessions
       .filter((s) => s.type === dashboardType && s.shots && s.shots.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, MAX_CAROUSEL);
     return withShots;
   }, [sessions, dashboardType]);
