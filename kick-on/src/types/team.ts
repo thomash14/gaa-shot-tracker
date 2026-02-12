@@ -1,4 +1,5 @@
 export type TeamRole = 'coach' | 'player';
+export type TeamEventType = 'training' | 'match' | 'other';
 
 export interface Club {
   id: string;
@@ -35,4 +36,19 @@ export interface TeamMember {
   email?: string;
   share_with_coach: boolean;
   share_match_data: boolean;
+}
+
+export interface TeamEvent {
+  id: string;
+  team_id: string;
+  created_by: string;
+  title: string;
+  event_type: TeamEventType;
+  event_date: string;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  opponent: string | null;
+  notes: string | null;
+  created_at: string;
 }

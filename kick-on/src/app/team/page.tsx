@@ -12,8 +12,11 @@ import {
   PlayerDataModal,
   CoachDrills,
   PlayerDrills,
+  CoachEvents,
+  PlayerEvents,
+  AddEventModal,
 } from '@/components/team';
-import type { TeamMember, TeamDrill, DrillCompletion } from '@/types';
+import type { TeamMember, TeamDrill, DrillCompletion, TeamEvent } from '@/types';
 
 export default function TeamPage() {
   const team = useTeam();
@@ -23,6 +26,8 @@ export default function TeamPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<TeamEvent | undefined>(undefined);
   const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string; sharePractice: boolean; shareMatch: boolean } | null>(null);
 
   // Load team data on mount
@@ -31,11 +36,12 @@ export default function TeamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load members and drills when team is available
+  // Load members, drills and events when team is available
   useEffect(() => {
     if (team.currentTeam) {
       team.loadTeamMembers();
       team.loadTeamDrills();
+      team.loadTeamEvents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team.currentTeam?.id]);
@@ -63,6 +69,9 @@ export default function TeamPage() {
   );
 
   const playerCount = team.teamMembers.filter((m) => m.role === 'player').length;
+  const teamDisplayName = team.currentTeam
+    ? (team.currentTeam.team_name || `${team.currentTeam.clubs?.name || ''} ${team.currentTeam.age_group}`.trim())
+    : '';
 
   // -------------------------------------------------------------------------
   // No team state
@@ -130,23 +139,39 @@ export default function TeamPage() {
           onEditTeam={() => setEditModalOpen(true)}
         />
 
-        {/* Right: Drills */}
-        <div className="bg-surface rounded-2xl p-4 shadow-sm">
-          {team.isCoach ? (
-            <CoachDrills
-              drills={team.teamDrills}
-              completions={team.drillCompletions}
-              playerCount={playerCount}
-              onDelete={async (id) => { await team.deleteDrill(id); }}
-              onAssign={() => setAssignModalOpen(true)}
-            />
-          ) : (
-            <PlayerDrills
-              drills={team.teamDrills}
-              myCompletions={myCompletions}
-              onStartDrill={handleStartDrill}
-            />
-          )}
+        {/* Right: Drills + Events */}
+        <div className="space-y-4">
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
+            {team.isCoach ? (
+              <CoachDrills
+                drills={team.teamDrills}
+                completions={team.drillCompletions}
+                playerCount={playerCount}
+                onDelete={async (id) => { await team.deleteDrill(id); }}
+                onAssign={() => setAssignModalOpen(true)}
+              />
+            ) : (
+              <PlayerDrills
+                drills={team.teamDrills}
+                myCompletions={myCompletions}
+                onStartDrill={handleStartDrill}
+              />
+            )}
+          </div>
+
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
+            {team.isCoach ? (
+              <CoachEvents
+                events={team.teamEvents}
+                teamName={teamDisplayName}
+                onAdd={() => { setEditingEvent(undefined); setEventModalOpen(true); }}
+                onEdit={(event) => { setEditingEvent(event); setEventModalOpen(true); }}
+                onDelete={async (id) => { await team.deleteEvent(id); }}
+              />
+            ) : (
+              <PlayerEvents events={team.teamEvents} />
+            )}
+          </div>
         </div>
       </div>
 
@@ -162,6 +187,20 @@ export default function TeamPage() {
         open={assignModalOpen}
         onAssign={team.assignDrill}
         onClose={() => setAssignModalOpen(false)}
+      />
+
+      <AddEventModal
+        open={eventModalOpen}
+        teamName={teamDisplayName}
+        editingEvent={editingEvent}
+        onSave={async (data) => {
+          if (editingEvent) {
+            await team.updateEvent(editingEvent.id, data);
+          } else {
+            await team.createEvent(data);
+          }
+        }}
+        onClose={() => { setEventModalOpen(false); setEditingEvent(undefined); }}
       />
 
       {selectedPlayer && (

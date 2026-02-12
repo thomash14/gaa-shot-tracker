@@ -6,7 +6,7 @@ import { useSessionStore } from '@/store/sessionStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useTeam } from '@/hooks/useTeam';
-import { SessionCarousel, AssignedDrills, QuickActions } from '@/components/dashboard';
+import { SessionCarousel, AssignedDrills, QuickActions, UpcomingEvents } from '@/components/dashboard';
 
 export default function HomePage() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -17,6 +17,7 @@ export default function HomePage() {
   const hasPlayerMembership = useTeamStore((s) => s.hasPlayerMembership);
   const teamDataLoaded = useTeamStore((s) => s.teamDataLoaded);
   const teamMembers = useTeamStore((s) => s.teamMembers);
+  const teamEvents = useTeamStore((s) => s.teamEvents);
   const { user } = useAuth();
   const team = useTeam();
 
@@ -29,10 +30,11 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load drills (and members for coaches) once team data is available
+  // Load drills, events (and members for coaches) once team data is available
   useEffect(() => {
     if (currentTeam) {
       team.loadTeamDrills();
+      team.loadTeamEvents();
       if (isCoachOnly) {
         team.loadTeamMembers();
       }
@@ -75,6 +77,8 @@ export default function HomePage() {
             <p className="text-sm text-text-muted">No team set up yet. Head to the Team page to create or join one.</p>
           )}
         </div>
+
+        <UpcomingEvents events={teamEvents} />
       </div>
     );
   }
@@ -91,6 +95,9 @@ export default function HomePage() {
         currentTeam={currentTeam}
         currentUserId={user?.id}
       />
+
+      {/* Upcoming team events */}
+      <UpcomingEvents events={teamEvents} />
 
       {/* Recent sessions carousel with pitch */}
       <SessionCarousel sessions={sessions} />

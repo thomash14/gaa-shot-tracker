@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { useTeamStore } from '@/store/teamStore';
 import { createClient } from '@/lib/supabase/client';
-import type { Team, TeamMembership, TeamMember, TeamDrill, DrillCompletion } from '@/types';
+import type { Team, TeamMembership, TeamMember, TeamDrill, DrillCompletion, TeamEvent } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -22,6 +22,11 @@ export function useTeam() {
   const addTeamDrill = useTeamStore((s) => s.addTeamDrill);
   const removeTeamDrill = useTeamStore((s) => s.removeTeamDrill);
   const setDrillCompletions = useTeamStore((s) => s.setDrillCompletions);
+  const teamEvents = useTeamStore((s) => s.teamEvents);
+  const setTeamEvents = useTeamStore((s) => s.setTeamEvents);
+  const addTeamEvent = useTeamStore((s) => s.addTeamEvent);
+  const updateTeamEventStore = useTeamStore((s) => s.updateTeamEvent);
+  const removeTeamEvent = useTeamStore((s) => s.removeTeamEvent);
   const updateMembershipStore = useTeamStore((s) => s.updateMembership);
   const setHasPlayerMembership = useTeamStore((s) => s.setHasPlayerMembership);
   const setTeamDataLoaded = useTeamStore((s) => s.setTeamDataLoaded);
@@ -362,6 +367,62 @@ export function useTeam() {
   }, [removeTeamDrill]);
 
   // -------------------------------------------------------------------------
+  // Team events
+  // -------------------------------------------------------------------------
+  const loadTeamEvents = useCallback(async () => {
+    if (!currentTeam) return;
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase
+        .from('team_events')
+        .select('*')
+        .eq('team_id', currentTeam.id)
+        .order('event_date', { ascending: true })
+        .order('start_time', { ascending: true });
+      if (error) throw error;
+      setTeamEvents((data ?? []) as unknown as TeamEvent[]);
+    } catch (err) {
+      console.error('Error loading team events:', err);
+      setTeamEvents([]);
+    }
+  }, [currentTeam, setTeamEvents]);
+
+  const createEvent = useCallback(async (data: Omit<TeamEvent, 'id' | 'team_id' | 'created_by' | 'created_at'>) => {
+    if (!currentTeam) return;
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not logged in');
+
+    const { data: event, error } = await supabase
+      .from('team_events')
+      .insert({ ...data, team_id: currentTeam.id, created_by: user.id })
+      .select()
+      .single();
+    if (error) throw error;
+    addTeamEvent(event as unknown as TeamEvent);
+  }, [currentTeam, addTeamEvent]);
+
+  const updateEvent = useCallback(async (eventId: string, updates: Partial<TeamEvent>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('team_events')
+      .update(updates)
+      .eq('id', eventId);
+    if (error) throw error;
+    updateTeamEventStore(eventId, updates);
+  }, [updateTeamEventStore]);
+
+  const deleteEvent = useCallback(async (eventId: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('team_events')
+      .delete()
+      .eq('id', eventId);
+    if (error) throw error;
+    removeTeamEvent(eventId);
+  }, [removeTeamEvent]);
+
+  // -------------------------------------------------------------------------
   // Player data (for coach view)
   // -------------------------------------------------------------------------
   const loadPlayerData = useCallback(async (playerUserId: string) => {
@@ -394,6 +455,7 @@ export function useTeam() {
     teamMembers,
     teamDrills,
     drillCompletions,
+    teamEvents,
     isCoach,
     isPlayer,
 
@@ -401,6 +463,7 @@ export function useTeam() {
     loadTeamData,
     loadTeamMembers,
     loadTeamDrills,
+    loadTeamEvents,
     toggleSharePractice,
     toggleShareMatch,
     lookupInviteCode,
@@ -410,6 +473,9 @@ export function useTeam() {
     leaveTeam,
     assignDrill,
     deleteDrill,
+    createEvent,
+    updateEvent,
+    deleteEvent,
     loadPlayerData,
     copyInviteCode,
     clearTeam,
