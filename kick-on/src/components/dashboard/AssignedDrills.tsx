@@ -102,7 +102,8 @@ interface DrillCardProps {
 }
 
 function DrillCard({ drill, completion, teamName }: DrillCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const router = useRouter();
 
   const template = getDrillTemplate(drill.drill_type);
@@ -120,7 +121,7 @@ function DrillCard({ drill, completion, teamName }: DrillCardProps) {
   // Target + deadline line
   const targetParts: string[] = [];
   if (drill.target_percentage != null) targetParts.push(`Target: ${drill.target_percentage}%`);
-  if (expiry.label) targetParts.push(expiry.label);
+  if (expiry.label && expiry.label !== 'Expired') targetParts.push(expiry.label);
   const targetLine = targetParts.join(' \u00B7 ');
 
   // Border colour
@@ -151,14 +152,41 @@ function DrillCard({ drill, completion, teamName }: DrillCardProps) {
   const instructions = template?.detailedInstructions ? stripHtml(template.detailedInstructions) : '';
   const spotCount = template?.isDynamic ? 5 : (template?.spots?.length ?? 0);
 
+  // Whether we have metadata to show in info panel
+  const hasInfo = settingsLine || targetLine || drill.notes;
+
   return (
     <div className={`bg-surface rounded-xl border-l-4 ${borderClass} shadow-sm overflow-hidden`}>
-      <div className="p-4">
-        {/* Row 1: Name + completion/start */}
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="text-sm font-semibold text-text truncate">{drillName}</h4>
+      <div className="px-3 py-2.5">
+        {/* Single compact row: Name + expiry badge + info button + start/completed */}
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-text truncate flex-1 min-w-0">{drillName}</h4>
+
+          {/* Expiry badge */}
+          {expiry.label && (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${
+              expiry.isExpired ? 'bg-red-500/15 text-red-500' : expiry.isExpiringSoon ? 'bg-[#f59e0b]/15 text-[#f59e0b]' : 'bg-grey text-text-muted'
+            }`}>
+              {expiry.label}
+            </span>
+          )}
+
+          {/* Info button */}
+          {hasInfo && (
+            <button
+              onClick={() => setInfoOpen(!infoOpen)}
+              className="w-6 h-6 flex items-center justify-center rounded-full text-text-muted hover:text-primary hover:bg-grey-light transition-colors cursor-pointer shrink-0"
+              aria-label="Drill info"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+
+          {/* Completed badge or Start button */}
           {isCompleted ? (
-            <span className="flex items-center gap-1 text-xs font-semibold text-success whitespace-nowrap">
+            <span className="flex items-center gap-1 text-xs font-semibold text-success whitespace-nowrap shrink-0">
               <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
@@ -167,59 +195,54 @@ function DrillCard({ drill, completion, teamName }: DrillCardProps) {
           ) : (
             <button
               onClick={handleStart}
-              className="text-xs font-semibold text-white bg-primary px-3 py-1 rounded-full hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="text-xs font-semibold text-white bg-primary px-3 py-1 rounded-full hover:opacity-90 transition-opacity whitespace-nowrap shrink-0"
             >
               Start
             </button>
           )}
         </div>
+      </div>
 
-        {/* Row 2: Settings */}
-        {settingsLine && (
-          <p className="text-xs text-text-muted mt-1">{settingsLine}</p>
-        )}
+      {/* Collapsible info panel (settings, target, team, notes) */}
+      {infoOpen && hasInfo && (
+        <div className="px-3 pb-2.5 pt-0">
+          <div className="bg-grey-light rounded-lg p-2.5 text-xs text-text-muted space-y-1">
+            {settingsLine && <p>{settingsLine}</p>}
+            {targetLine && (
+              <p className={expiry.isExpiringSoon ? 'text-[#f59e0b] font-medium' : ''}>
+                {targetLine}
+              </p>
+            )}
+            <p>Assigned by: {teamName}</p>
+            {drill.notes && <p className="italic">{drill.notes}</p>}
+          </div>
+        </div>
+      )}
 
-        {/* Row 3: Target + deadline */}
-        {targetLine && (
-          <p className={`text-xs mt-0.5 ${expiry.isExpired ? 'text-red-500 font-medium' : expiry.isExpiringSoon ? 'text-[#f59e0b] font-medium' : 'text-text-muted'}`}>
-            {targetLine}
-          </p>
-        )}
-
-        {/* Row 4: Coach */}
-        <p className="text-xs text-text-muted mt-0.5">Assigned by: {teamName}</p>
-
-        {/* Notes */}
-        {drill.notes && (
-          <p className="text-xs text-text-muted mt-1 italic">{drill.notes}</p>
-        )}
-
-        {/* Info toggle */}
-        {(description || instructions) && (
+      {/* Details toggle (description/instructions) */}
+      {(description || instructions) && (
+        <div className={`px-3 ${infoOpen ? 'pb-2.5' : 'pb-2.5'}`}>
           <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-xs text-primary mt-2 hover:underline"
+            onClick={() => setDetailsOpen(!detailsOpen)}
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+            <svg className={`w-3.5 h-3.5 transition-transform ${detailsOpen ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
             Details
           </button>
-        )}
-      </div>
 
-      {/* Expandable details */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-0">
-          <div className="bg-grey-light rounded-lg p-3 text-xs text-text-muted space-y-1">
-            {description && <p>{description}</p>}
-            {instructions && <p>{instructions}</p>}
-            {spotCount > 0 && (
-              <p className="font-medium text-text">
-                {spotCount} spots &middot; {drill.settings?.totalShots ?? 20} total shots
-              </p>
-            )}
-          </div>
+          {detailsOpen && (
+            <div className="mt-1.5 bg-grey-light rounded-lg p-2.5 text-xs text-text-muted space-y-1">
+              {description && <p>{description}</p>}
+              {instructions && <p>{instructions}</p>}
+              {spotCount > 0 && (
+                <p className="font-medium text-text">
+                  {spotCount} spots &middot; {drill.settings?.totalShots ?? 20} total shots
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

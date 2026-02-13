@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAnalyticsStore } from '@/store/analyticsStore';
-import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend, TooltipConnector } from '@/components/pitch';
 import { groupShotsByPosition } from '@/lib/shotMap';
 import type { Shot, ShotWithContext } from '@/types';
 
@@ -189,12 +189,22 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           ))}
         </SvgPitch>
 
+        {/* Tooltip connector line */}
+        {tooltip && tooltipStyle && (
+          <TooltipConnector
+            shotX={tooltip.x}
+            shotY={tooltip.y}
+            tooltipLeft={tooltipStyle.left}
+            tooltipTop={tooltipStyle.top}
+          />
+        )}
+
         {/* Single shot tooltip */}
         {tooltip && tooltip.kind === 'single' && tooltipStyle && (() => {
           const s = tooltip.shot;
           return (
             <div
-              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
               style={tooltipStyle}
             >
               <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
@@ -243,7 +253,7 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           }
           return (
             <div
-              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
               style={tooltipStyle}
             >
               <p className="font-semibold mb-1.5 text-text">

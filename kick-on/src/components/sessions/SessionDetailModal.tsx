@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import type { Session, Shot, PracticeDrill } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector } from '@/components/pitch';
 import { groupShotsByPosition } from '@/lib/shotMap';
 
 // ---------------------------------------------------------------------------
@@ -440,13 +440,23 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   ))}
                 </SvgPitch>
 
+                {/* Tooltip connector line */}
+                {tooltip && tooltipStyle && (
+                  <TooltipConnector
+                    shotX={tooltip.x}
+                    shotY={tooltip.y}
+                    tooltipLeft={tooltipStyle.left}
+                    tooltipTop={tooltipStyle.top}
+                  />
+                )}
+
                 {/* Single shot tooltip */}
                 {tooltip && tooltip.kind === 'single' && tooltipStyle && (() => {
                   const s = tooltip.shot;
                   const dl = drillLabel(s.drillId);
                   return (
                     <div
-                      className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+                      className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
                       style={tooltipStyle}
                     >
                       <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
@@ -499,7 +509,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   }
                   return (
                     <div
-                      className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+                      className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
                       style={tooltipStyle}
                     >
                       <p className="font-semibold mb-1.5 text-text">

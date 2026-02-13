@@ -199,6 +199,17 @@ function TrackPageContent() {
   }, [practiceFlow, handleSaveDrill, drills]);
 
   // -------------------------------------------------------------------------
+  // Filter shots to current drill in practice mode (avoid carry-over)
+  // -------------------------------------------------------------------------
+  const practiceFilteredShots = useMemo(() => {
+    const allShots = currentSession?.shots ?? [];
+    if (practiceFlow.currentDrill?.id) {
+      return allShots.filter((s) => s.drillId === practiceFlow.currentDrill!.id);
+    }
+    return allShots;
+  }, [currentSession?.shots, practiceFlow.currentDrill]);
+
+  // -------------------------------------------------------------------------
   // Preview spots
   // -------------------------------------------------------------------------
   const previewSpots = useMemo(() => {
@@ -323,7 +334,7 @@ function TrackPageContent() {
         {flowState === 'tracking' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
             {/* Left column: Pitch */}
-            <div className="space-y-3">
+            <div className="space-y-3 order-2 lg:order-1">
               {/* Drill banner for scoring-arc drills */}
               {drills.activeTemplate && (
                 <DrillBanner
@@ -357,7 +368,7 @@ function TrackPageContent() {
                 </div>
               ) : (
                 <PitchInteraction
-                  shots={currentSession!.shots ?? []}
+                  shots={practiceFilteredShots}
                   pendingShot={shots.pendingShot}
                   batchPending={shots.batchPending}
                   isMatch={false}
@@ -372,7 +383,7 @@ function TrackPageContent() {
             </div>
 
             {/* Right column: Shot controls */}
-            <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-140px)]">
+            <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-140px)] order-1 lg:order-2">
               {!drills.activeTemplate && (
                 <div className="bg-surface rounded-2xl p-3 shadow-sm space-y-3 shrink-0">
                   <ShotControls
@@ -496,7 +507,7 @@ function TrackPageContent() {
       {sessionActive && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
           {/* Left column: Pitch */}
-          <div className="space-y-3">
+          <div className="space-y-3 order-2 lg:order-1">
             {/* Active drill banner */}
             {drills.activeTemplate && (
               <DrillBanner
@@ -556,7 +567,7 @@ function TrackPageContent() {
           </div>
 
           {/* Right column: Shot controls + Drills */}
-          <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-140px)]">
+          <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-140px)] order-1 lg:order-2">
             {!drills.activeTemplate && (
               <div className="bg-surface rounded-2xl p-3 shadow-sm space-y-3 shrink-0">
                 <ShotControls

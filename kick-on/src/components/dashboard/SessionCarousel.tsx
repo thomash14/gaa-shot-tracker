@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Session, Shot } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector } from '@/components/pitch';
 
 // ---------------------------------------------------------------------------
 // Tooltip helpers
@@ -395,7 +395,7 @@ function CarouselContent({ session }: { session: Session }) {
           <p className="text-xs text-text-muted mt-0.5">{dateStr}</p>
         </div>
         {/* Score card */}
-        <div className="flex-1 bg-grey-light rounded-lg p-3">
+        <div className="flex-[2] bg-grey-light rounded-lg p-3">
           <div className="text-xl font-bold text-primary dark:text-text leading-tight">
             {stats.sessionType === 'practice'
               ? `${stats.totalScored}/${stats.totalShots} (${stats.conversionRate}%)`
@@ -467,12 +467,22 @@ function CarouselContent({ session }: { session: Session }) {
           })}
         </SvgPitch>
 
+        {/* Tooltip connector line */}
+        {tooltip && tooltipStyle && (
+          <TooltipConnector
+            shotX={tooltip.x}
+            shotY={tooltip.y}
+            tooltipLeft={tooltipStyle.left}
+            tooltipTop={tooltipStyle.top}
+          />
+        )}
+
         {/* Tooltip */}
         {tooltip && tooltipStyle && tooltip.kind === 'single' && (() => {
           const s = tooltip.shot;
           return (
             <div
-              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
               style={tooltipStyle}
             >
               <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
@@ -519,7 +529,7 @@ function CarouselContent({ session }: { session: Session }) {
 
           return (
             <div
-              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[180px]"
+              className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
               style={tooltipStyle}
             >
               <p className="font-semibold mb-1.5 text-text">
