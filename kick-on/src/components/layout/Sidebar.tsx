@@ -59,8 +59,10 @@ export default function Sidebar() {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-surface/95 backdrop-blur-sm border-r border-border sticky top-0 h-dvh shrink-0 z-20">
         <div className="px-4 py-5 border-b border-border">
-          <h1 className="text-xl font-bold text-primary dark:text-text">KICK ON</h1>
-          <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
+          <Link href="/" className="block">
+            <h1 className="text-xl font-bold text-primary dark:text-text">KICK ON</h1>
+            <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
+          </Link>
         </div>
         {offlineMode && (
           <div className="mx-2 mt-2 px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium flex items-center gap-2">

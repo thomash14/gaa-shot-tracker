@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUiStore } from '@/store/uiStore';
 import ProfileMenu from './ProfileMenu';
@@ -16,7 +17,7 @@ export default function Header() {
     <header className="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm border-b border-border md:hidden">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-primary dark:text-text">KICK ON</h1>
+          <Link href="/"><h1 className="text-lg font-bold text-primary dark:text-text">KICK ON</h1></Link>
           {offlineMode && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
