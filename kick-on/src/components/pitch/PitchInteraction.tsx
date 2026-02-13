@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { SvgPitch, ShotMarker, BatchShotMarker, HalfSelector, ShotMapLegend } from '@/components/pitch';
 import type { Shot } from '@/types';
 import type { PendingShot, HalfType } from '@/hooks/useShots';
@@ -37,6 +37,7 @@ export default function PitchInteraction({
 }: PitchInteractionProps) {
   const svgWrapperRef = useRef<HTMLDivElement>(null);
   const dragActiveRef = useRef(false);
+  const [draggingMarker, setDraggingMarker] = useState(false);
 
   // The active pending (either single or batch)
   const activePending = pendingShot || batchPending;
@@ -89,14 +90,7 @@ export default function PitchInteraction({
       dragActiveRef.current = false;
       isDraggingRef.current = false;
       clearTimeout(longPressTimerRef.current);
-
-      // Reset visual drag feedback
-      if (markerElRef.current) {
-        markerElRef.current.setAttribute('r', '8');
-        markerElRef.current.setAttribute('stroke', '#333');
-        markerElRef.current.setAttribute('stroke-width', '2');
-        markerElRef.current = null;
-      }
+      setDraggingMarker(false);
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -129,22 +123,13 @@ export default function PitchInteraction({
   }, []);
 
   // Start dragging on pending marker mousedown/touchstart
-  const markerElRef = useRef<Element | null>(null);
   const startDrag = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
       if ('touches' in e) e.preventDefault();
       dragActiveRef.current = true;
       isDraggingRef.current = true;
-
-      // Visual drag feedback
-      const target = (e.target as Element).closest?.('[data-pending-marker]');
-      if (target) {
-        markerElRef.current = target;
-        target.setAttribute('r', '11');
-        target.setAttribute('stroke', '#FFD700');
-        target.setAttribute('stroke-width', '3');
-      }
+      setDraggingMarker(true);
     },
     [isDraggingRef],
   );
@@ -266,41 +251,62 @@ export default function PitchInteraction({
 
         {/* Pending marker (single) */}
         {pendingShot && (
-          <circle
-            cx={(pendingShot.x / 100) * 500}
-            cy={(pendingShot.y / 100) * 725}
-            r={8}
-            fill="#000000"
-            stroke="#333"
-            strokeWidth={2}
-            style={{ cursor: 'move', touchAction: 'none' }}
-            data-pending-marker="true"
-            onMouseDown={startDrag}
-            onTouchStart={startDrag}
-          />
+          <g data-pending-marker="true">
+            {/* Invisible hit area — r=30 ≈ 22px on mobile for reliable touch */}
+            <circle
+              cx={(pendingShot.x / 100) * 500}
+              cy={(pendingShot.y / 100) * 725}
+              r={30}
+              fill="none"
+              pointerEvents="all"
+              style={{ cursor: 'move', touchAction: 'none' }}
+              onMouseDown={startDrag}
+              onTouchStart={startDrag}
+            />
+            {/* Visible marker */}
+            <circle
+              cx={(pendingShot.x / 100) * 500}
+              cy={(pendingShot.y / 100) * 725}
+              r={draggingMarker ? 11 : 8}
+              fill="#000000"
+              stroke={draggingMarker ? '#FFD700' : '#333'}
+              strokeWidth={draggingMarker ? 3 : 2}
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
         )}
 
         {/* Pending marker (batch) */}
         {batchPending && (
-          <circle
-            cx={(batchPending.x / 100) * 500}
-            cy={(batchPending.y / 100) * 725}
-            r={8}
-            fill="#000000"
-            stroke="#333"
-            strokeWidth={2}
-            style={{ cursor: 'move', touchAction: 'none' }}
-            data-pending-marker="true"
-            onMouseDown={startDrag}
-            onTouchStart={(e) => {
-              startDrag(e);
-              handleBatchTouchStart(e);
-            }}
-            onTouchEnd={handleBatchTouchEnd}
-            onDoubleClick={handleBatchDblClick}
-          >
+          <g data-pending-marker="true">
             <title>Double-click or long-press to enter batch shots</title>
-          </circle>
+            {/* Invisible hit area — r=30 ≈ 22px on mobile for reliable touch */}
+            <circle
+              cx={(batchPending.x / 100) * 500}
+              cy={(batchPending.y / 100) * 725}
+              r={30}
+              fill="none"
+              pointerEvents="all"
+              style={{ cursor: 'move', touchAction: 'none' }}
+              onMouseDown={startDrag}
+              onTouchStart={(e) => {
+                startDrag(e);
+                handleBatchTouchStart(e);
+              }}
+              onTouchEnd={handleBatchTouchEnd}
+              onDoubleClick={handleBatchDblClick}
+            />
+            {/* Visible marker */}
+            <circle
+              cx={(batchPending.x / 100) * 500}
+              cy={(batchPending.y / 100) * 725}
+              r={draggingMarker ? 11 : 8}
+              fill="#000000"
+              stroke={draggingMarker ? '#FFD700' : '#333'}
+              strokeWidth={draggingMarker ? 3 : 2}
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
         )}
       </SvgPitch>
 
