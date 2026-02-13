@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
 import { useAnalyticsStore } from '@/store/analyticsStore';
 import { useDrillStore } from '@/store/drillStore';
-import type { ShotWithContext } from '@/types';
+import type { Session, ShotWithContext } from '@/types';
 import {
   FILTER_IDS,
   type FilterOption,
@@ -142,8 +142,23 @@ const SKILLSET_VALUES = skillsetOptions().map((o) => o.value);
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useAnalytics() {
-  const sessions = useSessionStore((s) => s.sessions);
+// Stable empty array to avoid unnecessary re-renders when using overrideSessions
+const EMPTY_SESSIONS: Session[] = [];
+
+/**
+ * @param overrideSessions – When provided, uses these sessions instead of the
+ *   global session store. Used by the coach's PlayerDataModal to avoid
+ *   injecting player data into the shared store (which would trigger
+ *   auto-sync side-effects and interfere with checkbox state).
+ */
+export function useAnalytics(overrideSessions?: Session[]) {
+  // When overrideSessions is provided, return a stable empty array from the
+  // store selector so changes to the global session store don't cause
+  // unnecessary re-renders in the coach modal.
+  const storeSessions = useSessionStore(
+    overrideSessions ? () => EMPTY_SESSIONS : (s) => s.sessions,
+  );
+  const sessions = overrideSessions ?? storeSessions;
 
   const analyticsType = useAnalyticsStore((s) => s.analyticsType);
   const dateRangePreset = useAnalyticsStore((s) => s.dateRangePreset);
@@ -286,16 +301,41 @@ export function useAnalytics() {
     return shots;
   }, [filteredSessions, analyticsType, multiSelectValues, matchTypeOptions, drillOptions, customDrills]);
 
-  // 6. Apply session checkbox exclusion (for stats table checkboxes)
+  // 6. Apply row-level checkbox exclusion (for stats table checkboxes).
+  //    Row keys match StatsTable format: "sid-drill-N" for drill rows,
+  //    "sid-unassigned" for unassigned shots in multi-drill sessions,
+  //    "sid" for single-session rows (matches, non-drill practice).
+  const sessionsWithDrills = useMemo(() => {
+    if (analyticsType !== 'practice') return new Set<string>();
+    const set = new Set<string>();
+    for (const s of filteredSessions) {
+      if (s.drills && s.drills.length > 0) set.add(String(s.id));
+    }
+    return set;
+  }, [filteredSessions, analyticsType]);
+
   const checkedShots = useMemo(() => {
     if (uncheckedSessionIds.size === 0) return allShots;
-    return allShots.filter((s) => !uncheckedSessionIds.has(String(s.sessionId)));
-  }, [allShots, uncheckedSessionIds]);
+    return allShots.filter((s) => {
+      const sid = String(s.sessionId);
+      let rowKey: string;
+      if (sessionsWithDrills.has(sid) && s.drillId != null) {
+        rowKey = `${sid}-drill-${s.drillId}`;
+      } else if (sessionsWithDrills.has(sid)) {
+        rowKey = `${sid}-unassigned`;
+      } else {
+        rowKey = sid;
+      }
+      return !uncheckedSessionIds.has(rowKey);
+    });
+  }, [allShots, uncheckedSessionIds, sessionsWithDrills]);
 
   const checkedSessionCount = useMemo(() => {
     if (uncheckedSessionIds.size === 0) return filteredSessions.length;
-    return filteredSessions.filter((s) => !uncheckedSessionIds.has(String(s.id))).length;
-  }, [filteredSessions, uncheckedSessionIds]);
+    // A session counts if at least one of its shots is checked
+    const checkedSessionIdSet = new Set(checkedShots.map((s) => String(s.sessionId)));
+    return filteredSessions.filter((s) => checkedSessionIdSet.has(String(s.id))).length;
+  }, [filteredSessions, uncheckedSessionIds, checkedShots]);
 
   return {
     analyticsType,

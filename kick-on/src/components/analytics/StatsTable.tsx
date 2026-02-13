@@ -11,11 +11,11 @@ import { FILTER_IDS, SHOT_TYPE_LABELS, MISS_RESULT_LABELS, MISS_REASON_LABELS } 
  * Ported from renderStatsTable() + checkbox handlers in analytics.js.
  *
  * Key behaviour: each row has a checkbox. Unchecking a row removes that
- * session's shots from the stats/shot map/zones (via uncheckedSessionIds).
- * The summary row updates to reflect only checked rows.
+ * row's shots from the stats/shot map/zones (via uncheckedSessionIds keyed
+ * by rowKey). The summary row updates to reflect only checked rows.
  *
- * For multi-drill practice sessions each drill gets its own row.
- * The checkbox still toggles the entire session.
+ * For multi-drill practice sessions each drill gets its own row with an
+ * independent checkbox, allowing coaches to view a single drill's shots.
  */
 
 interface StatsTableProps {
@@ -302,14 +302,14 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
   const showGoals = sessionRows.some((r) => r.goalsTotal > 0);
   const showComments = sessionRows.some((r) => r.comments.length > 0);
 
-  // Checked rows for summary (checkbox is per-session)
+  // Checked rows for summary (checkbox is per-row via rowKey)
   const checkedRows = sessionRows.filter(
-    (r) => !uncheckedSessionIds.has(String(r.session.id))
+    (r) => !uncheckedSessionIds.has(r.rowKey)
   );
 
-  // Unique session IDs across all rows for select-all logic
-  const uniqueSessionIds = useMemo(
-    () => [...new Set(sessionRows.map((r) => String(r.session.id)))],
+  // Unique row keys across all rows for select-all logic
+  const uniqueRowKeys = useMemo(
+    () => sessionRows.map((r) => r.rowKey),
     [sessionRows],
   );
 
@@ -322,10 +322,10 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
       if (checked) {
         clearUncheckedSessions();
       } else {
-        setAllSessionsUnchecked(uniqueSessionIds);
+        setAllSessionsUnchecked(uniqueRowKeys);
       }
     },
-    [clearUncheckedSessions, setAllSessionsUnchecked, uniqueSessionIds]
+    [clearUncheckedSessions, setAllSessionsUnchecked, uniqueRowKeys]
   );
 
   if (sessionRows.length === 0) {
@@ -395,8 +395,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
           </thead>
           <tbody>
             {sessionRows.map((row) => {
-              const sid = String(row.session.id);
-              const checked = !uncheckedSessionIds.has(sid);
+              const checked = !uncheckedSessionIds.has(row.rowKey);
               return (
                 <tr
                   key={row.rowKey}
@@ -408,7 +407,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => toggleSessionChecked(sid)}
+                      onChange={() => toggleSessionChecked(row.rowKey)}
                       className="accent-primary"
                     />
                   </Td>

@@ -11,7 +11,6 @@ import {
   StatsTable,
   TrendsView,
 } from '@/components/analytics';
-import { useSessionStore } from '@/store/sessionStore';
 import { createClient } from '@/lib/supabase/client';
 import type { Session, Shot, PracticeDrill } from '@/types';
 
@@ -68,11 +67,12 @@ interface RawShot {
  *
  * Reuses the existing analytics components (FilterBar, ConversionStats,
  * StatsTable, AnalyticsShotMap, ZoneStats, TrendsView) via the useAnalytics
- * hook which reads from the session store.
+ * hook.
  *
- * Strategy: temporarily inject the player's sessions into the session store,
- * then render the analytics components which read from the same store/hook.
- * On close, restore the original sessions.
+ * Strategy: load the player's sessions into local state and pass them to
+ * useAnalytics via the overrideSessions parameter. This avoids injecting
+ * into the global session store (which would trigger auto-sync side-effects
+ * and interfere with checkbox state).
  */
 export default function PlayerDataModal({ open, playerName, playerUserId, sharePractice, shareMatch, onLoadData, onClose }: PlayerDataModalProps) {
   const [loading, setLoading] = useState(false);
@@ -80,21 +80,17 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
   const [hasPractice, setHasPractice] = useState(false);
   const [hasMatch, setHasMatch] = useState(false);
 
-  // Store references for injection
-  const setSessions = useSessionStore((s) => s.setSessions);
-  const originalSessions = useSessionStore((s) => s.sessions);
+  // Player sessions stored in local state — NOT injected into the global store
+  const [playerSessions, setPlayerSessions] = useState<Session[]>([]);
+
   const analyticsType = useAnalyticsStore((s) => s.analyticsType);
   const setAnalyticsType = useAnalyticsStore((s) => s.setAnalyticsType);
   const resetFilters = useAnalyticsStore((s) => s.resetFilters);
   const trendsViewActive = useAnalyticsStore((s) => s.trendsViewActive);
   const setTrendsViewActive = useAnalyticsStore((s) => s.setTrendsViewActive);
 
-  // Keep a ref to the original sessions before we inject
-  const [savedSessions, setSavedSessions] = useState<Session[]>([]);
-  const [injected, setInjected] = useState(false);
-
-  // Use the same analytics hook as the Stats page — reads from session store
-  const analytics = useAnalytics();
+  // Pass player sessions directly — avoids global store injection
+  const analytics = useAnalytics(playerSessions.length > 0 ? playerSessions : undefined);
 
   // Load player data when modal opens
   useEffect(() => {
@@ -169,7 +165,7 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
                 if (!sid) continue;
                 if (!drillsBySession[sid]) drillsBySession[sid] = [];
                 drillsBySession[sid].push({
-                  id: d.id,
+                  id: d.drill_order || (drillsBySession[sid].length + 1),
                   cloudId: d.id,
                   drillOrder: d.drill_order || 1,
                   drillType: d.drill_type || 'free-form',
@@ -190,12 +186,81 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
               // Attach drills to sessions and map shots to drills
               for (const session of sessions) {
                 const sid = String(session.id);
-                if (drillsBySession[sid]) {
-                  session.drills = drillsBySession[sid];
+                if (!drillsBySession[sid]) continue;
+
+                session.drills = drillsBySession[sid];
+
+                // Primary matching: by drillCloudId (shot.drill_id === practice_drill.id)
+                for (const drill of session.drills) {
+                  drill.shots = (session.shots ?? []).filter(
+                    (s) => s.drillCloudId === drill.cloudId,
+                  );
+                  for (const shot of drill.shots) {
+                    shot.drillId = drill.id;
+                  }
+                }
+
+                // Fallback: if no shots matched any drill via drillCloudId (e.g. RPC
+                // didn't include drill_id on shots), assign shots to drills using
+                // each drill's shotCount and timestamp ordering.
+                const anyMatched = session.drills.some((d) => d.shots.length > 0);
+                if (!anyMatched && (session.shots ?? []).length > 0) {
+                  const sorted = [...(session.shots ?? [])].sort((a, b) =>
+                    (a.timestamp || '').localeCompare(b.timestamp || ''),
+                  );
+                  let offset = 0;
                   for (const drill of session.drills) {
-                    drill.shots = (session.shots ?? []).filter(
-                      (s) => s.drillCloudId === drill.cloudId,
-                    );
+                    const count = drill.shotCount || 0;
+                    if (count <= 0) continue;
+                    drill.shots = sorted.slice(offset, offset + count);
+                    for (const shot of drill.shots) {
+                      shot.drillId = drill.id;
+                    }
+                    offset += count;
+                  }
+                }
+              }
+            }
+
+            // Secondary fallback: if practice_drills query returned nothing
+            // (e.g. RLS blocked coach access) but shots DO have drill_id,
+            // create synthetic drill entries from shot grouping.
+            if (!drillsData || drillsData.length === 0) {
+              for (const session of sessions) {
+                if (session.type !== 'practice' || session.drills) continue;
+                const shots = session.shots ?? [];
+                const groups = new Map<string, Shot[]>();
+                for (const shot of shots) {
+                  if (!shot.drillCloudId) continue;
+                  if (!groups.has(shot.drillCloudId)) groups.set(shot.drillCloudId, []);
+                  groups.get(shot.drillCloudId)!.push(shot);
+                }
+                if (groups.size > 0) {
+                  session.drills = [];
+                  let idx = 1;
+                  for (const [cloudId, drillShots] of groups) {
+                    const drill: PracticeDrill = {
+                      id: idx,
+                      cloudId,
+                      drillOrder: idx,
+                      drillType: 'free-form',
+                      distance: null,
+                      foot: 'right',
+                      stance: 'standing',
+                      shotCategory: 'in-play',
+                      shotCount: drillShots.length,
+                      scoredCount: drillShots.filter((s) => s.result === 'scored').length,
+                      assignedDrillId: null,
+                      templateId: null,
+                      shots: drillShots,
+                      startTime: null,
+                      endTime: null,
+                    };
+                    for (const shot of drillShots) {
+                      shot.drillId = idx;
+                    }
+                    session.drills.push(drill);
+                    idx++;
                   }
                 }
               }
@@ -219,10 +284,8 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
         setHasPractice(practiceExists);
         setHasMatch(matchExists);
 
-        // Inject only permitted sessions into session store
-        setSavedSessions(originalSessions);
-        setSessions(allowedSessions);
-        setInjected(true);
+        // Store sessions locally — no global store injection
+        setPlayerSessions(allowedSessions);
 
         // Reset analytics filters — always default to match view
         resetFilters();
@@ -244,19 +307,17 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, playerUserId]);
 
-  // Restore original sessions on close
+  // Clean up on close — no session store restoration needed
   const handleClose = useCallback(() => {
-    if (injected) {
-      setSessions(savedSessions);
-      setInjected(false);
-    }
+    setPlayerSessions([]);
     resetFilters();
     onClose();
-  }, [injected, savedSessions, setSessions, resetFilters, onClose]);
+  }, [resetFilters, onClose]);
 
   if (!open) return null;
 
   const isMatch = analyticsType === 'match';
+  const dataReady = !loading && !error && playerSessions.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
@@ -282,7 +343,7 @@ export default function PlayerDataModal({ open, playerName, playerUserId, shareP
         )}
 
         {/* Data loaded */}
-        {!loading && !error && injected && (
+        {dataReady && (
           <>
             {/* Filter bar — hide type toggle unless both practice and match data exist */}
             <FilterBar

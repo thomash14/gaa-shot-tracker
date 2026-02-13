@@ -166,7 +166,7 @@ export function useCloudSync() {
               if (!sid) continue;
               if (!drillsBySession[sid]) drillsBySession[sid] = [];
               drillsBySession[sid].push({
-                id: d.id,
+                id: d.drill_order || (drillsBySession[sid].length + 1),
                 cloudId: d.id,
                 drillOrder: d.drill_order || 1,
                 drillType: d.drill_type || 'free-form',
@@ -188,11 +188,14 @@ export function useCloudSync() {
             for (const session of cloudSessions) {
               if (session.cloudId && drillsBySession[session.cloudId]) {
                 session.drills = drillsBySession[session.cloudId];
-                // Map shots to their drill's shot array
+                // Map shots to their drill's shot array and set local drillId
                 for (const drill of session.drills) {
                   drill.shots = (session.shots ?? []).filter(
                     (s) => s.drillCloudId === drill.cloudId,
                   );
+                  for (const shot of drill.shots) {
+                    shot.drillId = drill.id;
+                  }
                 }
               }
             }
