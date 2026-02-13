@@ -64,8 +64,8 @@ export default function JoinTeamModal({ open, onLookup, onJoin, onClose }: JoinT
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-grey-light">
           <h3 className="text-base font-semibold text-primary dark:text-text">Join Team</h3>
           <p className="text-xs text-text-muted mt-1">Enter the 6-character invite code from your coach</p>

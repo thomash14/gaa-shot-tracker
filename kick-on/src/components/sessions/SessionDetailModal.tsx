@@ -329,8 +329,8 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto p-4">
-      <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg md:max-w-4xl my-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
+      <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg md:max-w-4xl my-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-primary text-white p-4">
           <div className="flex items-start justify-between gap-2">

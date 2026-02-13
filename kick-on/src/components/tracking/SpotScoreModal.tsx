@@ -73,8 +73,8 @@ export default function SpotScoreModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-grey-light">
           <h3 className="text-base font-semibold text-primary dark:text-text">
             {spot.name || `Spot ${spot.id}`} – {settings.distance}m
