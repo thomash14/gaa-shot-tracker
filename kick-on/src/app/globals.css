@@ -53,13 +53,15 @@ body {
 
 /* Dark mode colour overrides */
 .dark {
-  --color-background: #111827;
-  --color-surface: #1f2937;
-  --color-text: #f3f4f6;
-  --color-text-muted: #9ca3af;
-  --color-border: #374151;
-  --color-grey-light: #374151;
-  --color-grey: #6b7280;
+  --color-background: #000000;
+  --color-surface: #1e2732;
+  --color-text: #e7e9ea;
+  --color-text-muted: #71767b;
+  --color-border: #2f3336;
+  --color-grey-light: #273340;
+  --color-grey: #536471;
+  --color-primary: #3a6bc5;
+  --color-primary-dark: #2a5298;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);

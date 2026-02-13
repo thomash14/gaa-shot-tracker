@@ -11,7 +11,7 @@ export default function GoogleOAuthButton({ onClick, disabled }: GoogleOAuthButt
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-border bg-white text-text text-sm font-medium hover:bg-grey-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:bg-grey-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
     >
       <svg width="20" height="20" viewBox="0 0 24 24">
         <path

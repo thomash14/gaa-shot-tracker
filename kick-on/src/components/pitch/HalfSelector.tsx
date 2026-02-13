@@ -95,7 +95,7 @@ function HalfButton({
         px-2 py-0.5 text-[10px] font-medium rounded cursor-pointer transition-colors
         ${active
           ? 'bg-primary text-white'
-          : 'bg-white/80 text-text hover:bg-white'
+          : 'bg-surface/80 text-text hover:bg-surface'
         }
       `}
     >
