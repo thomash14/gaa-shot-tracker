@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAnalyticsStore } from '@/store/analyticsStore';
-import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend, TooltipConnector } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ZoneOverlay, ShotMapLegend, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
 import { groupShotsByPosition } from '@/lib/shotMap';
 import type { Shot, ShotWithContext } from '@/types';
 
@@ -129,23 +129,14 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
     return () => document.removeEventListener('pointerdown', handler);
   }, [tooltip]);
 
-  // Clamp tooltip position within the container
+  // Tooltip positioning — place AWAY from shot marker
   const tooltipStyle = tooltip
-    ? (() => {
-        const cw = containerRef.current?.clientWidth ?? 300;
-        const ch = containerRef.current?.clientHeight ?? 400;
-        const tw = 200;
-        const th = 150;
-        let left = tooltip.x + 12;
-        let top = tooltip.y - 10;
-        // Flip left if overflowing right
-        if (left + tw > cw) left = tooltip.x - tw - 12;
-        // Flip up if overflowing bottom
-        if (top + th > ch) top = tooltip.y - th;
-        if (top < 0) top = 4;
-        if (left < 0) left = 4;
-        return { left, top };
-      })()
+    ? computeTooltipPosition(
+        tooltip.x,
+        tooltip.y,
+        containerRef.current?.clientWidth ?? 300,
+        containerRef.current?.clientHeight ?? 400,
+      )
     : null;
 
   return (

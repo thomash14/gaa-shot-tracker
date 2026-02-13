@@ -1,5 +1,57 @@
 'use client';
 
+// ---------------------------------------------------------------------------
+// Shared tooltip positioning — places tooltip AWAY from the shot marker
+// ---------------------------------------------------------------------------
+
+const TOOLTIP_W = 200;
+const TOOLTIP_H = 150;
+const GAP = 20; // minimum px between shot marker and tooltip edge
+const PAD = 4;  // minimum px from container edge
+
+/**
+ * Position a tooltip so it never overlaps the shot marker.
+ *  - Top-half shots → tooltip below
+ *  - Bottom-half shots → tooltip above
+ *  - Left-side shots → tooltip shifted right
+ *  - Right-side shots → tooltip shifted left
+ */
+export function computeTooltipPosition(
+  shotX: number,
+  shotY: number,
+  containerWidth: number,
+  containerHeight: number,
+): { left: number; top: number } {
+  const shotInTopHalf = shotY < containerHeight / 2;
+  const shotOnLeftSide = shotX < containerWidth / 2;
+
+  // Vertical: push tooltip away from shot
+  let top: number;
+  if (shotInTopHalf) {
+    top = shotY + GAP; // below the shot
+  } else {
+    top = shotY - TOOLTIP_H - GAP; // above the shot
+  }
+
+  // Horizontal: push tooltip away from shot
+  let left: number;
+  if (shotOnLeftSide) {
+    left = shotX + GAP; // to the right
+  } else {
+    left = shotX - TOOLTIP_W - GAP; // to the left
+  }
+
+  // Clamp to container bounds
+  left = Math.max(PAD, Math.min(left, containerWidth - TOOLTIP_W - PAD));
+  top = Math.max(PAD, Math.min(top, containerHeight - TOOLTIP_H - PAD));
+
+  return { left, top };
+}
+
+// ---------------------------------------------------------------------------
+// Connector line component
+// ---------------------------------------------------------------------------
+
 interface TooltipConnectorProps {
   /** Shot position in container-relative pixels */
   shotX: number;
@@ -21,8 +73,8 @@ export default function TooltipConnector({
   shotY,
   tooltipLeft,
   tooltipTop,
-  tooltipWidth = 180,
-  tooltipHeight = 100,
+  tooltipWidth = TOOLTIP_W,
+  tooltipHeight = TOOLTIP_H,
 }: TooltipConnectorProps) {
   const tooltipRight = tooltipLeft + tooltipWidth;
   const tooltipBottom = tooltipTop + tooltipHeight;
@@ -37,9 +89,8 @@ export default function TooltipConnector({
     shotY <= tooltipBottom;
 
   if (isInside) {
-    // Shot is inside the tooltip rectangle (happens when tooltip is
-    // clamped to container edges on narrow screens). Project to the
-    // nearest border so we still draw a visible connector.
+    // Shot is inside the tooltip rectangle (rare edge case on very small
+    // containers). Project to the nearest border.
     const dLeft = shotX - tooltipLeft;
     const dRight = tooltipRight - shotX;
     const dTop = shotY - tooltipTop;

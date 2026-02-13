@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import type { Session, Shot, PracticeDrill } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
 import { groupShotsByPosition } from '@/lib/shotMap';
 
 // ---------------------------------------------------------------------------
@@ -294,21 +294,14 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     return () => document.removeEventListener('pointerdown', handler);
   }, [tooltip]);
 
-  // Clamp tooltip position within the container
+  // Tooltip positioning — place AWAY from shot marker
   const tooltipStyle = tooltip
-    ? (() => {
-        const cw = containerRef.current?.clientWidth ?? 300;
-        const ch = containerRef.current?.clientHeight ?? 400;
-        const tw = 200;
-        const th = 150;
-        let left = tooltip.x + 12;
-        let top = tooltip.y - 10;
-        if (left + tw > cw) left = tooltip.x - tw - 12;
-        if (top + th > ch) top = tooltip.y - th;
-        if (top < 0) top = 4;
-        if (left < 0) left = 4;
-        return { left, top };
-      })()
+    ? computeTooltipPosition(
+        tooltip.x,
+        tooltip.y,
+        containerRef.current?.clientWidth ?? 300,
+        containerRef.current?.clientHeight ?? 400,
+      )
     : null;
 
   // -------------------------------------------------------------------------
