@@ -94,6 +94,17 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
 
   let sessionCloudId = session.cloudId;
 
+  // Dedup guard: a prior queued write may have already inserted this session.
+  // The queue is serialised, so the store will reflect the prior call's update.
+  if (!sessionCloudId) {
+    const alreadySynced = useSessionStore.getState().sessions.find(
+      (s) => s.cloudId && s.startTime === session.startTime
+    );
+    if (alreadySynced) {
+      sessionCloudId = alreadySynced.cloudId;
+    }
+  }
+
   if (sessionCloudId) {
     // Update existing
     console.log('[cloudWrite] updating session', sessionCloudId, sessionPayload);

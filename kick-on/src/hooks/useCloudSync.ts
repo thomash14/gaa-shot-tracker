@@ -62,6 +62,7 @@ export function useCloudSync() {
 
   const initialised = useRef(false);
   const lastSyncRef = useRef<string | null>(null);
+  const loadingRef = useRef(false);
 
   // -----------------------------------------------------------------------
   // Load data from Supabase (or localStorage fallback)
@@ -71,6 +72,7 @@ export function useCloudSync() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    loadingRef.current = true;
     setLoading(true, 'Loading your data...');
 
     try {
@@ -92,7 +94,7 @@ export function useCloudSync() {
       if (logsRes.error) throw logsRes.error;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cloudSessions: Session[] = (sessionsRes.data ?? []).map((row: any) => ({
+      let cloudSessions: Session[] = (sessionsRes.data ?? []).map((row: any) => ({
         id: row.id,
         name: row.name || '',
         date: row.date,
@@ -144,6 +146,36 @@ export function useCloudSync() {
         comments: row.comments || undefined,
         cloudId: row.id,
       }));
+
+      // Deduplicate cloud sessions by start_time (clean up prior sync race dupes)
+      {
+        const seen = new Map<string, string>(); // startTime → id (keep first)
+        const dupeIds: string[] = [];
+        for (const s of cloudSessions) {
+          const key = s.startTime || '';
+          if (!key) continue;
+          if (seen.has(key)) {
+            dupeIds.push(s.id as string);
+          } else {
+            seen.set(key, s.id as string);
+          }
+        }
+        if (dupeIds.length > 0) {
+          const dupeSet = new Set(dupeIds);
+          // Remove from local array
+          cloudSessions = cloudSessions.filter(s => !dupeSet.has(s.id as string));
+          // Delete from Supabase in background (don't block load)
+          const cleanupPromise = (async () => {
+            for (const id of dupeIds) {
+              await supabase.from('shots').delete().eq('session_id', id);
+              await supabase.from('practice_drills').delete().eq('session_id', id);
+              await supabase.from('sessions').delete().eq('id', id);
+            }
+            console.log('[cloudSync] cleaned up', dupeIds.length, 'duplicate sessions');
+          })();
+          cleanupPromise.catch(err => console.warn('[cloudSync] dedup cleanup error:', err));
+        }
+      }
 
       // Load practice_drills for practice sessions
       const practiceSessionIds = cloudSessions
@@ -238,6 +270,7 @@ export function useCloudSync() {
       if (localSessions) setSessions(localSessions);
       if (localLogs) setTrainingLogs(localLogs);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [setSessions, setTrainingLogs, setLoading, setOfflineMode]);
@@ -297,6 +330,13 @@ export function useCloudSync() {
     const unsub = useSessionStore.subscribe((state) => {
       const nextSessions = state.sessions;
       const nextLogs = state.trainingLogs;
+
+      // During loadData, skip auto-sync — syncBacklog handles it
+      if (loadingRef.current) {
+        prevSessions = nextSessions;
+        prevLogs = nextLogs;
+        return;
+      }
 
       // --- Detect added sessions (new item without cloudId) ---
       if (nextSessions.length > prevSessions.length) {
