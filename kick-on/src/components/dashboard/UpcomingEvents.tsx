@@ -62,10 +62,12 @@ export default function UpcomingEvents({ events }: UpcomingEventsProps) {
       {shown.map((event) => (
         <div key={event.id} className="flex items-start gap-3 py-1.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text">
-              {event.event_type === 'training' ? 'Training' : event.event_type === 'match' ? 'Match' : 'Event'}
-            </p>
-            <p className="text-[11px] text-primary font-medium">{event.title}</p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-text">
+                {event.event_type === 'training' ? 'Training' : event.event_type === 'match' ? 'Match' : 'Event'}
+              </p>
+              <p className="text-[11px] text-primary font-medium truncate">{event.title}</p>
+            </div>
             <p className="text-[11px] text-text-muted mt-0.5">
               {formatEventDate(event.event_date)} &middot; {formatTime(event.start_time)}
               {event.end_time && ` \u2013 ${formatTime(event.end_time)}`}
