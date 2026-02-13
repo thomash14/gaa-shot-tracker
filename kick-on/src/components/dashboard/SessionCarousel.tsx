@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Session, Shot } from '@/types';
-import { SvgPitch } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
 
 // ---------------------------------------------------------------------------
 // Tooltip helpers
@@ -438,47 +438,29 @@ function CarouselContent({ session }: { session: Session }) {
 
           {/* Shot markers grouped by location */}
           {shotGroups.map((loc, i) => {
-            const cx = (loc.x / 100) * 500;
-            const cy = (loc.y / 100) * 725;
-
             if (loc.total > 1) {
-              // Batch marker — colour based on scored/missed mix
-              const fill =
-                loc.scored === loc.total ? 'white'
-                  : loc.scored === 0 ? '#dc3545'
-                    : '#ffc107';
               return (
-                <g
+                <BatchShotMarker
                   key={i}
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => handleMarkerEnter(e, loc.shots)}
+                  shots={loc.shots}
+                  mirror={false}
+                  size={8}
+                  onClick={(shots, e) => handleMarkerClick(e, shots)}
+                  onMouseEnter={(shots, e) => handleMarkerEnter(e, shots)}
                   onMouseLeave={handleMarkerLeave}
-                  onClick={(e) => handleMarkerClick(e, loc.shots)}
-                >
-                  <circle cx={cx} cy={cy} r="8" fill={fill} stroke="#333" strokeWidth="2" />
-                  <rect x={cx - 12} y={cy + 12} width="24" height="14" fill="rgba(0,0,0,0.7)" rx="3" />
-                  <text x={cx} y={cy + 23} textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">
-                    {loc.scored}/{loc.total}
-                  </text>
-                </g>
+                />
               );
             }
 
-            // Single shot marker
-            const fill = loc.scored === 1 ? 'white' : '#dc3545';
             return (
-              <circle
+              <ShotMarker
                 key={i}
-                cx={cx}
-                cy={cy}
-                r="6"
-                fill={fill}
-                stroke="#333"
-                strokeWidth="2"
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => handleMarkerEnter(e, loc.shots)}
+                shot={loc.shots[0]}
+                mirror={false}
+                size={6}
+                onClick={(s, e) => handleMarkerClick(e, [s])}
+                onMouseEnter={(s, e) => handleMarkerEnter(e, [s])}
                 onMouseLeave={handleMarkerLeave}
-                onClick={(e) => handleMarkerClick(e, loc.shots)}
               />
             );
           })}
@@ -556,14 +538,7 @@ function CarouselContent({ session }: { session: Session }) {
       </div>
 
       {/* Legend */}
-      <div className="text-center mt-3 text-sm text-text-muted">
-        <span className="mr-5 inline-flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-full bg-white border border-grey"></span> Scored
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-full bg-danger"></span> Missed
-        </span>
-      </div>
+      <ShotMapLegend />
     </>
   );
 }
