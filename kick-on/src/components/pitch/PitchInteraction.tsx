@@ -1,9 +1,9 @@
 'use client';
 
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { SvgPitch, ShotMarker, BatchShotMarker, HalfSelector, ShotMapLegend } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend } from '@/components/pitch';
 import type { Shot } from '@/types';
-import type { PendingShot, HalfType } from '@/hooks/useShots';
+import type { PendingShot } from '@/hooks/useShots';
 import { getGoalSvgCoords } from '@/hooks/useShots';
 
 interface PitchInteractionProps {
@@ -11,11 +11,9 @@ interface PitchInteractionProps {
   pendingShot: PendingShot | null;
   batchPending: PendingShot | null;
   isMatch: boolean;
-  half: HalfType;
   isDraggingRef: React.MutableRefObject<boolean>;
   onPitchClick: (xPct: number, yPct: number) => void;
   onDragUpdate: (xPct: number, yPct: number) => void;
-  onHalfChange: (half: HalfType) => void;
   onBatchOpen: () => void;
 }
 
@@ -28,11 +26,9 @@ export default function PitchInteraction({
   pendingShot,
   batchPending,
   isMatch,
-  half,
   isDraggingRef,
   onPitchClick,
   onDragUpdate,
-  onHalfChange,
   onBatchOpen,
 }: PitchInteractionProps) {
   const svgWrapperRef = useRef<HTMLDivElement>(null);
@@ -42,15 +38,19 @@ export default function PitchInteraction({
   // The active pending (either single or batch)
   const activePending = pendingShot || batchPending;
 
+  // Half-pitch y scaling: viewBox 0-362 maps to 0–49.93% of full 0-725 pitch
+  const HALF_Y_SCALE = 362 / 725;
+
   // -------------------------------------------------------------------------
   // Pitch click handler
   // -------------------------------------------------------------------------
   const handlePitchClick = useCallback(
     (xPct: number, yPct: number) => {
       if (isDraggingRef.current) return;
-      onPitchClick(xPct, yPct);
+      const y = isMatch ? yPct * HALF_Y_SCALE : yPct;
+      onPitchClick(xPct, y);
     },
-    [isDraggingRef, onPitchClick],
+    [isDraggingRef, isMatch, onPitchClick],
   );
 
   // -------------------------------------------------------------------------
@@ -68,10 +68,11 @@ export default function PitchInteraction({
       const rect = getSvgRect();
       if (!rect) return;
       const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
-      const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+      const yRaw = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+      const y = isMatch ? yRaw * HALF_Y_SCALE : yRaw;
       onDragUpdate(x, y);
     },
-    [getSvgRect, onDragUpdate],
+    [getSvgRect, isMatch, onDragUpdate],
   );
 
   useEffect(() => {
@@ -206,7 +207,7 @@ export default function PitchInteraction({
   return (
     <div ref={svgWrapperRef} className="relative">
       <ShotMapLegend />
-      <SvgPitch onPitchClick={handlePitchClick}>
+      <SvgPitch attackingHalfOnly={isMatch} onPitchClick={handlePitchClick}>
         {/* Individual (non-batch) shot markers */}
         {singleShots.map((shot, i) => (
           <ShotMarker
@@ -309,14 +310,6 @@ export default function PitchInteraction({
           </g>
         )}
       </SvgPitch>
-
-      {/* Half selector overlay (match mode) */}
-      {isMatch && (
-        <HalfSelector
-          selectedHalf={half ?? '1st'}
-          onSelectHalf={(h) => onHalfChange(h as HalfType)}
-        />
-      )}
     </div>
   );
 }

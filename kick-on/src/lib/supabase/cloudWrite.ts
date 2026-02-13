@@ -90,6 +90,8 @@ async function _syncSessionToCloud(session: Session): Promise<void> {
     to_improve: session.toImprove || null,
     wind_direction: session.windDirection || null,
     wind_strength: session.windStrength || null,
+    minutes_played: session.minutesPlayed || null,
+    position_played: session.positionPlayed || null,
   };
 
   let sessionCloudId = session.cloudId;

@@ -22,6 +22,9 @@ export interface Session {
   toImprove?: string;
   windDirection?: string;
   windStrength?: string;
+  // Match-specific fields
+  minutesPlayed?: string;
+  positionPlayed?: string;
   // Drill reference (if session started from a drill)
   drillId?: string;
   drillName?: string;

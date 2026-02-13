@@ -84,7 +84,7 @@ function TrackPageContent() {
   }, [shots]);
 
   const handleSaveNotes = useCallback(
-    (data: { notes: string; didWell: string; toImprove: string; windDirection: string; windStrength: string }) => {
+    (data: { notes: string; didWell: string; toImprove: string; windDirection: string; windStrength: string; minutesPlayed: string; positionPlayed: string }) => {
       if (!currentSession) return;
       const finalSession = {
         ...currentSession,
@@ -94,6 +94,8 @@ function TrackPageContent() {
         toImprove: data.toImprove || undefined,
         windDirection: data.windDirection !== 'no-wind' ? data.windDirection : undefined,
         windStrength: data.windDirection !== 'no-wind' ? data.windStrength : undefined,
+        minutesPlayed: data.minutesPlayed || undefined,
+        positionPlayed: data.positionPlayed || undefined,
       };
       addSession(finalSession);
       setCurrentSession(null);
@@ -372,11 +374,9 @@ function TrackPageContent() {
                   pendingShot={shots.pendingShot}
                   batchPending={shots.batchPending}
                   isMatch={false}
-                  half={shots.half}
                   isDraggingRef={shots.isDraggingRef}
                   onPitchClick={shots.createPendingShot}
                   onDragUpdate={shots.updatePendingPosition}
-                  onHalfChange={shots.setHalf}
                   onBatchOpen={() => shots.setBatchModalOpen(true)}
                 />
               )}
@@ -556,11 +556,9 @@ function TrackPageContent() {
                 pendingShot={shots.pendingShot}
                 batchPending={shots.batchPending}
                 isMatch={isMatch}
-                half={shots.half}
                 isDraggingRef={shots.isDraggingRef}
                 onPitchClick={shots.createPendingShot}
                 onDragUpdate={shots.updatePendingPosition}
-                onHalfChange={shots.setHalf}
                 onBatchOpen={() => shots.setBatchModalOpen(true)}
               />
             )}

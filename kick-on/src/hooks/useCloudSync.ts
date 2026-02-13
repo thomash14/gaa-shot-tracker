@@ -128,6 +128,8 @@ export function useCloudSync() {
         toImprove: row.to_improve || undefined,
         windDirection: row.wind_direction || undefined,
         windStrength: row.wind_strength || undefined,
+        minutesPlayed: row.minutes_played || undefined,
+        positionPlayed: row.position_played || undefined,
       }));
 
       const cloudLogs: TrainingLog[] = (logsRes.data ?? []).map(row => ({
