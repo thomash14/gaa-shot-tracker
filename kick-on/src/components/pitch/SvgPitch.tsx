@@ -33,6 +33,8 @@ export default function SvgPitch({
   children,
 }: SvgPitchProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number; id: number } | null>(null);
+  const touchMovedRef = useRef(false);
 
   const viewBox = attackingHalfOnly ? '0 0 500 362' : '0 0 500 725';
 
@@ -58,16 +60,50 @@ export default function SvgPitch({
     [onPitchClick, toPercentage]
   );
 
-  const handleTouch = useCallback(
+  const handleTouchStart = useCallback(
     (e: TouchEvent<SVGSVGElement>) => {
-      if (!onPitchClick) return;
       const touch = e.touches[0];
       if (!touch) return;
-      const pos = toPercentage(touch.clientX, touch.clientY);
-      if (pos) onPitchClick(pos.x, pos.y, e);
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, id: touch.identifier };
+      touchMovedRef.current = false;
     },
-    [onPitchClick, toPercentage]
+    [],
   );
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent<SVGSVGElement>) => {
+      if (touchMovedRef.current) return;          // already flagged
+      const start = touchStartRef.current;
+      if (!start) return;
+      const touch = Array.from(e.touches).find(t => t.identifier === start.id);
+      if (!touch) return;
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (dx * dx + dy * dy > 100) {              // > 10px movement
+        touchMovedRef.current = true;
+      }
+    },
+    [],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent<SVGSVGElement>) => {
+      if (!touchStartRef.current) return;
+      if (!touchMovedRef.current && onPitchClick) {
+        // Genuine tap — convert recorded start position to percentage coords
+        const pos = toPercentage(touchStartRef.current.x, touchStartRef.current.y);
+        if (pos) onPitchClick(pos.x, pos.y, e);
+        // Suppress the browser's synthesised click (prevents double-fire with handleClick)
+        e.preventDefault();
+      }
+      touchStartRef.current = null;
+    },
+    [onPitchClick, toPercentage],
+  );
+
+  const handleTouchCancel = useCallback(() => {
+    touchStartRef.current = null;
+  }, []);
 
   return (
     <div className={`relative ${className}`}>
@@ -77,7 +113,10 @@ export default function SvgPitch({
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-auto block"
         onClick={handleClick}
-        onTouchStart={handleTouch}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
         {/* Background */}
         <rect width="500" height="725" fill="#5a9d6f" />

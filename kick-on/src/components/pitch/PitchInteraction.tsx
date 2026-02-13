@@ -81,12 +81,14 @@ export default function PitchInteraction({
     const onTouchMove = (e: TouchEvent) => {
       if (!dragActiveRef.current) return;
       e.preventDefault();
+      clearTimeout(longPressTimerRef.current);
       const touch = e.touches[0];
       handleDragMove(touch.clientX, touch.clientY);
     };
     const onEnd = () => {
       dragActiveRef.current = false;
       isDraggingRef.current = false;
+      clearTimeout(longPressTimerRef.current);
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -106,6 +108,7 @@ export default function PitchInteraction({
   const startDrag = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
+      if ('touches' in e) e.preventDefault();
       dragActiveRef.current = true;
       isDraggingRef.current = true;
     },
