@@ -76,7 +76,7 @@ export default function SpotScoreModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
         <div className="p-4 border-b border-grey-light">
-          <h3 className="text-base font-semibold text-primary">
+          <h3 className="text-base font-semibold text-primary dark:text-text">
             {spot.name || `Spot ${spot.id}`} – {settings.distance}m
           </h3>
           <p className="text-xs text-text-muted mt-1">
@@ -88,7 +88,7 @@ export default function SpotScoreModal({
           {isBoth ? (
             <div className="flex gap-4">
               <div className="flex-1 text-center space-y-2">
-                <div className="text-xs font-semibold text-primary">Right Foot</div>
+                <div className="text-xs font-semibold text-primary dark:text-text">Right Foot</div>
                 <label className="block text-[10px] text-text-muted">Scored / {shotsPerFoot}</label>
                 <input
                   type="number"
@@ -101,7 +101,7 @@ export default function SpotScoreModal({
                 />
               </div>
               <div className="flex-1 text-center space-y-2">
-                <div className="text-xs font-semibold text-primary">Left Foot</div>
+                <div className="text-xs font-semibold text-primary dark:text-text">Left Foot</div>
                 <label className="block text-[10px] text-text-muted">Scored / {shotsPerFoot}</label>
                 <input
                   type="number"

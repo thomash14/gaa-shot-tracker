@@ -79,7 +79,7 @@ export default function TeamPage() {
   if (!team.currentTeam) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-primary">Team</h2>
+        <h2 className="text-2xl font-bold text-primary dark:text-text">Team</h2>
         <div className="bg-surface rounded-2xl p-6 shadow-sm text-center space-y-4">
           <p className="text-sm text-text-muted">
             You&apos;re not part of a team yet. Join a team with an invite code, or create one.
@@ -122,7 +122,7 @@ export default function TeamPage() {
   // -------------------------------------------------------------------------
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-primary">Team</h2>
+      <h2 className="text-2xl font-bold text-primary dark:text-text">Team</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4">
         {/* Left: Team info */}

@@ -238,7 +238,7 @@ export default function AssignedDrills({ drills, completions, currentTeam, curre
   if (activeDrills.length === 0) {
     return (
       <div className="bg-surface rounded-2xl p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-primary mb-2">Ready to Improve?</h3>
+        <h3 className="text-lg font-semibold text-primary dark:text-text mb-2">Ready to Improve?</h3>
         <p className="text-sm text-text-muted">
           <Link href="/track?type=practice" className="text-primary hover:underline">Start a practice session</Link> to keep improving!
         </p>
@@ -256,7 +256,7 @@ export default function AssignedDrills({ drills, completions, currentTeam, curre
   return (
     <div className="bg-surface rounded-2xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-primary m-0">Ready to Improve?</h3>
+        <h3 className="text-lg font-semibold text-primary dark:text-text m-0">Ready to Improve?</h3>
         {incompleteDrills.length > 0 && (
           <span className="bg-success text-white text-xs font-bold px-2.5 py-1 rounded-full">
             {incompleteDrills.length} to do

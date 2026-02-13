@@ -216,7 +216,7 @@ export default function SessionCarousel({ sessions }: SessionCarouselProps) {
     <div className="bg-surface rounded-2xl p-5 shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-primary m-0">Recent Sessions</h3>
+        <h3 className="text-lg font-semibold text-primary dark:text-text m-0">Recent Sessions</h3>
         {/* Dot indicators */}
         <div className="flex gap-1.5">
           {Array.from({ length: numSessions }).map((_, i) => (
@@ -303,7 +303,7 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
 function EmptyState({ type }: { type: DashboardType }) {
   return (
     <div className="text-center py-8">
-      <p className="text-lg font-semibold text-primary mb-1">
+      <p className="text-lg font-semibold text-primary dark:text-text mb-1">
         {type === 'practice' ? 'No practice sessions yet' : 'No match sessions yet'}
       </p>
       <p className="text-sm text-text-muted">Start tracking to see your shots here!</p>
@@ -391,12 +391,12 @@ function CarouselContent({ session }: { session: Session }) {
       <div className="flex gap-3 mb-3">
         {/* Title / date card */}
         <div className="flex-1 bg-grey-light rounded-lg p-3">
-          <p className="text-sm font-semibold text-primary truncate">{title}</p>
+          <p className="text-sm font-semibold text-primary dark:text-text truncate">{title}</p>
           <p className="text-xs text-text-muted mt-0.5">{dateStr}</p>
         </div>
         {/* Score card */}
         <div className="flex-1 bg-grey-light rounded-lg p-3">
-          <div className="text-xl font-bold text-primary leading-tight">
+          <div className="text-xl font-bold text-primary dark:text-text leading-tight">
             {stats.sessionType === 'practice'
               ? `${stats.totalScored}/${stats.totalShots} (${stats.conversionRate}%)`
               : `${stats.scoreDisplay} ${stats.breakdownStr}`}

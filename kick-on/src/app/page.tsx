@@ -60,7 +60,7 @@ export default function HomePage() {
     const playerCount = teamMembers.filter((m) => m.role === 'player').length;
     return (
       <div className="space-y-5">
-        <h2 className="text-2xl font-bold text-primary">Coach Dashboard</h2>
+        <h2 className="text-2xl font-bold text-primary dark:text-text">Coach Dashboard</h2>
         <div className="bg-surface rounded-2xl shadow-card p-5 space-y-3">
           {currentTeam ? (
             <>
@@ -86,7 +86,7 @@ export default function HomePage() {
   // Player / coach+player view: normal dashboard
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-primary">Dashboard</h2>
+      <h2 className="text-2xl font-bold text-primary dark:text-text">Dashboard</h2>
 
       {/* Assigned drills from coach */}
       <AssignedDrills

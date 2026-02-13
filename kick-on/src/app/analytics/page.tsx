@@ -29,7 +29,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-primary">Stats</h2>
+        <h2 className="text-2xl font-bold text-primary dark:text-text">Stats</h2>
         <button
           onClick={() => setReportOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary-dark transition-colors"

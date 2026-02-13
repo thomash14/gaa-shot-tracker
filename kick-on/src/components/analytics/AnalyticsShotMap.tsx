@@ -151,7 +151,7 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base font-semibold text-primary">Shot Map</h3>
+        <h3 className="text-base font-semibold text-primary dark:text-text">Shot Map</h3>
         <label className="flex items-center gap-1.5 text-xs text-text-muted cursor-pointer">
           <input
             type="checkbox"

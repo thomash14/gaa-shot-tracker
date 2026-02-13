@@ -57,7 +57,7 @@ export default function EditTeamModal({ open, team, onSave, onClose }: EditTeamM
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
         <div className="p-4 border-b border-grey-light">
-          <h3 className="text-base font-semibold text-primary">Edit Team</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Edit Team</h3>
         </div>
 
         <div className="p-4 space-y-3">

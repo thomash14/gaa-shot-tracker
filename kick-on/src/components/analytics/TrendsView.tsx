@@ -202,7 +202,7 @@ export default function TrendsView({ sessions, allShots, analyticsType }: Trends
     return (
       <div className="space-y-4">
         <div className="bg-surface rounded-2xl p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-primary mb-2">Conversion Rate Trend</h4>
+          <h4 className="text-sm font-semibold text-primary dark:text-text mb-2">Conversion Rate Trend</h4>
           <TrendChart
             dataPoints={matchData.conversionPoints}
             valueKey="rate"
@@ -213,7 +213,7 @@ export default function TrendsView({ sessions, allShots, analyticsType }: Trends
         </div>
 
         <div className="bg-surface rounded-2xl p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-primary mb-2">Points Per Shot Trend</h4>
+          <h4 className="text-sm font-semibold text-primary dark:text-text mb-2">Points Per Shot Trend</h4>
           <TrendChart
             dataPoints={matchData.ptsPerShotPoints}
             valueKey="ptsPerShot"
@@ -224,7 +224,7 @@ export default function TrendsView({ sessions, allShots, analyticsType }: Trends
         </div>
 
         <div className="bg-surface rounded-2xl p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-primary mb-2">Shots Per Game Trend</h4>
+          <h4 className="text-sm font-semibold text-primary dark:text-text mb-2">Shots Per Game Trend</h4>
           <TrendChart
             dataPoints={matchData.shotsPerGamePoints}
             valueKey="total"
@@ -279,7 +279,7 @@ export default function TrendsView({ sessions, allShots, analyticsType }: Trends
       {practiceData && practiceData.conversionPoints.length >= 2 && (
         <>
           <div className="bg-surface rounded-2xl p-4 shadow-sm">
-            <h4 className="text-sm font-semibold text-primary mb-2">Drill Conversion Trend</h4>
+            <h4 className="text-sm font-semibold text-primary dark:text-text mb-2">Drill Conversion Trend</h4>
             <TrendChart
               dataPoints={practiceData.conversionPoints}
               valueKey="rate"

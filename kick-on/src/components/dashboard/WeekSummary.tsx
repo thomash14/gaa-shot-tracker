@@ -70,7 +70,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
   return (
     <div className="bg-surface rounded-xl p-4 shadow-sm text-center">
       <p className="text-xs text-text-muted font-medium mb-1">{label}</p>
-      <p className="text-2xl font-bold text-primary leading-tight">{value}</p>
+      <p className="text-2xl font-bold text-primary dark:text-text leading-tight">{value}</p>
       <p className="text-xs text-text-muted mt-0.5">{sub}</p>
     </div>
   );

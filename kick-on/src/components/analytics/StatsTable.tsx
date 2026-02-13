@@ -331,7 +331,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
   if (sessionRows.length === 0) {
     return (
       <div className="bg-surface rounded-2xl p-4 shadow-sm">
-        <h3 className="text-base font-semibold text-primary mb-3">
+        <h3 className="text-base font-semibold text-primary dark:text-text mb-3">
           {isMatch ? 'Match Breakdown' : 'Session Breakdown'}
         </h3>
         <p className="text-sm text-text-muted text-center py-4">
@@ -343,7 +343,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
 
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm">
-      <h3 className="text-base font-semibold text-primary mb-3">
+      <h3 className="text-base font-semibold text-primary dark:text-text mb-3">
         {isMatch ? 'Match Breakdown' : 'Session Breakdown'}
       </h3>
 

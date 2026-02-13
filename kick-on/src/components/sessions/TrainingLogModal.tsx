@@ -66,7 +66,7 @@ export default function TrainingLogModal({
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-grey-light">
-          <h3 className="text-base font-semibold text-primary">Log Training Session</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Log Training Session</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text text-lg">
             ✕
           </button>

@@ -96,7 +96,7 @@ export default function SessionsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-primary">Sessions</h2>
+      <h2 className="text-2xl font-bold text-primary dark:text-text">Sessions</h2>
 
       {/* Calendar */}
       <SessionCalendar

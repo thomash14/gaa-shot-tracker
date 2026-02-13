@@ -55,7 +55,7 @@ export default function Sidebar() {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-surface/95 backdrop-blur-sm border-r border-border sticky top-0 h-dvh shrink-0 z-20">
         <div className="px-4 py-5 border-b border-border">
-          <h1 className="text-xl font-bold text-primary">KICK ON</h1>
+          <h1 className="text-xl font-bold text-primary dark:text-text">KICK ON</h1>
           <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">

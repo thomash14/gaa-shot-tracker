@@ -15,7 +15,7 @@ export default function TrackError({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-primary">Track</h2>
+      <h2 className="text-2xl font-bold text-primary dark:text-text">Track</h2>
       <div className="bg-surface rounded-2xl shadow-sm p-8 text-center space-y-4">
         <p className="text-sm text-text-muted">
           Failed to load tracking. {error.message}

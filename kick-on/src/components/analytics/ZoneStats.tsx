@@ -72,7 +72,7 @@ export default function ZoneStats({ shots }: ZoneStatsProps) {
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm space-y-4">
       {/* Zone conversion rates */}
-      <h3 className="text-base font-semibold text-primary">Zone Conversion Rates</h3>
+      <h3 className="text-base font-semibold text-primary dark:text-text">Zone Conversion Rates</h3>
       <div className="grid grid-cols-3 gap-2">
         {sortedZones.map((z) => {
           const rate = Math.round((z.scored / z.total) * 100);
@@ -105,7 +105,7 @@ export default function ZoneStats({ shots }: ZoneStatsProps) {
       {/* Distance analysis */}
       {shotsWithDistance.length > 0 && (
         <>
-          <h3 className="text-base font-semibold text-primary">Distance Analysis</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Distance Analysis</h3>
           <div className="grid grid-cols-3 gap-2">
             <AnalysisCard label="Average Distance" value={`${avgDistance.toFixed(1)}m`} sub="All shots" color="text-primary" />
             <AnalysisCard
@@ -127,7 +127,7 @@ export default function ZoneStats({ shots }: ZoneStatsProps) {
       {/* Foot analysis */}
       {shotsWithFoot.length > 0 && (
         <>
-          <h3 className="text-base font-semibold text-primary">Foot Analysis</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Foot Analysis</h3>
           <div className="grid grid-cols-2 gap-2">
             <AnalysisCard
               label="Left Foot"

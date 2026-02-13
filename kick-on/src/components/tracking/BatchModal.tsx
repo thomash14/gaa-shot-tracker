@@ -41,14 +41,14 @@ export default function BatchModal({ open, onConfirm, onClose }: BatchModalProps
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
         <div className="p-4 border-b border-grey-light">
-          <h3 className="text-base font-semibold text-primary">Batch Entry</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Batch Entry</h3>
         </div>
         <div className="p-4 space-y-4">
           <p className="text-xs text-text-muted text-center">Enter total and scored shots per foot</p>
           <div className="flex gap-4">
             {/* Left foot */}
             <div className="flex-1 space-y-2">
-              <div className="text-xs font-semibold text-center text-primary">Left Foot</div>
+              <div className="text-xs font-semibold text-center text-primary dark:text-text">Left Foot</div>
               <div>
                 <label className="block text-[10px] text-text-muted mb-0.5">Total</label>
                 <input type="number" min={0} value={leftTotal} onChange={(e) => setLeftTotal(parseInt(e.target.value) || 0)} className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm text-center" />
@@ -60,7 +60,7 @@ export default function BatchModal({ open, onConfirm, onClose }: BatchModalProps
             </div>
             {/* Right foot */}
             <div className="flex-1 space-y-2">
-              <div className="text-xs font-semibold text-center text-primary">Right Foot</div>
+              <div className="text-xs font-semibold text-center text-primary dark:text-text">Right Foot</div>
               <div>
                 <label className="block text-[10px] text-text-muted mb-0.5">Total</label>
                 <input type="number" min={0} value={rightTotal} onChange={(e) => setRightTotal(parseInt(e.target.value) || 0)} className="w-full bg-surface border border-grey rounded-lg px-3 py-1.5 text-sm text-center" />

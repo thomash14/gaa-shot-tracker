@@ -40,7 +40,7 @@ export default function ConversionStats({ shots, sessionCount, sessionLabel }: C
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base font-semibold text-primary">Conversion Rates</h3>
+        <h3 className="text-base font-semibold text-primary dark:text-text">Conversion Rates</h3>
         <span className="text-xs text-text-muted">
           {sessionCount} {sessionLabel}
         </span>

@@ -80,7 +80,7 @@ export default function AssignDrillModal({ open, onAssign, onClose }: AssignDril
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-grey-light">
-          <h3 className="text-base font-semibold text-primary">Assign Drill</h3>
+          <h3 className="text-base font-semibold text-primary dark:text-text">Assign Drill</h3>
           <p className="text-xs text-text-muted mt-1">Scoring Arc drill configuration</p>
         </div>
 

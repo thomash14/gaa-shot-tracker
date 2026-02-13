@@ -100,7 +100,7 @@ export default function ReportModal({ open, onClose }: ReportModalProps) {
                 key={stat.label}
                 className="text-center px-3 py-2 bg-grey-light rounded-lg min-w-[68px]"
               >
-                <div className="text-xl font-bold text-primary">{stat.value}</div>
+                <div className="text-xl font-bold text-primary dark:text-text">{stat.value}</div>
                 <div className="text-xs text-text-muted">{stat.label}</div>
               </div>
             ))}

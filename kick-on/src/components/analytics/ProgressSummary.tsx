@@ -69,7 +69,7 @@ export default function ProgressSummary({ convPoints, ptsPoints, spgPoints }: Pr
 
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm">
-      <h3 className="text-base font-semibold text-primary mb-3">Progress Summary</h3>
+      <h3 className="text-base font-semibold text-primary dark:text-text mb-3">Progress Summary</h3>
       <div className="space-y-2 text-sm">
         <Row
           label="Conversion (First \u2192 Last)"
