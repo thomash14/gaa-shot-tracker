@@ -6,3 +6,4 @@ export { default as HalfSelector } from './HalfSelector';
 export { default as PitchInteraction } from './PitchInteraction';
 export { default as ShotMapLegend } from './ShotMapLegend';
 export { default as TooltipConnector, computeTooltipPosition } from './TooltipConnector';
+export type { TooltipPosition } from './TooltipConnector';

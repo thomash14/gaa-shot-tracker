@@ -295,7 +295,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   }, [tooltip]);
 
   // Tooltip positioning — place AWAY from shot marker
-  const tooltipStyle = tooltip
+  const tooltipPos = tooltip
     ? computeTooltipPosition(
         tooltip.x,
         tooltip.y,
@@ -434,23 +434,23 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 </SvgPitch>
 
                 {/* Tooltip connector line */}
-                {tooltip && tooltipStyle && (
+                {tooltip && tooltipPos && (
                   <TooltipConnector
                     shotX={tooltip.x}
                     shotY={tooltip.y}
-                    tooltipLeft={tooltipStyle.left}
-                    tooltipTop={tooltipStyle.top}
+                    nearEdgeY={tooltipPos.nearEdgeY}
+                    tooltipLeft={tooltipPos.left}
                   />
                 )}
 
                 {/* Single shot tooltip */}
-                {tooltip && tooltip.kind === 'single' && tooltipStyle && (() => {
+                {tooltip && tooltip.kind === 'single' && tooltipPos && (() => {
                   const s = tooltip.shot;
                   const dl = drillLabel(s.drillId);
                   return (
                     <div
                       className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
-                      style={tooltipStyle}
+                      style={tooltipPos.style}
                     >
                       <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
                         {s.result === 'scored' ? 'Scored' : 'Missed'}
@@ -482,7 +482,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 })()}
 
                 {/* Batch shot tooltip */}
-                {tooltip && tooltip.kind === 'batch' && tooltipStyle && (() => {
+                {tooltip && tooltip.kind === 'batch' && tooltipPos && (() => {
                   const batchShots = tooltip.shots;
                   const first = batchShots[0];
                   const batchTotal = batchShots.length;
@@ -503,7 +503,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   return (
                     <div
                       className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
-                      style={tooltipStyle}
+                      style={tooltipPos.style}
                     >
                       <p className="font-semibold mb-1.5 text-text">
                         {batchScored}/{batchTotal} scored

@@ -357,7 +357,7 @@ function CarouselContent({ session }: { session: Session }) {
   }, [posFromEvent]);
 
   // Tooltip positioning — place AWAY from shot marker
-  const tooltipStyle = tooltip
+  const tooltipPos = tooltip
     ? computeTooltipPosition(
         tooltip.x,
         tooltip.y,
@@ -461,22 +461,22 @@ function CarouselContent({ session }: { session: Session }) {
         </SvgPitch>
 
         {/* Tooltip connector line */}
-        {tooltip && tooltipStyle && (
+        {tooltip && tooltipPos && (
           <TooltipConnector
             shotX={tooltip.x}
             shotY={tooltip.y}
-            tooltipLeft={tooltipStyle.left}
-            tooltipTop={tooltipStyle.top}
+            nearEdgeY={tooltipPos.nearEdgeY}
+            tooltipLeft={tooltipPos.left}
           />
         )}
 
         {/* Tooltip */}
-        {tooltip && tooltipStyle && tooltip.kind === 'single' && (() => {
+        {tooltip && tooltipPos && tooltip.kind === 'single' && (() => {
           const s = tooltip.shot;
           return (
             <div
               className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
-              style={tooltipStyle}
+              style={tooltipPos.style}
             >
               <p className={`font-semibold mb-1.5 ${s.result === 'scored' ? 'text-success' : 'text-danger'}`}>
                 {s.result === 'scored' ? 'Scored' : 'Missed'}
@@ -506,7 +506,7 @@ function CarouselContent({ session }: { session: Session }) {
           );
         })()}
 
-        {tooltip && tooltipStyle && tooltip.kind === 'batch' && (() => {
+        {tooltip && tooltipPos && tooltip.kind === 'batch' && (() => {
           const shots = tooltip.shots;
           const batchScored = shots.filter((s) => s.result === 'scored').length;
           const batchTotal = shots.length;
@@ -523,7 +523,7 @@ function CarouselContent({ session }: { session: Session }) {
           return (
             <div
               className="absolute z-50 bg-surface border border-grey rounded-lg shadow-lg p-2 sm:p-3 text-xs pointer-events-none min-w-[160px] sm:min-w-[180px]"
-              style={tooltipStyle}
+              style={tooltipPos.style}
             >
               <p className="font-semibold mb-1.5 text-text">
                 {batchScored}/{batchTotal} scored
