@@ -11,6 +11,8 @@ import {
   syncTrainingLogToCloud,
   deleteTrainingLogFromCloud,
   syncBacklog,
+  processPendingDeletes,
+  getPendingSyncCount,
 } from '@/lib/supabase/cloudWrite';
 import type { Session, TrainingLog, PracticeDrill } from '@/types';
 
@@ -55,6 +57,8 @@ export function useCloudSync() {
   const clearTeam = useTeamStore((s) => s.clearTeam);
   const setLoading = useUiStore((s) => s.setLoading);
   const setOfflineMode = useUiStore((s) => s.setOfflineMode);
+  const setSyncStatus = useUiStore((s) => s.setSyncStatus);
+  const setPendingSyncCount = useUiStore((s) => s.setPendingSyncCount);
 
   const initialised = useRef(false);
   const lastSyncRef = useRef<string | null>(null);
@@ -239,17 +243,19 @@ export function useCloudSync() {
   }, [setSessions, setTrainingLogs, setLoading, setOfflineMode]);
 
   // -----------------------------------------------------------------------
-  // Persist to localStorage whenever store changes
+  // Persist to localStorage whenever store changes + update pending count
   // -----------------------------------------------------------------------
   useEffect(() => {
     if (!initialised.current) return;
     saveToLocalStorage(LS_SESSIONS, sessions);
-  }, [sessions]);
+    setPendingSyncCount(getPendingSyncCount());
+  }, [sessions, setPendingSyncCount]);
 
   useEffect(() => {
     if (!initialised.current) return;
     saveToLocalStorage(LS_TRAINING_LOGS, trainingLogs);
-  }, [trainingLogs]);
+    setPendingSyncCount(getPendingSyncCount());
+  }, [trainingLogs, setPendingSyncCount]);
 
   // -----------------------------------------------------------------------
   // Initial load on mount
@@ -343,14 +349,30 @@ export function useCloudSync() {
   // Online/offline detection
   // -----------------------------------------------------------------------
   useEffect(() => {
-    function handleOnline() {
+    let syncStatusTimer: ReturnType<typeof setTimeout>;
+
+    async function handleOnline() {
       setOfflineMode(false);
-      // Re-sync from cloud when coming back online
-      loadData();
+      setSyncStatus('syncing');
+
+      try {
+        // Process any deletes queued while offline
+        await processPendingDeletes();
+        // Re-sync from cloud (also calls syncBacklog for unsynced items)
+        await loadData();
+        setSyncStatus('synced');
+        syncStatusTimer = setTimeout(() => setSyncStatus('idle'), 3000);
+      } catch {
+        setSyncStatus('error');
+        syncStatusTimer = setTimeout(() => setSyncStatus('idle'), 5000);
+      }
+
+      setPendingSyncCount(getPendingSyncCount());
     }
 
     function handleOffline() {
       setOfflineMode(true);
+      setPendingSyncCount(getPendingSyncCount());
     }
 
     window.addEventListener('online', handleOnline);
@@ -359,13 +381,15 @@ export function useCloudSync() {
     // Check initial state
     if (!navigator.onLine) {
       setOfflineMode(true);
+      setPendingSyncCount(getPendingSyncCount());
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearTimeout(syncStatusTimer);
     };
-  }, [setOfflineMode, loadData]);
+  }, [setOfflineMode, setSyncStatus, setPendingSyncCount, loadData]);
 
   return { loadData };
 }

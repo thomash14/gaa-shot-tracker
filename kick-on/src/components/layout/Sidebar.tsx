@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTeamStore } from '@/store/teamStore';
+import { useUiStore } from '@/store/uiStore';
 import ProfileMenu from './ProfileMenu';
 
 interface NavItem {
@@ -26,6 +27,9 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const currentMembership = useTeamStore((s) => s.currentMembership);
   const hasPlayerMembership = useTeamStore((s) => s.hasPlayerMembership);
+  const offlineMode = useUiStore((s) => s.offlineMode);
+  const pendingSyncCount = useUiStore((s) => s.pendingSyncCount);
+  const syncStatus = useUiStore((s) => s.syncStatus);
 
   // Hide sidebar on auth pages (login, signup, etc.)
   if (pathname.startsWith('/auth')) return null;
@@ -58,6 +62,17 @@ export default function Sidebar() {
           <h1 className="text-xl font-bold text-primary dark:text-text">KICK ON</h1>
           <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
         </div>
+        {offlineMode && (
+          <div className="mx-2 mt-2 px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            Offline — data saved locally
+          </div>
+        )}
+        {!offlineMode && syncStatus === 'syncing' && (
+          <div className="mx-2 mt-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-xs font-medium">
+            Syncing{pendingSyncCount > 0 ? ` ${pendingSyncCount} items` : ''}...
+          </div>
+        )}
         <nav className="flex-1 py-2 overflow-y-auto">
           {visibleItems.map((item) => (
             <Link

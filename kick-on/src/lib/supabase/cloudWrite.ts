@@ -17,6 +17,41 @@ function enqueue(fn: () => Promise<void>): void {
 }
 
 // ---------------------------------------------------------------------------
+// Offline helpers — pending delete queue
+// ---------------------------------------------------------------------------
+
+const LS_PENDING_DELETES = 'kickon_pending_deletes';
+
+interface PendingDeletes {
+  sessions: string[];
+  trainingLogs: string[];
+}
+
+function loadPendingDeletes(): PendingDeletes {
+  try {
+    const raw = localStorage.getItem(LS_PENDING_DELETES);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { sessions: [], trainingLogs: [] };
+}
+
+function addPendingDelete(type: 'sessions' | 'trainingLogs', cloudId: string) {
+  const pending = loadPendingDeletes();
+  if (!pending[type].includes(cloudId)) {
+    pending[type].push(cloudId);
+    localStorage.setItem(LS_PENDING_DELETES, JSON.stringify(pending));
+  }
+}
+
+function clearPendingDeletes() {
+  localStorage.removeItem(LS_PENDING_DELETES);
+}
+
+function isOffline(): boolean {
+  return typeof navigator !== 'undefined' && !navigator.onLine;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -33,8 +68,10 @@ async function getUser() {
 // ---------------------------------------------------------------------------
 
 async function _syncSessionToCloud(session: Session): Promise<void> {
+  if (isOffline()) return; // skip when offline — syncBacklog picks up on reconnect
+
   const user = await getUser();
-  if (!user) return; // offline or not logged in
+  if (!user) return;
 
   const supabase = createClient();
 
@@ -217,6 +254,11 @@ export function syncSessionToCloud(session: Session): void {
 // ---------------------------------------------------------------------------
 
 async function _deleteSessionFromCloud(cloudId: string): Promise<void> {
+  if (isOffline()) {
+    addPendingDelete('sessions', cloudId);
+    return;
+  }
+
   const user = await getUser();
   if (!user) return;
 
@@ -241,6 +283,8 @@ export function deleteSessionFromCloud(cloudId: string): void {
 // ---------------------------------------------------------------------------
 
 async function _syncTrainingLogToCloud(log: TrainingLog): Promise<void> {
+  if (isOffline()) return; // skip when offline — syncBacklog picks up on reconnect
+
   const user = await getUser();
   if (!user) return;
 
@@ -306,6 +350,11 @@ export function syncTrainingLogToCloud(log: TrainingLog): void {
 // ---------------------------------------------------------------------------
 
 async function _deleteTrainingLogFromCloud(cloudId: string): Promise<void> {
+  if (isOffline()) {
+    addPendingDelete('trainingLogs', cloudId);
+    return;
+  }
+
   const user = await getUser();
   if (!user) return;
 
@@ -325,7 +374,33 @@ export function deleteTrainingLogFromCloud(cloudId: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// syncBacklog — sync all sessions/logs that are missing cloudId
+// processPendingDeletes — execute any deletes queued while offline
+// ---------------------------------------------------------------------------
+
+export async function processPendingDeletes(): Promise<void> {
+  const pending = loadPendingDeletes();
+  if (pending.sessions.length === 0 && pending.trainingLogs.length === 0) return;
+
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = createClient();
+
+  for (const cloudId of pending.sessions) {
+    await supabase.from('shots').delete().eq('session_id', cloudId);
+    await supabase.from('practice_drills').delete().eq('session_id', cloudId);
+    await supabase.from('sessions').delete().eq('id', cloudId);
+  }
+
+  for (const cloudId of pending.trainingLogs) {
+    await supabase.from('training_logs').delete().eq('id', cloudId);
+  }
+
+  clearPendingDeletes();
+}
+
+// ---------------------------------------------------------------------------
+// syncBacklog — sync all sessions/logs that need cloud sync
 // ---------------------------------------------------------------------------
 
 export function syncBacklog(): void {
@@ -333,7 +408,14 @@ export function syncBacklog(): void {
 
   for (const session of store.sessions) {
     if (!session.cloudId) {
+      // Session never synced
       syncSessionToCloud(session);
+    } else {
+      // Session synced but may have unsynced shots (added while offline)
+      const hasUnsyncedShots = (session.shots ?? []).some((s) => !s.cloudId);
+      if (hasUnsyncedShots) {
+        syncSessionToCloud(session);
+      }
     }
   }
 
@@ -342,4 +424,33 @@ export function syncBacklog(): void {
       syncTrainingLogToCloud(log);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// getPendingSyncCount — count items needing sync
+// ---------------------------------------------------------------------------
+
+export function getPendingSyncCount(): number {
+  const store = useSessionStore.getState();
+  const pending = loadPendingDeletes();
+
+  let count = 0;
+
+  // Sessions without cloudId
+  count += store.sessions.filter((s) => !s.cloudId).length;
+
+  // Shots without cloudId (on synced sessions)
+  for (const session of store.sessions) {
+    if (session.cloudId) {
+      count += (session.shots ?? []).filter((s) => !s.cloudId).length;
+    }
+  }
+
+  // Training logs without cloudId
+  count += store.trainingLogs.filter((l) => !l.cloudId).length;
+
+  // Pending deletes
+  count += pending.sessions.length + pending.trainingLogs.length;
+
+  return count;
 }

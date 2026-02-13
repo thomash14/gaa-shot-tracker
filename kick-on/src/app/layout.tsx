@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import LoadingOverlay from '@/components/layout/LoadingOverlay';
 import SyncProvider from '@/components/layout/SyncProvider';
+import SyncStatusToast from '@/components/layout/SyncStatusToast';
 
 export const metadata: Metadata = {
   title: 'Kick On — GAA Shot Tracker',
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="antialiased">
         <LoadingOverlay />
         <SyncProvider />
+        <SyncStatusToast />
         <div className="flex min-h-dvh">
           {/* Desktop sidebar */}
           <Suspense>
