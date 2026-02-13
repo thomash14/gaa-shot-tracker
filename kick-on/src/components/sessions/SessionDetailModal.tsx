@@ -154,7 +154,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
   }
 
-  const drills = session.drills ?? [];
+  const drills = useMemo(() => session.drills ?? [], [session.drills]);
   const hasDrills = drills.length > 0;
 
   // -------------------------------------------------------------------------
@@ -414,6 +414,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 </div>
               )}
 
+              <ShotMapLegend />
               <div className="relative" ref={containerRef}>
                 <SvgPitch onPitchClick={handlePitchClick}>
                   {singleShots.map((shot, i) => (
@@ -519,8 +520,6 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                   );
                 })()}
               </div>
-
-              <ShotMapLegend />
             </div>
           )}
 

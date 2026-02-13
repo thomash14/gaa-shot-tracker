@@ -163,6 +163,7 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
         </label>
       </div>
 
+      <ShotMapLegend />
       <div className="relative" ref={containerRef}>
         <SvgPitch attackingHalfOnly onPitchClick={handlePitchClick}>
           <ZoneOverlay visible={showZoneOverlay} />
@@ -263,8 +264,6 @@ export default function AnalyticsShotMap({ shots }: AnalyticsShotMapProps) {
           );
         })()}
       </div>
-
-      <ShotMapLegend />
     </div>
   );
 }

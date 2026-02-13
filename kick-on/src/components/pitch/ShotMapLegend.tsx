@@ -2,11 +2,11 @@
 
 /**
  * Legend for shot map markers showing shapes (shot type) and colours (result).
- * Compact inline layout suitable for placement below pitch maps.
+ * Compact inline layout suitable for placement above pitch maps.
  */
 export default function ShotMapLegend() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-3 text-xs text-text-muted">
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-2 text-xs text-text-muted">
       {/* Shapes */}
       <span className="inline-flex items-center gap-1">
         <svg width="10" height="10" viewBox="0 0 10 10">

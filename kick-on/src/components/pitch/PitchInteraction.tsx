@@ -183,6 +183,7 @@ export default function PitchInteraction({
 
   return (
     <div ref={svgWrapperRef} className="relative">
+      <ShotMapLegend />
       <SvgPitch onPitchClick={handlePitchClick}>
         {/* Individual (non-batch) shot markers */}
         {singleShots.map((shot, i) => (
@@ -263,8 +264,6 @@ export default function PitchInteraction({
           </circle>
         )}
       </SvgPitch>
-
-      <ShotMapLegend />
 
       {/* Half selector overlay (match mode) */}
       {isMatch && (

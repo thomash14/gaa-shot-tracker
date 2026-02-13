@@ -416,6 +416,7 @@ function CarouselContent({ session }: { session: Session }) {
       </div>
 
       {/* Pitch with shots */}
+      <ShotMapLegend />
       <div className="max-w-[500px] mx-auto relative" ref={containerRef}>
         <SvgPitch showLabels={false}>
           {/* Half-end labels for match sessions */}
@@ -537,8 +538,6 @@ function CarouselContent({ session }: { session: Session }) {
         })()}
       </div>
 
-      {/* Legend */}
-      <ShotMapLegend />
     </>
   );
 }
