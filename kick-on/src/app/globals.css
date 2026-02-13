@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-primary: #2a5298;
   --color-primary-dark: #1e3c72;
@@ -47,4 +49,18 @@ body {
 }
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Dark mode colour overrides */
+.dark {
+  --color-background: #111827;
+  --color-surface: #1f2937;
+  --color-text: #f3f4f6;
+  --color-text-muted: #9ca3af;
+  --color-border: #374151;
+  --color-grey-light: #374151;
+  --color-grey: #6b7280;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }

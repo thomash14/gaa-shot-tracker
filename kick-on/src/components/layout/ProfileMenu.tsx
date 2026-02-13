@@ -4,10 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { ReportModal } from '@/components/report';
 
 export default function ProfileMenu() {
   const { user, initialising, displayName, initials, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,7 @@ export default function ProfileMenu() {
 
       {/* Dropdown — opens upward in sidebar (bottom), downward in header (top) */}
       {isOpen && (
-        <div className="absolute right-0 md:left-0 md:right-auto md:bottom-full md:mb-2 top-full md:top-auto mt-2 md:mt-0 w-52 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
+        <div className="absolute right-0 md:left-0 md:right-auto md:bottom-full md:mb-2 top-full md:top-auto mt-2 md:mt-0 w-52 bg-surface rounded-xl shadow-lg border border-border py-2 z-50">
           <div className="px-4 py-2 border-b border-border">
             <p className="text-sm font-semibold text-text truncate">{displayName}</p>
             <p className="text-xs text-text-muted truncate">{user.email}</p>
@@ -107,6 +109,22 @@ export default function ProfileMenu() {
             }}
           >
             Monthly Report
+          </button>
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 text-sm text-text hover:bg-grey-light cursor-pointer"
+            onClick={toggleTheme}
+          >
+            <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+            {isDark ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
           </button>
           <div className="border-t border-border mt-1 pt-1">
             <button

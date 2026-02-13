@@ -53,7 +53,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-white/95 backdrop-blur-sm border-r border-border sticky top-0 h-dvh shrink-0 z-20">
+      <aside className="hidden md:flex flex-col w-56 bg-surface/95 backdrop-blur-sm border-r border-border sticky top-0 h-dvh shrink-0 z-20">
         <div className="px-4 py-5 border-b border-border">
           <h1 className="text-xl font-bold text-primary">KICK ON</h1>
           <p className="text-xs text-text-muted mt-0.5">GAA Shot Tracker</p>
@@ -80,7 +80,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-border flex justify-around py-1 z-30">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-sm border-t border-border flex justify-around py-1 z-30">
         {visibleItems.map((item) => (
           <Link
             key={item.href}
