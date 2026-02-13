@@ -62,6 +62,12 @@ function ptsPerShot(onePtScored: number, twoPtScored: number, goalsScored: numbe
   return ((onePtScored * 1 + twoPtScored * 2 + goalsScored * 3) / total).toFixed(2);
 }
 
+/** Format score in GAA notation: Goals-Points (e.g. "1-05") */
+function scoreCell(goalsScored: number, onePtScored: number, twoPtScored: number): string {
+  const points = onePtScored + twoPtScored * 2;
+  return `${goalsScored}-${String(points).padStart(2, '0')}`;
+}
+
 function formatDate(dateStr: string): string {
   const parts = dateStr.split('-');
   const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
@@ -365,16 +371,17 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
               <Th>Date</Th>
               {isMatch ? (
                 <>
-                  <Th>Competition</Th>
-                  <Th>Opponent</Th>
+                  <Th>Comp.</Th>
+                  <Th>Opp.</Th>
                 </>
               ) : (
                 <>
                   <Th>Session</Th>
-                  <Th>Drill Type</Th>
+                  <Th>Drill</Th>
                 </>
               )}
               <Th>Conv.</Th>
+              <Th title="Goals-Points in GAA notation">Score</Th>
               <Th title="Points Per Shot: (1xPts + 2x2Pts + 3xGoals) / Total Shots">Pts/Shot</Th>
               {showInPlay && <Th>In-Play</Th>}
               {showPlaced && <Th>Placed</Th>}
@@ -428,6 +435,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                     </>
                   )}
                   <Td>{convCell(row.scored, row.total)}</Td>
+                  <Td>{scoreCell(row.goalsScored, row.onePtScored, row.twoPtScored)}</Td>
                   <Td>{ptsPerShot(row.onePtScored, row.twoPtScored, row.goalsScored, row.total)}</Td>
                   {showInPlay && <Td>{convCell(row.inPlayScored, row.inPlayTotal)}</Td>}
                   {showPlaced && <Td>{convCell(row.deadBallScored, row.deadBallTotal)}</Td>}
@@ -470,6 +478,7 @@ export default function StatsTable({ sessions, analyticsType }: StatsTableProps)
                   </>
                 )}
                 <Td>{convCell(sum(checkedRows, 'scored'), sum(checkedRows, 'total'))}</Td>
+                <Td>{scoreCell(sum(checkedRows, 'goalsScored'), sum(checkedRows, 'onePtScored'), sum(checkedRows, 'twoPtScored'))}</Td>
                 <Td>
                   {ptsPerShot(
                     sum(checkedRows, 'onePtScored'),
