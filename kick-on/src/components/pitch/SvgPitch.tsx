@@ -117,6 +117,7 @@ export default function SvgPitch({
     <div className={`relative ${className}`}>
       <svg
         ref={svgRef}
+        data-pitch-svg
         viewBox={viewBox}
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-auto block"

@@ -59,7 +59,7 @@ export default function PitchInteraction({
   const getSvgRect = useCallback(() => {
     const wrapper = svgWrapperRef.current;
     if (!wrapper) return null;
-    const svg = wrapper.querySelector('svg');
+    const svg = wrapper.querySelector<SVGSVGElement>('[data-pitch-svg]');
     return svg?.getBoundingClientRect() ?? null;
   }, []);
 
