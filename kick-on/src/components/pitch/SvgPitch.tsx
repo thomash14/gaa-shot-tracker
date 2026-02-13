@@ -35,6 +35,8 @@ export default function SvgPitch({
   const svgRef = useRef<SVGSVGElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const touchMovedRef = useRef(false);
+  const touchStartTimeRef = useRef(0);
+  const recentTouchRef = useRef(false);
 
   const viewBox = attackingHalfOnly ? '0 0 500 362' : '0 0 500 725';
 
@@ -54,6 +56,8 @@ export default function SvgPitch({
   const handleClick = useCallback(
     (e: MouseEvent<SVGSVGElement>) => {
       if (!onPitchClick) return;
+      // Suppress synthesised click after a touch tap (prevents double-fire)
+      if (recentTouchRef.current) return;
       const pos = toPercentage(e.clientX, e.clientY);
       if (pos) onPitchClick(pos.x, pos.y, e);
     },
@@ -66,6 +70,7 @@ export default function SvgPitch({
       if (!touch) return;
       touchStartRef.current = { x: touch.clientX, y: touch.clientY, id: touch.identifier };
       touchMovedRef.current = false;
+      touchStartTimeRef.current = Date.now();
     },
     [],
   );
@@ -89,12 +94,15 @@ export default function SvgPitch({
   const handleTouchEnd = useCallback(
     (e: TouchEvent<SVGSVGElement>) => {
       if (!touchStartRef.current) return;
-      if (!touchMovedRef.current && onPitchClick) {
+      const elapsed = Date.now() - touchStartTimeRef.current;
+      if (!touchMovedRef.current && elapsed < 300 && onPitchClick) {
         // Genuine tap — convert recorded start position to percentage coords
         const pos = toPercentage(touchStartRef.current.x, touchStartRef.current.y);
         if (pos) onPitchClick(pos.x, pos.y, e);
         // Suppress the browser's synthesised click (prevents double-fire with handleClick)
         e.preventDefault();
+        recentTouchRef.current = true;
+        setTimeout(() => { recentTouchRef.current = false; }, 400);
       }
       touchStartRef.current = null;
     },
@@ -112,6 +120,7 @@ export default function SvgPitch({
         viewBox={viewBox}
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-auto block"
+        style={{ touchAction: 'pan-y' }}
         onClick={handleClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

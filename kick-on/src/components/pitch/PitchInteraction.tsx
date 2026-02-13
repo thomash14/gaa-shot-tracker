@@ -89,6 +89,14 @@ export default function PitchInteraction({
       dragActiveRef.current = false;
       isDraggingRef.current = false;
       clearTimeout(longPressTimerRef.current);
+
+      // Reset visual drag feedback
+      if (markerElRef.current) {
+        markerElRef.current.setAttribute('r', '8');
+        markerElRef.current.setAttribute('stroke', '#333');
+        markerElRef.current.setAttribute('stroke-width', '2');
+        markerElRef.current = null;
+      }
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -104,13 +112,39 @@ export default function PitchInteraction({
     };
   }, [handleDragMove, isDraggingRef]);
 
+  // Native non-passive touchstart on pending markers so preventDefault() works
+  useEffect(() => {
+    const wrapper = svgWrapperRef.current;
+    if (!wrapper) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const target = e.target as Element;
+      if (target.closest?.('[data-pending-marker]')) {
+        e.preventDefault();
+      }
+    };
+
+    wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+    return () => wrapper.removeEventListener('touchstart', onTouchStart);
+  }, []);
+
   // Start dragging on pending marker mousedown/touchstart
+  const markerElRef = useRef<Element | null>(null);
   const startDrag = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
       if ('touches' in e) e.preventDefault();
       dragActiveRef.current = true;
       isDraggingRef.current = true;
+
+      // Visual drag feedback
+      const target = (e.target as Element).closest?.('[data-pending-marker]');
+      if (target) {
+        markerElRef.current = target;
+        target.setAttribute('r', '11');
+        target.setAttribute('stroke', '#FFD700');
+        target.setAttribute('stroke-width', '3');
+      }
     },
     [isDraggingRef],
   );
@@ -239,7 +273,8 @@ export default function PitchInteraction({
             fill="#000000"
             stroke="#333"
             strokeWidth={2}
-            style={{ cursor: 'move' }}
+            style={{ cursor: 'move', touchAction: 'none' }}
+            data-pending-marker="true"
             onMouseDown={startDrag}
             onTouchStart={startDrag}
           />
@@ -254,7 +289,8 @@ export default function PitchInteraction({
             fill="#000000"
             stroke="#333"
             strokeWidth={2}
-            style={{ cursor: 'move' }}
+            style={{ cursor: 'move', touchAction: 'none' }}
+            data-pending-marker="true"
             onMouseDown={startDrag}
             onTouchStart={(e) => {
               startDrag(e);
