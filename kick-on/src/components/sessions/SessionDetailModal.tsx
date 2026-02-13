@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import type { Session, Shot, PracticeDrill } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, HalfViewToggle, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
+import type { HalfView } from '@/components/pitch';
 import { groupShotsByPosition } from '@/lib/shotMap';
 
 // ---------------------------------------------------------------------------
@@ -154,8 +155,13 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
     typeLabel = matchType.charAt(0).toUpperCase() + matchType.slice(1);
   }
 
+  const isMatch = sessionType === 'match';
+
   const drills = useMemo(() => session.drills ?? [], [session.drills]);
   const hasDrills = drills.length > 0;
+
+  // Half view filter (match sessions only)
+  const [halfView, setHalfView] = useState<HalfView>('both');
 
   // -------------------------------------------------------------------------
   // Drill filter state
@@ -199,12 +205,18 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
   // -------------------------------------------------------------------------
 
   const filteredShots = useMemo(() => {
-    if (!hasDrills) return shots;
-    return shots.filter((s) => {
-      if (s.drillId == null) return visibleDrillIds.size === allDrillIds.size;
-      return visibleDrillIds.has(s.drillId);
-    });
-  }, [shots, hasDrills, visibleDrillIds, allDrillIds]);
+    let result = shots;
+    if (hasDrills) {
+      result = result.filter((s) => {
+        if (s.drillId == null) return visibleDrillIds.size === allDrillIds.size;
+        return visibleDrillIds.has(s.drillId);
+      });
+    }
+    if (isMatch && halfView !== 'both') {
+      result = result.filter((s) => s.half === halfView);
+    }
+    return result;
+  }, [shots, hasDrills, visibleDrillIds, allDrillIds, isMatch, halfView]);
 
   const { singleShots, batchGroups } = useMemo(
     () => groupShotsByPosition(filteredShots),
@@ -407,14 +419,20 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                 </div>
               )}
 
+              {isMatch && (
+                <div className="mb-2">
+                  <HalfViewToggle value={halfView} onChange={setHalfView} />
+                </div>
+              )}
+
               <ShotMapLegend />
               <div className="relative" ref={containerRef}>
-                <SvgPitch onPitchClick={handlePitchClick}>
+                <SvgPitch onPitchClick={handlePitchClick} attackingHalfOnly={isMatch}>
                   {singleShots.map((shot, i) => (
                     <ShotMarker
                       key={`s-${i}`}
                       shot={shot}
-                      mirror={false}
+                      mirror={isMatch}
                       size={4}
                       onClick={handleMarkerClick}
                       onMouseEnter={handleMarkerEnter}
@@ -425,6 +443,7 @@ export default function SessionDetailModal({ session, onClose }: SessionDetailMo
                     <BatchShotMarker
                       key={`b-${i}`}
                       shots={group}
+                      mirror={isMatch}
                       size={5}
                       onClick={handleBatchClick}
                       onMouseEnter={handleBatchEnter}

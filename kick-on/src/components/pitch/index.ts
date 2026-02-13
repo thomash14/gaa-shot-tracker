@@ -5,5 +5,7 @@ export { default as ZoneOverlay } from './ZoneOverlay';
 export { default as HalfSelector } from './HalfSelector';
 export { default as PitchInteraction } from './PitchInteraction';
 export { default as ShotMapLegend } from './ShotMapLegend';
+export { default as HalfViewToggle } from './HalfViewToggle';
+export type { HalfView } from './HalfViewToggle';
 export { default as TooltipConnector, computeTooltipPosition } from './TooltipConnector';
 export type { TooltipPosition } from './TooltipConnector';

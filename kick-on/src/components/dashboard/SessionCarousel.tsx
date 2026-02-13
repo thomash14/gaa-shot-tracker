@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Session, Shot } from '@/types';
-import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
+import { SvgPitch, ShotMarker, BatchShotMarker, ShotMapLegend, HalfViewToggle, TooltipConnector, computeTooltipPosition } from '@/components/pitch';
+import type { HalfView } from '@/components/pitch';
 
 // ---------------------------------------------------------------------------
 // Tooltip helpers
@@ -50,50 +51,6 @@ interface SessionCarouselProps {
 // ---------------------------------------------------------------------------
 // Helpers ported from dashboard.js / sessions.js
 // ---------------------------------------------------------------------------
-
-/** Determine which goal end was attacked in each half (ported from sessions.js). */
-function getHalfEndInfo(shots: Shot[]): { topLabel: string; bottomLabel: string } {
-  let sum1stY = 0, count1st = 0;
-  let sum2ndY = 0, count2nd = 0;
-
-  shots.forEach((shot) => {
-    if (shot.half === '1st') { sum1stY += shot.y; count1st++; }
-    else if (shot.half === '2nd') { sum2ndY += shot.y; count2nd++; }
-  });
-
-  const result = { topLabel: '', bottomLabel: '' };
-  if (count1st === 0 && count2nd === 0) return result;
-
-  const avg1stY = count1st > 0 ? sum1stY / count1st : -1;
-  const avg2ndY = count2nd > 0 ? sum2ndY / count2nd : -1;
-
-  if (count1st > 0 && count2nd > 0) {
-    if (avg1stY < avg2ndY) {
-      result.topLabel = '2nd Half';
-      result.bottomLabel = '1st Half';
-    } else {
-      result.topLabel = '1st Half';
-      result.bottomLabel = '2nd Half';
-    }
-  } else if (count1st > 0) {
-    if (avg1stY < 50) {
-      result.topLabel = '2nd Half';
-      result.bottomLabel = '1st Half';
-    } else {
-      result.topLabel = '1st Half';
-      result.bottomLabel = '2nd Half';
-    }
-  } else if (count2nd > 0) {
-    if (avg2ndY < 50) {
-      result.topLabel = '1st Half';
-      result.bottomLabel = '2nd Half';
-    } else {
-      result.topLabel = '2nd Half';
-      result.bottomLabel = '1st Half';
-    }
-  }
-  return result;
-}
 
 /** Compute session score stats (ported from dashboard.js drawCarouselSession). */
 function computeSessionStats(session: Session) {
@@ -313,11 +270,17 @@ function EmptyState({ type }: { type: DashboardType }) {
 
 function CarouselContent({ session }: { session: Session }) {
   const stats = useMemo(() => computeSessionStats(session), [session]);
-  const shotGroups = useMemo(() => groupShotsByLocation(session.shots ?? []), [session.shots]);
-  const halfInfo = useMemo(
-    () => (session.type === 'match' ? getHalfEndInfo(session.shots ?? []) : null),
-    [session]
-  );
+  const isMatch = session.type === 'match';
+
+  const [halfView, setHalfView] = useState<HalfView>('both');
+
+  const displayShots = useMemo(() => {
+    const shots = session.shots ?? [];
+    if (halfView === 'both') return shots;
+    return shots.filter((s) => s.half === halfView);
+  }, [session.shots, halfView]);
+
+  const shotGroups = useMemo(() => groupShotsByLocation(displayShots), [displayShots]);
 
   // Tooltip state
   const [tooltip, setTooltip] = useState<TooltipState>(null);
@@ -409,27 +372,12 @@ function CarouselContent({ session }: { session: Session }) {
       </div>
 
       {/* Pitch with shots */}
-      <ShotMapLegend />
+      <div className="flex items-center justify-between mb-1.5">
+        <ShotMapLegend />
+        {isMatch && <HalfViewToggle value={halfView} onChange={setHalfView} />}
+      </div>
       <div className="max-w-[500px] mx-auto relative" ref={containerRef}>
-        <SvgPitch showLabels={false}>
-          {/* Half-end labels for match sessions */}
-          {halfInfo?.topLabel && (
-            <>
-              <rect x="170" y="14" width="60" height="18" rx="4" fill="rgba(0,0,0,0.6)" />
-              <text x="200" y="27" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">
-                {halfInfo.topLabel}
-              </text>
-            </>
-          )}
-          {halfInfo?.bottomLabel && (
-            <>
-              <rect x="170" y="694" width="60" height="18" rx="4" fill="rgba(0,0,0,0.6)" />
-              <text x="200" y="707" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">
-                {halfInfo.bottomLabel}
-              </text>
-            </>
-          )}
-
+        <SvgPitch showLabels={false} attackingHalfOnly={isMatch}>
           {/* Shot markers grouped by location */}
           {shotGroups.map((loc, i) => {
             if (loc.total > 1) {
@@ -437,7 +385,7 @@ function CarouselContent({ session }: { session: Session }) {
                 <BatchShotMarker
                   key={i}
                   shots={loc.shots}
-                  mirror={false}
+                  mirror={isMatch}
                   size={8}
                   onClick={(shots, e) => handleMarkerClick(e, shots)}
                   onMouseEnter={(shots, e) => handleMarkerEnter(e, shots)}
@@ -450,7 +398,7 @@ function CarouselContent({ session }: { session: Session }) {
               <ShotMarker
                 key={i}
                 shot={loc.shots[0]}
-                mirror={false}
+                mirror={isMatch}
                 size={6}
                 onClick={(s, e) => handleMarkerClick(e, [s])}
                 onMouseEnter={(s, e) => handleMarkerEnter(e, [s])}
