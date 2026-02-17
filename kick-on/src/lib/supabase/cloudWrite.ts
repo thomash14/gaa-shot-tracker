@@ -413,6 +413,63 @@ export async function processPendingDeletes(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Custom competitions — save / delete / load
+// ---------------------------------------------------------------------------
+
+export async function saveCustomCompetition(name: string): Promise<void> {
+  if (isOffline()) return;
+
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('user_custom_competitions')
+    .upsert({ user_id: user.id, name }, { onConflict: 'user_id,name' });
+
+  if (error) {
+    console.error('[cloudWrite] save custom competition error:', error);
+  }
+}
+
+export async function deleteCustomCompetition(name: string): Promise<void> {
+  if (isOffline()) return;
+
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('user_custom_competitions')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('name', name);
+
+  if (error) {
+    console.error('[cloudWrite] delete custom competition error:', error);
+  }
+}
+
+export async function loadCustomCompetitions(): Promise<string[]> {
+  const user = await getUser();
+  if (!user) return [];
+
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('user_custom_competitions')
+    .select('name')
+    .eq('user_id', user.id)
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('[cloudWrite] load custom competitions error:', error);
+    return [];
+  }
+
+  return (data ?? []).map((row: { name: string }) => row.name);
+}
+
+// ---------------------------------------------------------------------------
 // syncBacklog — sync all sessions/logs that need cloud sync
 // ---------------------------------------------------------------------------
 

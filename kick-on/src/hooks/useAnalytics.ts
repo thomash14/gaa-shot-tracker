@@ -16,6 +16,7 @@ import {
   windDirectionOptions,
   windStrengthOptions,
   defaultMatchTypeOptions,
+  DEFAULT_MATCH_TYPE_VALUES,
   defaultDrillOptions,
   skillsetOptions,
 } from '@/lib/filterOptions';
@@ -171,6 +172,9 @@ export function useAnalytics(overrideSessions?: Session[]) {
   const selectedTrendsDrillKey = useAnalyticsStore((s) => s.selectedTrendsDrillKey);
 
   const customDrills = useDrillStore((s) => s.customDrills);
+  const customCompetitions = useSessionStore(
+    overrideSessions ? () => [] as string[] : (s) => s.customCompetitions,
+  );
 
   // 1. Filter sessions by type (match / practice)
   const typedSessions = useMemo(
@@ -200,24 +204,27 @@ export function useAnalytics(overrideSessions?: Session[]) {
     });
   }, [typedSessions, dateRangePreset, dateFrom, dateTo, sessionCount]);
 
-  // 3. Dynamic match type options (includes custom types from data)
+  // 3. Dynamic match type options (includes saved custom + session-derived types)
   const matchTypeOptions = useMemo((): FilterOption[] => {
     if (analyticsType !== 'match') return [];
-    const customTypes = [
-      ...new Set(
-        filteredSessions
-          .map((s) => s.matchType as string | null)
-          .filter(
-            (t): t is string =>
-              !!t && !['league', 'championship', 'challenge'].includes(t)
-          )
-      ),
-    ];
+    // Collect custom types found in session data
+    const sessionCustomTypes = new Set(
+      filteredSessions
+        .map((s) => s.matchType as string | null)
+        .filter(
+          (t): t is string => !!t && !DEFAULT_MATCH_TYPE_VALUES.has(t),
+        ),
+    );
+    // Merge with saved custom competitions
+    for (const c of customCompetitions) {
+      sessionCustomTypes.add(c);
+    }
+    const sorted = [...sessionCustomTypes].sort((a, b) => a.localeCompare(b));
     return [
       ...defaultMatchTypeOptions(),
-      ...customTypes.map((t) => ({ value: t, label: t })),
+      ...sorted.map((t) => ({ value: t, label: t })),
     ];
-  }, [filteredSessions, analyticsType]);
+  }, [filteredSessions, analyticsType, customCompetitions]);
 
   // 4. Dynamic drill options (includes custom drills)
   const drillOptions = useMemo((): FilterOption[] => {

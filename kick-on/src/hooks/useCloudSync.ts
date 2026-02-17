@@ -13,6 +13,7 @@ import {
   syncBacklog,
   processPendingDeletes,
   getPendingSyncCount,
+  loadCustomCompetitions,
 } from '@/lib/supabase/cloudWrite';
 import type { Session, TrainingLog, PracticeDrill } from '@/types';
 
@@ -22,6 +23,7 @@ import type { Session, TrainingLog, PracticeDrill } from '@/types';
 
 const LS_SESSIONS = 'kickon_sessions';
 const LS_TRAINING_LOGS = 'kickon_training_logs';
+const LS_CUSTOM_COMPETITIONS = 'kickon_custom_competitions';
 
 // ---------------------------------------------------------------------------
 // localStorage helpers
@@ -52,8 +54,10 @@ function saveToLocalStorage<T>(key: string, data: T): void {
 export function useCloudSync() {
   const sessions = useSessionStore((s) => s.sessions);
   const trainingLogs = useSessionStore((s) => s.trainingLogs);
+  const customCompetitions = useSessionStore((s) => s.customCompetitions);
   const setSessions = useSessionStore((s) => s.setSessions);
   const setTrainingLogs = useSessionStore((s) => s.setTrainingLogs);
+  const setCustomCompetitions = useSessionStore((s) => s.setCustomCompetitions);
   const clearTeam = useTeamStore((s) => s.clearTeam);
   const setLoading = useUiStore((s) => s.setLoading);
   const setOfflineMode = useUiStore((s) => s.setOfflineMode);
@@ -77,7 +81,7 @@ export function useCloudSync() {
 
     try {
       // Attempt cloud load — join shots via foreign key (shots table is separate)
-      const [sessionsRes, logsRes] = await Promise.all([
+      const [sessionsRes, logsRes, cloudCompetitions] = await Promise.all([
         supabase
           .from('sessions')
           .select('*, shots(*)')
@@ -88,10 +92,15 @@ export function useCloudSync() {
           .select('*')
           .eq('user_id', user.id)
           .order('date', { ascending: false }),
+        loadCustomCompetitions().catch(() => [] as string[]),
       ]);
 
       if (sessionsRes.error) throw sessionsRes.error;
       if (logsRes.error) throw logsRes.error;
+
+      // Custom competitions
+      setCustomCompetitions(cloudCompetitions);
+      saveToLocalStorage(LS_CUSTOM_COMPETITIONS, cloudCompetitions);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let cloudSessions: Session[] = (sessionsRes.data ?? []).map((row: any) => ({
@@ -269,13 +278,15 @@ export function useCloudSync() {
       // Fallback: load from localStorage
       const localSessions = loadFromLocalStorage<Session[]>(LS_SESSIONS);
       const localLogs = loadFromLocalStorage<TrainingLog[]>(LS_TRAINING_LOGS);
+      const localCompetitions = loadFromLocalStorage<string[]>(LS_CUSTOM_COMPETITIONS);
       if (localSessions) setSessions(localSessions);
       if (localLogs) setTrainingLogs(localLogs);
+      if (localCompetitions) setCustomCompetitions(localCompetitions);
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [setSessions, setTrainingLogs, setLoading, setOfflineMode]);
+  }, [setSessions, setTrainingLogs, setCustomCompetitions, setLoading, setOfflineMode]);
 
   // -----------------------------------------------------------------------
   // Persist to localStorage whenever store changes + update pending count
@@ -291,6 +302,11 @@ export function useCloudSync() {
     saveToLocalStorage(LS_TRAINING_LOGS, trainingLogs);
     setPendingSyncCount(getPendingSyncCount());
   }, [trainingLogs, setPendingSyncCount]);
+
+  useEffect(() => {
+    if (!initialised.current) return;
+    saveToLocalStorage(LS_CUSTOM_COMPETITIONS, customCompetitions);
+  }, [customCompetitions]);
 
   // -----------------------------------------------------------------------
   // Initial load on mount
@@ -315,12 +331,14 @@ export function useCloudSync() {
       if (event === 'SIGNED_OUT') {
         setSessions([]);
         setTrainingLogs([]);
+        setCustomCompetitions([]);
         clearTeam();
+        try { localStorage.removeItem(LS_CUSTOM_COMPETITIONS); } catch { /* ignore */ }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [loadData, setSessions, setTrainingLogs, clearTeam]);
+  }, [loadData, setSessions, setTrainingLogs, setCustomCompetitions, clearTeam]);
 
   // -----------------------------------------------------------------------
   // Auto-sync: subscribe to Zustand store for session/log changes

@@ -110,9 +110,17 @@ export function defaultMatchTypeOptions(): FilterOption[] {
   return [
     { value: 'league', label: 'League' },
     { value: 'championship', label: 'Championship' },
+    { value: 'cup', label: 'Cup' },
+    { value: 'friendly', label: 'Friendly' },
+    { value: 'tournament', label: 'Tournament' },
     { value: 'challenge', label: 'Challenge' },
   ];
 }
+
+/** Set of default match type values — used by SessionControls and analytics. */
+export const DEFAULT_MATCH_TYPE_VALUES = new Set(
+  defaultMatchTypeOptions().map((o) => o.value),
+);
 
 export function defaultDrillOptions(): FilterOption[] {
   return [

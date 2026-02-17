@@ -6,6 +6,7 @@ interface SessionState {
   currentSession: Session | null;
   viewingPastSession: boolean;
   trainingLogs: TrainingLog[];
+  customCompetitions: string[];
 
   // Actions
   setSessions: (sessions: Session[]) => void;
@@ -17,6 +18,9 @@ interface SessionState {
   setTrainingLogs: (logs: TrainingLog[]) => void;
   addTrainingLog: (log: TrainingLog) => void;
   removeTrainingLog: (id: string | number) => void;
+  setCustomCompetitions: (competitions: string[]) => void;
+  addCustomCompetition: (name: string) => void;
+  removeCustomCompetition: (name: string) => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -24,6 +28,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   currentSession: null,
   viewingPastSession: false,
   trainingLogs: [],
+  customCompetitions: [],
 
   setSessions: (sessions) => set({ sessions }),
 
@@ -61,5 +66,23 @@ export const useSessionStore = create<SessionState>((set) => ({
   removeTrainingLog: (id) =>
     set((state) => ({
       trainingLogs: state.trainingLogs.filter((l) => l.id !== id),
+    })),
+
+  setCustomCompetitions: (competitions) => set({ customCompetitions: competitions }),
+
+  addCustomCompetition: (name) =>
+    set((state) => {
+      const lower = name.toLowerCase();
+      if (state.customCompetitions.some((c) => c.toLowerCase() === lower)) {
+        return state;
+      }
+      return { customCompetitions: [...state.customCompetitions, name].sort((a, b) => a.localeCompare(b)) };
+    }),
+
+  removeCustomCompetition: (name) =>
+    set((state) => ({
+      customCompetitions: state.customCompetitions.filter(
+        (c) => c.toLowerCase() !== name.toLowerCase(),
+      ),
     })),
 }));

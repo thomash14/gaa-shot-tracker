@@ -3,7 +3,7 @@ import type { Sport } from './sport';
 import type { PracticeDrill } from './drill';
 
 export type SessionType = 'practice' | 'match';
-export type MatchType = 'league' | 'championship' | 'friendly' | 'custom' | null;
+export type MatchType = string | null;
 
 export interface Session {
   id: number | string;
