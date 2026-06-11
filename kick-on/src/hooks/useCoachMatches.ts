@@ -15,6 +15,30 @@ import type {
 } from '@/types';
 
 // ---------------------------------------------------------------------------
+// Turn a Supabase PostgrestError (or anything else) into a readable string.
+// Supabase errors are plain objects, so `String(err)` gives "[object Object]".
+// ---------------------------------------------------------------------------
+function describeError(e: unknown): string {
+  if (!e) return 'Unknown error';
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object') {
+    const x = e as Record<string, unknown>;
+    const parts = [x.message, x.details, x.hint, x.code]
+      .filter((p) => p != null && p !== '')
+      .map(String);
+    return parts.length ? parts.join(' · ') : JSON.stringify(e);
+  }
+  return String(e);
+}
+
+/** Log the full Supabase error and throw a descriptive Error. */
+function failStage(stage: string, error: unknown): never {
+  // Log the raw object so the full PostgrestError (code/message/details/hint) is visible.
+  console.error(`[coachMatches] ${stage} failed:`, error);
+  throw new Error(`${stage}: ${describeError(error)}`);
+}
+
+// ---------------------------------------------------------------------------
 // Build the coach_match_players rows from a draft.
 // Starters: one row per assigned position (is_starter = true).
 // Subs: one row per sub (is_starter = false) referencing the replaced starter.
@@ -162,31 +186,37 @@ export function useCoachMatches() {
 
       let matchId = existingId;
 
+      console.log('[coachMatches] saving match', { existingId, matchPayload });
+
       if (existingId) {
         const { error } = await supabase
           .from('coach_matches')
           .update(matchPayload)
           .eq('id', existingId);
-        if (error) throw error;
+        if (error) failStage('update coach_matches', error);
         // Clear existing child rows before re-inserting
-        await Promise.all([
+        const [{ error: delPlayersErr }, { error: delMissingErr }] = await Promise.all([
           supabase.from('coach_match_players').delete().eq('coach_match_id', existingId),
           supabase.from('coach_match_missing_players').delete().eq('coach_match_id', existingId),
         ]);
+        if (delPlayersErr) failStage('delete old coach_match_players', delPlayersErr);
+        if (delMissingErr) failStage('delete old coach_match_missing_players', delMissingErr);
       } else {
         const { data, error } = await supabase
           .from('coach_matches')
           .insert(matchPayload)
           .select('id')
           .single();
-        if (error || !data) throw error ?? new Error('Insert failed');
+        if (error) failStage('insert coach_matches', error);
+        if (!data) failStage('insert coach_matches', 'no row returned (RLS may be blocking the read-back)');
         matchId = data.id as string;
       }
 
       const playerRows = buildPlayerRows(matchId!, draft);
+      console.log('[coachMatches] inserting player rows:', playerRows);
       if (playerRows.length > 0) {
         const { error } = await supabase.from('coach_match_players').insert(playerRows);
-        if (error) throw error;
+        if (error) failStage('insert coach_match_players', error);
       }
 
       const missingRows = draft.missing
@@ -196,11 +226,12 @@ export function useCoachMatches() {
           player_id: m.playerId,
           reason: m.reason.trim() || null,
         }));
+      console.log('[coachMatches] inserting missing rows:', missingRows);
       if (missingRows.length > 0) {
         const { error } = await supabase
           .from('coach_match_missing_players')
           .insert(missingRows);
-        if (error) throw error;
+        if (error) failStage('insert coach_match_missing_players', error);
       }
 
       // Fetch the canonical saved row and update the store

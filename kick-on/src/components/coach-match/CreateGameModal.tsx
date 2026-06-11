@@ -253,7 +253,21 @@ export default function CreateGameModal({
         await onSave({ ...draft, status }, editing?.id);
         onClose();
       } catch (err) {
-        setError('Failed to save: ' + (err instanceof Error ? err.message : String(err)));
+        console.error('[CreateGameModal] save error:', err);
+        let msg: string;
+        if (err instanceof Error) {
+          msg = err.message;
+        } else if (err && typeof err === 'object') {
+          const e = err as Record<string, unknown>;
+          msg =
+            [e.message, e.details, e.hint, e.code]
+              .filter((p) => p != null && p !== '')
+              .map(String)
+              .join(' · ') || JSON.stringify(err);
+        } else {
+          msg = String(err);
+        }
+        setError('Failed to save: ' + msg);
       } finally {
         setSaving(false);
       }
