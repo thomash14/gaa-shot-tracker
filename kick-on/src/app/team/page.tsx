@@ -16,6 +16,7 @@ import {
   PlayerEvents,
   AddEventModal,
 } from '@/components/team';
+import { CoachMatchSection } from '@/components/coach-match';
 import type { TeamMember, TeamDrill, DrillCompletion, TeamEvent } from '@/types';
 
 export default function TeamPage() {
@@ -172,6 +173,11 @@ export default function TeamPage() {
               <PlayerEvents events={team.teamEvents} />
             )}
           </div>
+
+          {/* Coach: post-match game reviews */}
+          {team.isCoach && (
+            <CoachMatchSection teamName={teamDisplayName} members={team.teamMembers} />
+          )}
         </div>
       </div>
 

@@ -109,10 +109,7 @@ export function windStrengthOptions(): FilterOption[] {
 export function defaultMatchTypeOptions(): FilterOption[] {
   return [
     { value: 'league', label: 'League' },
-    { value: 'championship', label: 'Championship' },
-    { value: 'cup', label: 'Cup' },
-    { value: 'friendly', label: 'Friendly' },
-    { value: 'tournament', label: 'Tournament' },
+    { value: 'championship', label: 'Club Championship' },
     { value: 'challenge', label: 'Challenge' },
   ];
 }

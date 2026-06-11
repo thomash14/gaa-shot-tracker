@@ -1670,6 +1670,6 @@ function formatDate(dateStr: string): string {
 
 function formatMatchType(mt: string | null | undefined): string {
   if (!mt) return '-';
-  const map: Record<string, string> = { league: 'League', championship: 'Championship', friendly: 'Friendly', cup: 'Cup', tournament: 'Tournament', challenge: 'Challenge', custom: 'Other' };
+  const map: Record<string, string> = { league: 'League', championship: 'Club Championship', challenge: 'Challenge', custom: 'Other' };
   return map[mt] || mt;
 }
