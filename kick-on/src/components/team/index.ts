@@ -7,3 +7,4 @@ export { default as PlayerDataModal } from './PlayerDataModal';
 export { CoachDrills, PlayerDrills } from './TeamDrillsList';
 export { CoachEvents, PlayerEvents } from './TeamEventsList';
 export { default as AddEventModal } from './AddEventModal';
+export { default as AddPlayerModal } from './AddPlayerModal';

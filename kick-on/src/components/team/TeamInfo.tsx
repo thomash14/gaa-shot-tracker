@@ -13,6 +13,7 @@ interface TeamInfoProps {
   onLeaveTeam: () => void;
   onMemberClick?: (member: TeamMember) => void;
   onEditTeam?: () => void;
+  onAddPlayer?: () => void;
 }
 
 export default function TeamInfo({
@@ -26,6 +27,7 @@ export default function TeamInfo({
   onLeaveTeam,
   onMemberClick,
   onEditTeam,
+  onAddPlayer,
 }: TeamInfoProps) {
   const clubName = team.clubs?.name ?? 'Unknown Club';
   const details = `${team.age_group}${team.team_name ? ' \u00b7 ' + team.team_name : ''} \u00b7 ${team.season_year} Season`;
@@ -139,6 +141,16 @@ export default function TeamInfo({
               <p className="text-sm text-text-muted py-2">No team members yet</p>
             )}
           </div>
+
+          {/* Add player (coach only) */}
+          {isCoach && onAddPlayer && (
+            <button
+              onClick={onAddPlayer}
+              className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-primary border-2 border-dashed border-primary/40 hover:bg-primary/5 transition-colors"
+            >
+              + Add Player
+            </button>
+          )}
         </div>
 
         {/* Leave team */}

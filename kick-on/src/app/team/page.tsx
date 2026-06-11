@@ -15,6 +15,7 @@ import {
   CoachEvents,
   PlayerEvents,
   AddEventModal,
+  AddPlayerModal,
 } from '@/components/team';
 import { CoachMatchSection } from '@/components/coach-match';
 import type { TeamMember, TeamDrill, DrillCompletion, TeamEvent } from '@/types';
@@ -28,6 +29,7 @@ export default function TeamPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [addPlayerModalOpen, setAddPlayerModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TeamEvent | undefined>(undefined);
   const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string; sharePractice: boolean; shareMatch: boolean } | null>(null);
 
@@ -138,6 +140,7 @@ export default function TeamPage() {
           onLeaveTeam={async () => { await team.leaveTeam(); alert('You have left the team'); }}
           onMemberClick={handleMemberClick}
           onEditTeam={() => setEditModalOpen(true)}
+          onAddPlayer={() => setAddPlayerModalOpen(true)}
         />
 
         {/* Right: Drills + Events */}
@@ -207,6 +210,12 @@ export default function TeamPage() {
           }
         }}
         onClose={() => { setEventModalOpen(false); setEditingEvent(undefined); }}
+      />
+
+      <AddPlayerModal
+        open={addPlayerModalOpen}
+        onAdd={team.addCoachPlayer}
+        onClose={() => setAddPlayerModalOpen(false)}
       />
 
       {selectedPlayer && (

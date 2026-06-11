@@ -133,6 +133,21 @@ export function useTeam() {
   }, [currentTeam, setTeamMembers]);
 
   // -------------------------------------------------------------------------
+  // Add a coach-added player (no auth account required)
+  // -------------------------------------------------------------------------
+  const addCoachPlayer = useCallback(async (name: string, email?: string) => {
+    if (!currentTeam) throw new Error('No team');
+    const supabase = createClient();
+    const { error } = await supabase.rpc('add_coach_player', {
+      p_team_id: currentTeam.id,
+      p_name: name.trim(),
+      p_email: email?.trim() || null,
+    });
+    if (error) throw error;
+    await loadTeamMembers();
+  }, [currentTeam, loadTeamMembers]);
+
+  // -------------------------------------------------------------------------
   // Toggle sharing
   // -------------------------------------------------------------------------
   const toggleSharePractice = useCallback(async (newValue: boolean) => {
@@ -464,6 +479,7 @@ export function useTeam() {
     loadTeamMembers,
     loadTeamDrills,
     loadTeamEvents,
+    addCoachPlayer,
     toggleSharePractice,
     toggleShareMatch,
     lookupInviteCode,
