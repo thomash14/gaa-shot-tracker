@@ -138,8 +138,15 @@ export default function CreateGameModal({
   }
   if (!open && initialised) setInitialised(false);
 
+  // nameOf resolves against ALL members so any stored id (incl. legacy) renders.
   const nameOf = useCallback(
     (id: string) => members.find((m) => m.user_id === id)?.displayName ?? 'Unknown',
+    [members],
+  );
+
+  // Only players are selectable — coach accounts are excluded from the pool.
+  const playerMembers = useMemo(
+    () => members.filter((m) => m.role === 'player'),
     [members],
   );
 
@@ -151,8 +158,8 @@ export default function CreateGameModal({
   }, [draft.starters, draft.subs]);
 
   const available = useMemo(
-    () => members.filter((m) => !usedIds.has(m.user_id)),
-    [members, usedIds],
+    () => playerMembers.filter((m) => !usedIds.has(m.user_id)),
+    [playerMembers, usedIds],
   );
 
   // -------------------------------------------------------------------------
@@ -409,7 +416,7 @@ export default function CreateGameModal({
           {step === 3 && (
             <NotesStep
               draft={draft}
-              members={members}
+              members={playerMembers}
               usedIds={usedIds}
               nameOf={nameOf}
               patch={patch}
