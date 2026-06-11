@@ -34,9 +34,11 @@ export default function FormationPitch({
             {row.positions.map((pos) => {
               const sub = subs.find((s) => s.position === pos);
               const starterId = starters[pos];
-              const occupantId = sub ? sub.subPlayerId : starterId;
+              const filled = !!starterId;
               const isOver = overId === pos;
-              const isSelectedHere = !!occupantId && occupantId === selectedPlayerId;
+              const isSelectedHere = !!starterId && starterId === selectedPlayerId;
+              // Shrink both names slightly when a sub line shares the box.
+              const compact = !!sub;
 
               return (
                 <div
@@ -44,8 +46,8 @@ export default function FormationPitch({
                   data-droppable-id={pos}
                   onClick={() => onSlotClick?.(pos)}
                   title={POSITION_NAMES[pos]}
-                  className={`relative flex h-14 w-[5.5rem] flex-col items-center justify-center rounded-lg border text-center transition-colors sm:w-24 ${
-                    occupantId
+                  className={`relative flex h-16 w-[5.5rem] flex-col items-center justify-center rounded-lg border text-center transition-colors sm:w-24 ${
+                    filled
                       ? 'border-white/70 bg-white text-text shadow-sm dark:bg-surface'
                       : 'border-dashed border-white/60 bg-white/10 text-white'
                   } ${isOver ? 'ring-2 ring-yellow-300 ring-offset-1 ring-offset-pitch-green' : ''} ${
@@ -54,34 +56,43 @@ export default function FormationPitch({
                 >
                   <span
                     className={`absolute left-1 top-1 text-[9px] font-bold uppercase tracking-wide ${
-                      occupantId ? 'text-text-muted' : 'text-white/80'
+                      filled ? 'text-text-muted' : 'text-white/80'
                     }`}
                   >
                     {POSITION_LABELS[pos]}
                   </span>
 
-                  {occupantId ? (
-                    <span
-                      onPointerDown={(e) => {
-                        if (!draggableOccupants) return;
-                        startDrag(
-                          { playerId: occupantId, name: nameOf(occupantId), source: 'slot', position: pos },
-                          e,
-                        );
-                      }}
-                      style={{ touchAction: 'none' }}
-                      className="mt-1 line-clamp-2 px-1 text-[11px] font-semibold leading-tight"
-                    >
-                      {nameOf(occupantId)}
-                    </span>
+                  {filled ? (
+                    <div className="mt-3 flex w-full flex-col items-center px-1 leading-tight">
+                      {/* Starter — the main name, draggable */}
+                      <span
+                        onPointerDown={(e) => {
+                          if (!draggableOccupants) return;
+                          startDrag(
+                            { playerId: starterId, name: nameOf(starterId), source: 'slot', position: pos },
+                            e,
+                          );
+                        }}
+                        style={{ touchAction: 'none' }}
+                        className={`line-clamp-2 font-semibold ${compact ? 'text-[10px]' : 'text-[11px]'}`}
+                      >
+                        {nameOf(starterId)}
+                      </span>
+
+                      {/* Sub who came on — smaller green line beneath the starter */}
+                      {sub && (
+                        <span
+                          className={`mt-0.5 line-clamp-2 font-semibold text-success ${
+                            compact ? 'text-[9px]' : 'text-[10px]'
+                          }`}
+                        >
+                          ↑ {nameOf(sub.subPlayerId)}
+                          {sub.minute != null ? ` ${sub.minute}'` : ''}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <span className="mt-1 text-[10px] font-medium text-white/70">Empty</span>
-                  )}
-
-                  {sub && starterId && (
-                    <span className="absolute bottom-0.5 right-1 text-[8px] font-medium text-success">
-                      ↑{sub.minute != null ? `${sub.minute}'` : 'sub'}
-                    </span>
                   )}
                 </div>
               );

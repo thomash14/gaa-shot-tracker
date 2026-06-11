@@ -58,10 +58,9 @@ export default function TeamSelectionStep({
       setSelected(null);
       return;
     }
-    // Nothing selected: pick up the occupant (if any) to move it
-    const sub = subs.find((s) => s.position === pos);
-    const occupant = sub ? sub.subPlayerId : starters[pos];
-    if (occupant) setSelected({ playerId: occupant, source: 'slot', position: pos });
+    // Nothing selected: pick up the starter (the main name) to move it
+    const starterId = starters[pos];
+    if (starterId) setSelected({ playerId: starterId, source: 'slot', position: pos });
   };
 
   const handleBenchClick = (id: string) => {
