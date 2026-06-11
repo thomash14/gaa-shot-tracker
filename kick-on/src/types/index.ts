@@ -18,5 +18,17 @@ export type {
   PracticeFlowState,
 } from './drill';
 export type { Club, Team, TeamMembership, TeamMember, TeamRole, TeamEvent, TeamEventType } from './team';
+export type {
+  CoachMatchStatus,
+  Position,
+  CoachMatch,
+  CoachMatchPlayer,
+  CoachMatchMissingPlayer,
+  CoachMatchDetail,
+  DraftSub,
+  DraftComment,
+  DraftMissing,
+  CoachMatchDraft,
+} from './coachMatch';
 export type { TrainingLog, TrainingSessionType } from './training';
 export type { UserProfile } from './profile';
