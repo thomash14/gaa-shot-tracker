@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ALL_POSITIONS, POSITION_LABELS, POSITION_NAMES } from '@/lib/coachMatch';
+import { JERSEY_ORDER, POSITION_LABELS, POSITION_NAMES } from '@/lib/coachMatch';
 import { sumField, type PlayerStatRow } from '@/lib/coachStats';
 
 interface CoachStatsTableProps {
@@ -20,6 +20,8 @@ interface ColumnDef {
   numeric: boolean;
 }
 
+type BodyItem = { kind: 'row'; row: PlayerStatRow } | { kind: 'divider' };
+
 const COLUMNS: ColumnDef[] = [
   { key: 'name', label: 'Player', numeric: false },
   { key: 'position', label: 'Pos', numeric: false },
@@ -35,7 +37,7 @@ const COLUMNS: ColumnDef[] = [
 function sortValue(row: PlayerStatRow, key: SortKey): number | string {
   switch (key) {
     case 'name': return row.name.toLowerCase();
-    case 'position': return ALL_POSITIONS.indexOf(row.position);
+    case 'position': return JERSEY_ORDER.indexOf(row.position);
     case 'reviewed': return row.reviewed ? 1 : 0;
     case 'shots': return row.shots;
     case 'kickouts': return row.kickoutsWon + row.kickoutsLost;
@@ -58,6 +60,31 @@ export default function CoachStatsTable({ rows, onRowClick }: CoachStatsTablePro
     });
     return copy;
   }, [rows, sortKey, asc]);
+
+  // In the default "position" mode, group starters (jersey order 1-15) above a
+  // SUBSTITUTES divider, with subs ordered by the minute they came on. Other
+  // sort columns keep the existing flat ordering.
+  const body = useMemo<BodyItem[]>(() => {
+    if (sortKey !== 'position') {
+      return sorted.map((row) => ({ kind: 'row', row }));
+    }
+    const starters = rows
+      .filter((r) => r.isStarter)
+      .sort((a, b) => JERSEY_ORDER.indexOf(a.position) - JERSEY_ORDER.indexOf(b.position));
+    const subs = rows
+      .filter((r) => !r.isStarter)
+      .sort((a, b) => (a.subMinute ?? Infinity) - (b.subMinute ?? Infinity));
+    if (!asc) {
+      starters.reverse();
+      subs.reverse();
+    }
+    const items: BodyItem[] = starters.map((row) => ({ kind: 'row', row }));
+    if (subs.length > 0) {
+      items.push({ kind: 'divider' });
+      subs.forEach((row) => items.push({ kind: 'row', row }));
+    }
+    return items;
+  }, [rows, sorted, sortKey, asc]);
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setAsc((v) => !v);
@@ -92,49 +119,68 @@ export default function CoachStatsTable({ rows, onRowClick }: CoachStatsTablePro
           </tr>
         </thead>
         <tbody>
-          {sorted.map((r) => (
-            <tr
-              key={r.cmpId}
-              onClick={() => onRowClick(r)}
-              className={`cursor-pointer border-b border-grey-light transition-colors hover:bg-grey-light ${
-                r.reviewed ? '' : 'opacity-50'
-              }`}
-            >
-              <td className="whitespace-nowrap px-2 py-2 font-semibold text-text">
-                {r.name}
-                {!r.isStarter && <span className="ml-1 text-[10px] text-success">(sub)</span>}
-              </td>
-              <td className="px-2 py-2 text-text-muted" title={POSITION_NAMES[r.position]}>
-                {POSITION_LABELS[r.position]}
-              </td>
-              <td className="px-2 py-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    r.reviewed ? 'bg-success/15 text-success' : 'bg-grey-light text-text-muted'
-                  }`}
+          {body.map((item) =>
+            item.kind === 'divider' ? (
+              <tr key="subs-divider" className="bg-grey-light/60">
+                <td
+                  colSpan={columns.length}
+                  className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-text-muted"
                 >
-                  {r.reviewed ? 'Reviewed' : 'Not reviewed'}
-                </span>
-              </td>
-              <td className="px-2 py-2 text-right text-text">{r.possessions}</td>
-              <td className="px-2 py-2 text-right text-text">
-                {r.shotsScored}/{r.shots}
-              </td>
-              <td className="px-2 py-2 text-right text-text">{r.turnoversWon}</td>
-              <td className="px-2 py-2 text-right text-text">{r.turnoversLost}</td>
-              <td className="px-2 py-2 text-right text-text" title={`${r.assistGoals} goal, ${r.assistPoints} point`}>
-                {r.assists}
-                {r.assists > 0 && (
-                  <span className="text-text-muted"> ({r.assistGoals}g/{r.assistPoints}p)</span>
-                )}
-              </td>
-              {hasKickouts && (
-                <td className="px-2 py-2 text-right text-text">
-                  {r.position === 'GK' ? `${r.kickoutsWon}/${r.kickoutsLost}` : '—'}
+                  Substitutes
                 </td>
-              )}
-            </tr>
-          ))}
+              </tr>
+            ) : (
+              (() => {
+                const r = item.row;
+                return (
+                  <tr
+                    key={r.cmpId}
+                    onClick={() => onRowClick(r)}
+                    className={`cursor-pointer border-b border-grey-light transition-colors hover:bg-grey-light ${
+                      r.reviewed ? '' : 'opacity-50'
+                    }`}
+                  >
+                    <td className="whitespace-nowrap px-2 py-2 font-semibold text-text">
+                      {r.name}
+                      {!r.isStarter && <span className="ml-1 text-[10px] text-success">(sub)</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2 text-text-muted" title={POSITION_NAMES[r.position]}>
+                      {POSITION_LABELS[r.position]}
+                      {!r.isStarter && r.subMinute != null && (
+                        <span className="ml-1 font-semibold text-success">{r.subMinute}&apos;</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          r.reviewed ? 'bg-success/15 text-success' : 'bg-grey-light text-text-muted'
+                        }`}
+                      >
+                        {r.reviewed ? 'Reviewed' : 'Not reviewed'}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-text">{r.possessions}</td>
+                    <td className="px-2 py-2 text-right text-text">
+                      {r.shotsScored}/{r.shots}
+                    </td>
+                    <td className="px-2 py-2 text-right text-text">{r.turnoversWon}</td>
+                    <td className="px-2 py-2 text-right text-text">{r.turnoversLost}</td>
+                    <td className="px-2 py-2 text-right text-text" title={`${r.assistGoals} goal, ${r.assistPoints} point`}>
+                      {r.assists}
+                      {r.assists > 0 && (
+                        <span className="text-text-muted"> ({r.assistGoals}g/{r.assistPoints}p)</span>
+                      )}
+                    </td>
+                    {hasKickouts && (
+                      <td className="px-2 py-2 text-right text-text">
+                        {r.position === 'GK' ? `${r.kickoutsWon}/${r.kickoutsLost}` : '—'}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })()
+            ),
+          )}
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-border font-bold text-text">

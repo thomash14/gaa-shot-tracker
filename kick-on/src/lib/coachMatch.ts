@@ -14,6 +14,16 @@ export const ALL_POSITIONS: Position[] = [
   'GK',
 ];
 
+/** Positions in GAA jersey-number order (1 = GK … 15 = LCF). */
+export const JERSEY_ORDER: Position[] = [
+  'GK',
+  'RCB', 'FB', 'LCB',
+  'RHB', 'CHB', 'LHB',
+  'MID1', 'MID2',
+  'RHF', 'CHF', 'LHF',
+  'RCF', 'FF', 'LCF',
+];
+
 /** Full descriptive name for each position. */
 export const POSITION_NAMES: Record<Position, string> = {
   GK: 'Goalkeeper',
