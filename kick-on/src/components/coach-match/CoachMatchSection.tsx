@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useCoachMatches } from '@/hooks/useCoachMatches';
 import CoachMatchList from './CoachMatchList';
 import CreateGameModal from './CreateGameModal';
+import CoachMatchStatsModal from './CoachMatchStatsModal';
 import type { CoachMatch, CoachMatchDetail, CoachMatchDraft, TeamMember } from '@/types';
 
 interface CoachMatchSectionProps {
@@ -27,6 +28,7 @@ export default function CoachMatchSection({ teamName, members }: CoachMatchSecti
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CoachMatchDetail | null>(null);
+  const [statsMatch, setStatsMatch] = useState<CoachMatch | null>(null);
 
   useEffect(() => {
     loadCoachMatches();
@@ -38,7 +40,7 @@ export default function CoachMatchSection({ teamName, members }: CoachMatchSecti
     setModalOpen(true);
   };
 
-  const handleSelect = async (match: CoachMatch) => {
+  const openEditor = async (match: CoachMatch) => {
     const detail = await loadCoachMatchDetail(match.id);
     if (!detail) {
       alert('Could not load this game.');
@@ -46,6 +48,15 @@ export default function CoachMatchSection({ teamName, members }: CoachMatchSecti
     }
     setEditing(detail);
     setModalOpen(true);
+  };
+
+  // Sent games open the read-only player-stats view; drafts open the editor.
+  const handleSelect = (match: CoachMatch) => {
+    if (match.status === 'sent') {
+      setStatsMatch(match);
+    } else {
+      openEditor(match);
+    }
   };
 
   const handleSave = async (draft: CoachMatchDraft, existingId?: string) => {
@@ -93,6 +104,19 @@ export default function CoachMatchSection({ teamName, members }: CoachMatchSecti
           setEditing(null);
         }}
       />
+
+      {statsMatch && (
+        <CoachMatchStatsModal
+          match={statsMatch}
+          teamName={teamName}
+          onClose={() => setStatsMatch(null)}
+          onEdit={() => {
+            const m = statsMatch;
+            setStatsMatch(null);
+            openEditor(m);
+          }}
+        />
+      )}
     </div>
   );
 }

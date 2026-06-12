@@ -1,5 +1,9 @@
 export { default as CoachMatchSection } from './CoachMatchSection';
 export { default as CoachMatchList } from './CoachMatchList';
 export { default as CreateGameModal } from './CreateGameModal';
+export { default as CoachMatchStatsModal } from './CoachMatchStatsModal';
+export { default as CoachStatsTable } from './CoachStatsTable';
+export { default as CoachStatsPitchMap } from './CoachStatsPitchMap';
+export { default as PlayerStatDetail } from './PlayerStatDetail';
 export { default as FormationPitch } from './FormationPitch';
 export { default as DragProvider } from './DragProvider';
