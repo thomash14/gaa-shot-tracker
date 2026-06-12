@@ -8,3 +8,4 @@ export { CoachDrills, PlayerDrills } from './TeamDrillsList';
 export { CoachEvents, PlayerEvents } from './TeamEventsList';
 export { default as AddEventModal } from './AddEventModal';
 export { default as AddPlayerModal } from './AddPlayerModal';
+export { default as PlayerPerformanceModal } from './PlayerPerformanceModal';

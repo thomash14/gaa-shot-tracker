@@ -14,6 +14,7 @@ interface TeamInfoProps {
   onMemberClick?: (member: TeamMember) => void;
   onEditTeam?: () => void;
   onAddPlayer?: () => void;
+  onViewPerformance?: (member: TeamMember) => void;
 }
 
 export default function TeamInfo({
@@ -28,6 +29,7 @@ export default function TeamInfo({
   onMemberClick,
   onEditTeam,
   onAddPlayer,
+  onViewPerformance,
 }: TeamInfoProps) {
   const clubName = team.clubs?.name ?? 'Unknown Club';
   const details = `${team.age_group}${team.team_name ? ' \u00b7 ' + team.team_name : ''} \u00b7 ${team.season_year} Season`;
@@ -114,7 +116,18 @@ export default function TeamInfo({
                   onClick={() => clickable && onMemberClick?.(m)}
                 >
                   <div className="min-w-0">
-                    <span className="text-sm font-medium text-text truncate block">{m.displayName}</span>
+                    {isCoach && m.role === 'player' && onViewPerformance ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onViewPerformance(m); }}
+                        title="View performance history"
+                        className="block max-w-full truncate text-left text-sm font-medium text-text hover:text-primary hover:underline"
+                      >
+                        {m.displayName}
+                      </button>
+                    ) : (
+                      <span className="text-sm font-medium text-text truncate block">{m.displayName}</span>
+                    )}
                     <span className={`text-[10px] font-semibold ${m.role === 'coach' ? 'text-primary' : 'text-text-muted'}`}>
                       {m.role === 'coach' ? 'Coach' : 'Player'}
                     </span>

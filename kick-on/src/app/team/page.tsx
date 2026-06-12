@@ -16,6 +16,7 @@ import {
   PlayerEvents,
   AddEventModal,
   AddPlayerModal,
+  PlayerPerformanceModal,
 } from '@/components/team';
 import { CoachMatchSection } from '@/components/coach-match';
 import { PlayerGamesList } from '@/components/player-review';
@@ -31,6 +32,7 @@ export default function TeamPage() {
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [addPlayerModalOpen, setAddPlayerModalOpen] = useState(false);
+  const [perfPlayer, setPerfPlayer] = useState<{ userId: string; name: string } | null>(null);
   const [editingEvent, setEditingEvent] = useState<TeamEvent | undefined>(undefined);
   const [selectedPlayer, setSelectedPlayer] = useState<{ userId: string; name: string; sharePractice: boolean; shareMatch: boolean } | null>(null);
 
@@ -142,6 +144,7 @@ export default function TeamPage() {
           onMemberClick={handleMemberClick}
           onEditTeam={() => setEditModalOpen(true)}
           onAddPlayer={() => setAddPlayerModalOpen(true)}
+          onViewPerformance={(m) => setPerfPlayer({ userId: m.user_id, name: m.displayName })}
         />
 
         {/* Right: Drills + Events */}
@@ -231,6 +234,16 @@ export default function TeamPage() {
         onAdd={team.addCoachPlayer}
         onClose={() => setAddPlayerModalOpen(false)}
       />
+
+      {perfPlayer && team.currentTeam && (
+        <PlayerPerformanceModal
+          open
+          playerName={perfPlayer.name}
+          playerUserId={perfPlayer.userId}
+          teamId={team.currentTeam.id}
+          onClose={() => setPerfPlayer(null)}
+        />
+      )}
 
       {selectedPlayer && (
         <PlayerDataModal
