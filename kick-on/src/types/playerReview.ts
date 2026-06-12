@@ -23,6 +23,8 @@ export interface PlayerMatchEvent {
   y_position: number | null;
   outcome: string | null;
   assist_type: string | null;
+  /** Coach who entered/edited this event; null = player entered it. */
+  edited_by: string | null;
   created_at: string;
 }
 
@@ -35,6 +37,8 @@ export interface LocalPlayerEvent {
   y: number | null;
   outcome: string | null;
   assistType: string | null;
+  /** Coach who entered/edited this event; null = player entered it. */
+  editedBy?: string | null;
   /** Set once persisted to Supabase. */
   cloudId?: string;
 }

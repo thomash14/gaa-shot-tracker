@@ -21,6 +21,8 @@ export interface PlayerEventInput {
   y: number | null;
   outcome: string | null;
   assistType: string | null;
+  /** Coach id when a coach is entering/editing on the player's behalf; else null. */
+  editedBy?: string | null;
 }
 
 function isOffline(): boolean {
@@ -65,6 +67,7 @@ function toRow(e: PlayerEventInput) {
     y_position: e.y,
     outcome: e.outcome,
     assist_type: e.assistType,
+    edited_by: e.editedBy ?? null,
   };
 }
 
@@ -96,6 +99,59 @@ export async function deletePlayerEvent(localId: string, cloudId?: string): Prom
   const supabase = createClient();
   const { error } = await supabase.from('player_match_events').delete().eq('id', cloudId);
   if (error) console.error('[playerEvents] delete error:', error);
+}
+
+export interface PlayerEventPatch {
+  x?: number | null;
+  y?: number | null;
+  outcome?: string | null;
+  assistType?: string | null;
+  editedBy?: string | null;
+}
+
+/** Update an existing event (used by the coach edit flow). */
+export async function updatePlayerEvent(
+  localId: string,
+  cloudId: string | undefined,
+  patch: PlayerEventPatch,
+): Promise<void> {
+  // Keep any still-queued copy in sync so a later flush carries the edit.
+  const list = loadPending();
+  const idx = list.findIndex((p) => p.localId === localId);
+  if (idx >= 0) {
+    list[idx] = {
+      ...list[idx],
+      x: patch.x ?? list[idx].x,
+      y: patch.y ?? list[idx].y,
+      outcome: patch.outcome !== undefined ? patch.outcome : list[idx].outcome,
+      assistType: patch.assistType !== undefined ? patch.assistType : list[idx].assistType,
+      editedBy: patch.editedBy ?? list[idx].editedBy,
+    };
+    savePending(list);
+  }
+
+  if (!cloudId || isOffline()) return;
+  const row: Record<string, unknown> = {};
+  if (patch.x !== undefined) row.x_position = patch.x;
+  if (patch.y !== undefined) row.y_position = patch.y;
+  if (patch.outcome !== undefined) row.outcome = patch.outcome;
+  if (patch.assistType !== undefined) row.assist_type = patch.assistType;
+  if (patch.editedBy !== undefined) row.edited_by = patch.editedBy;
+
+  const supabase = createClient();
+  const { error } = await supabase.from('player_match_events').update(row).eq('id', cloudId);
+  if (error) console.error('[playerEvents] update error:', error);
+}
+
+/** Coach marks a player's review complete (coaches have UPDATE on coach_match_players). */
+export async function markReviewedByCoach(coachMatchId: string, playerId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('coach_match_players')
+    .update({ reviewed: true, reviewed_at: new Date().toISOString() })
+    .eq('coach_match_id', coachMatchId)
+    .eq('player_id', playerId);
+  if (error) throw error;
 }
 
 /** Flush any queued events. Returns the number successfully synced. */

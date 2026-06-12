@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useCoachMatchStats } from '@/hooks/useCoachMatchStats';
 import { formatScoreline, matchResult } from '@/lib/coachMatch';
 import type { PlayerStatRow } from '@/lib/coachStats';
 import CoachStatsTable from './CoachStatsTable';
 import CoachStatsPitchMap from './CoachStatsPitchMap';
 import PlayerStatDetail from './PlayerStatDetail';
-import type { CoachMatch } from '@/types';
+import { PlayerReviewScreen } from '@/components/player-review';
+import type { CoachMatch, PlayerGame } from '@/types';
 
 interface CoachMatchStatsModalProps {
   match: CoachMatch;
@@ -23,9 +25,11 @@ const RESULT_COLOUR: Record<string, string> = {
 };
 
 export default function CoachMatchStatsModal({ match, teamName, onClose, onEdit }: CoachMatchStatsModalProps) {
-  const { statRows, events, nameById, loading, updateComment } = useCoachMatchStats(match.id);
+  const { user } = useAuth();
+  const { statRows, events, nameById, loading, reload, updateComment } = useCoachMatchStats(match.id);
   const [tab, setTab] = useState<'table' | 'map'>('table');
   const [selected, setSelected] = useState<PlayerStatRow | null>(null);
+  const [editingRow, setEditingRow] = useState<PlayerStatRow | null>(null);
 
   const reviewedCount = statRows.filter((r) => r.reviewed).length;
   const result = matchResult(
@@ -110,6 +114,7 @@ export default function CoachMatchStatsModal({ match, teamName, onClose, onEdit 
               events={events}
               onBack={() => setSelected(null)}
               onSaveComment={updateComment}
+              onEditStats={() => setEditingRow(selectedRow)}
             />
           ) : (
             <>
@@ -125,6 +130,27 @@ export default function CoachMatchStatsModal({ match, teamName, onClose, onEdit 
           )}
         </div>
       </div>
+
+      {/* Coach editing a player's stats — reuses the player review screen */}
+      {editingRow && user && (
+        <PlayerReviewScreen
+          game={{
+            match,
+            position: editingRow.position,
+            isStarter: editingRow.isStarter,
+            subMinute: editingRow.subMinute,
+            replacedPlayerId: null,
+            replacedPlayerName: null,
+            reviewed: editingRow.reviewed,
+            reviewedAt: null,
+          } as PlayerGame}
+          playerId={editingRow.playerId}
+          teamName={teamName}
+          coachMode={{ playerName: editingRow.name, coachUserId: user.id }}
+          onReviewed={() => reload()}
+          onClose={() => { setEditingRow(null); reload(); }}
+        />
+      )}
     </div>
   );
 }

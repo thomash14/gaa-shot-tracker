@@ -13,9 +13,10 @@ interface PlayerStatDetailProps {
   events: PlayerMatchEvent[];
   onBack: () => void;
   onSaveComment: (cmpId: string, comment: string, visible: boolean) => Promise<void>;
+  onEditStats: () => void;
 }
 
-export default function PlayerStatDetail({ row, events, onBack, onSaveComment }: PlayerStatDetailProps) {
+export default function PlayerStatDetail({ row, events, onBack, onSaveComment, onEditStats }: PlayerStatDetailProps) {
   const mine = useMemo(() => events.filter((e) => e.player_id === row.playerId), [events, row.playerId]);
   const coordEvents = mine.filter((e) => e.x_position != null && e.y_position != null);
 
@@ -79,16 +80,24 @@ export default function PlayerStatDetail({ row, events, onBack, onSaveComment }:
         &lsaquo; Back to all players
       </button>
 
-      <div>
-        <h4 className="text-base font-bold text-text">{row.name}</h4>
-        <p className="text-xs text-text-muted">
-          {POSITION_NAMES[row.position]}
-          {!row.isStarter && row.subMinute != null ? ` · came on at ${row.subMinute}'` : ''}
-          {' · '}
-          <span className={row.reviewed ? 'text-success' : 'text-text-muted'}>
-            {row.reviewed ? 'Reviewed' : 'Not reviewed'}
-          </span>
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h4 className="text-base font-bold text-text">{row.name}</h4>
+          <p className="text-xs text-text-muted">
+            {POSITION_NAMES[row.position]}
+            {!row.isStarter && row.subMinute != null ? ` · came on at ${row.subMinute}'` : ''}
+            {' · '}
+            <span className={row.reviewed ? 'text-success' : 'text-text-muted'}>
+              {row.reviewed ? 'Reviewed' : 'Not reviewed'}
+            </span>
+          </p>
+        </div>
+        <button
+          onClick={onEditStats}
+          className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark"
+        >
+          Edit Stats
+        </button>
       </div>
 
       {/* Their map */}
