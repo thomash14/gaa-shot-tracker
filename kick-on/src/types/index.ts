@@ -30,5 +30,11 @@ export type {
   DraftMissing,
   CoachMatchDraft,
 } from './coachMatch';
+export type {
+  PlayerEventType,
+  PlayerMatchEvent,
+  LocalPlayerEvent,
+  PlayerGame,
+} from './playerReview';
 export type { TrainingLog, TrainingSessionType } from './training';
 export type { UserProfile } from './profile';

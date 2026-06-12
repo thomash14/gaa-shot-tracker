@@ -18,6 +18,7 @@ import {
   AddPlayerModal,
 } from '@/components/team';
 import { CoachMatchSection } from '@/components/coach-match';
+import { PlayerGamesList } from '@/components/player-review';
 import type { TeamMember, TeamDrill, DrillCompletion, TeamEvent } from '@/types';
 
 export default function TeamPage() {
@@ -180,6 +181,19 @@ export default function TeamPage() {
           {/* Coach: post-match game reviews */}
           {team.isCoach && (
             <CoachMatchSection teamName={teamDisplayName} members={team.teamMembers} />
+          )}
+
+          {/* Player: review games the coach has sent */}
+          {!team.isCoach && team.currentTeam && (
+            <div className="bg-surface rounded-2xl p-4 shadow-sm">
+              <PlayerGamesList
+                heading="Match Reviews"
+                teamName={teamDisplayName}
+                teamId={team.currentTeam.id}
+                filter="all"
+                emptyMode="message"
+              />
+            </div>
           )}
         </div>
       </div>

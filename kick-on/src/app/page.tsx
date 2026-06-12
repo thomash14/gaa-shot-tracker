@@ -7,6 +7,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useTeam } from '@/hooks/useTeam';
 import { SessionCarousel, AssignedDrills, QuickActions, UpcomingEvents } from '@/components/dashboard';
+import { GameReviewSection } from '@/components/player-review';
 
 export default function HomePage() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -87,6 +88,14 @@ export default function HomePage() {
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-bold text-primary dark:text-text">Dashboard</h2>
+
+      {/* Game reviews sent by the coach (hides itself when none outstanding) */}
+      {currentTeam && (
+        <GameReviewSection
+          teamName={currentTeam.team_name || `${currentTeam.clubs?.name || ''} ${currentTeam.age_group}`.trim()}
+          teamId={currentTeam.id}
+        />
+      )}
 
       {/* Assigned drills from coach */}
       <AssignedDrills

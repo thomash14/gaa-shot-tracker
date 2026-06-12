@@ -43,6 +43,9 @@ export interface CoachMatchPlayer {
   sub_minute: number | null;
   coach_comment: string | null;
   comment_visible_to_player: boolean;
+  /** Phase 2 — set when the player completes their self-review. */
+  reviewed: boolean;
+  reviewed_at: string | null;
   created_at: string;
 }
 
