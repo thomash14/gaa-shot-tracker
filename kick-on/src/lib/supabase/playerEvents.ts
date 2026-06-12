@@ -21,6 +21,10 @@ export interface PlayerEventInput {
   y: number | null;
   outcome: string | null;
   assistType: string | null;
+  /** Shots only: 'left' | 'right'. */
+  foot?: string | null;
+  /** Shots only: 'in-play' | 'free-kick'. */
+  category?: string | null;
   /** Coach id when a coach is entering/editing on the player's behalf; else null. */
   editedBy?: string | null;
 }
@@ -67,6 +71,8 @@ function toRow(e: PlayerEventInput) {
     y_position: e.y,
     outcome: e.outcome,
     assist_type: e.assistType,
+    foot: e.foot ?? null,
+    shot_category: e.category ?? null,
     edited_by: e.editedBy ?? null,
   };
 }
@@ -106,6 +112,8 @@ export interface PlayerEventPatch {
   y?: number | null;
   outcome?: string | null;
   assistType?: string | null;
+  foot?: string | null;
+  category?: string | null;
   editedBy?: string | null;
 }
 
@@ -125,6 +133,8 @@ export async function updatePlayerEvent(
       y: patch.y ?? list[idx].y,
       outcome: patch.outcome !== undefined ? patch.outcome : list[idx].outcome,
       assistType: patch.assistType !== undefined ? patch.assistType : list[idx].assistType,
+      foot: patch.foot !== undefined ? patch.foot : list[idx].foot,
+      category: patch.category !== undefined ? patch.category : list[idx].category,
       editedBy: patch.editedBy ?? list[idx].editedBy,
     };
     savePending(list);
@@ -136,6 +146,8 @@ export async function updatePlayerEvent(
   if (patch.y !== undefined) row.y_position = patch.y;
   if (patch.outcome !== undefined) row.outcome = patch.outcome;
   if (patch.assistType !== undefined) row.assist_type = patch.assistType;
+  if (patch.foot !== undefined) row.foot = patch.foot;
+  if (patch.category !== undefined) row.shot_category = patch.category;
   if (patch.editedBy !== undefined) row.edited_by = patch.editedBy;
 
   const supabase = createClient();

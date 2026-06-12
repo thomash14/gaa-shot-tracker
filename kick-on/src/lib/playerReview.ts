@@ -41,8 +41,8 @@ export const EVENT_TYPES: EventTypeConfig[] = [
     outcomes: [
       { value: 'scored', label: 'Scored' },
       { value: 'missed', label: 'Missed' },
-      { value: 'blocked', label: 'Blocked' },
       { value: 'wide', label: 'Wide' },
+      { value: 'blocked', label: 'Blocked' },
     ],
   },
   { key: 'turnover_won', label: 'Turnovers Won', short: 'TO Won', outcomes: [] },
@@ -73,6 +73,26 @@ export const EVENT_TYPE_BY_KEY: Record<PlayerEventType, EventTypeConfig> = Objec
   EVENT_TYPES.map((e) => [e.key, e]),
 ) as Record<PlayerEventType, EventTypeConfig>;
 
+// Required-field option lists for the shot/kickout map flow.
+export const SHOT_FOOT_OPTIONS: OutcomeOption[] = [
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+];
+export const SHOT_CATEGORY_OPTIONS: OutcomeOption[] = [
+  { value: 'in-play', label: 'In Play' },
+  { value: 'free-kick', label: 'Free-kick' },
+];
+export const SHOT_RESULT_OPTIONS: OutcomeOption[] = [
+  { value: 'scored', label: 'Scored' },
+  { value: 'missed', label: 'Missed' },
+  { value: 'wide', label: 'Wide' },
+  { value: 'blocked', label: 'Blocked' },
+];
+export const KICKOUT_RESULT_OPTIONS: OutcomeOption[] = [
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' },
+];
+
 /** Human label for any stored outcome / assist value. */
 export const OUTCOME_LABELS: Record<string, string> = {
   scored_point: 'Scored Point',
@@ -88,6 +108,10 @@ export const OUTCOME_LABELS: Record<string, string> = {
   lost: 'Lost',
   goal: 'Goal Assist',
   point: 'Point Assist',
+  left: 'Left',
+  right: 'Right',
+  'in-play': 'In Play',
+  'free-kick': 'Free-kick',
 };
 
 /** Outcomes that represent a positive result (green markers). */
@@ -122,18 +146,33 @@ export function totals(events: LocalPlayerEvent[]): Record<PlayerEventType, numb
   };
 }
 
-/** Plain-English summary, e.g. "8 possessions, 3 shots (2 scored), 1 turnover won, 1 assist". */
+/** Shots scored / total and conversion %. */
+export function shotStats(events: LocalPlayerEvent[]): { scored: number; total: number; pct: number } {
+  const total = events.filter((e) => e.eventType === 'shot').length;
+  const scored = events.filter((e) => e.eventType === 'shot' && e.outcome === 'scored').length;
+  return { scored, total, pct: total ? Math.round((scored / total) * 100) : 0 };
+}
+
+/** Kickouts won / total and win %. */
+export function kickoutStats(events: LocalPlayerEvent[]): { won: number; total: number; pct: number } {
+  const total = events.filter((e) => e.eventType === 'kickout').length;
+  const won = events.filter((e) => e.eventType === 'kickout' && e.outcome === 'won').length;
+  return { won, total, pct: total ? Math.round((won / total) * 100) : 0 };
+}
+
+/** Plain-English summary, e.g. "8 possessions, 3/4 shots (75%), 1 turnover won, 1 assist". */
 export function buildSummary(events: LocalPlayerEvent[]): string {
   const t = totals(events);
-  const shotsScored = events.filter((e) => e.eventType === 'shot' && e.outcome === 'scored').length;
+  const shots = shotStats(events);
+  const ko = kickoutStats(events);
   const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`;
 
   const parts: string[] = [];
   parts.push(plural(t.possession, 'possession'));
-  parts.push(`${plural(t.shot, 'shot')}${t.shot ? ` (${shotsScored} scored)` : ''}`);
+  parts.push(shots.total ? `${shots.scored}/${shots.total} shots (${shots.pct}%)` : '0 shots');
   if (t.turnover_won) parts.push(`${t.turnover_won} turnover${t.turnover_won !== 1 ? 's' : ''} won`);
   if (t.turnover_lost) parts.push(`${t.turnover_lost} turnover${t.turnover_lost !== 1 ? 's' : ''} lost`);
   if (t.assist) parts.push(plural(t.assist, 'assist'));
-  if (t.kickout) parts.push(plural(t.kickout, 'kickout'));
+  if (ko.total) parts.push(`${ko.won}/${ko.total} kickouts (${ko.pct}% won)`);
   return parts.join(', ');
 }
